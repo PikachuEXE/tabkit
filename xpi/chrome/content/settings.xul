@@ -82,8 +82,14 @@
 			
 			<preference id="highlightunreadtabs-pref" name="extensions.tabkit.highlightUnreadTabs" type="bool"/>
 			<preference id="emphasizecurrenttab-pref" name="extensions.tabkit.emphasizeCurrentTab" type="bool"/>
+			<preference id="emphasizeprotectedtabs-pref" name="extensions.tabkit.emphasizeProtectedTabs" type="bool"/>
 			
-			<preference id="colortabnotlabel-pref" name="extensions.tabkit.colorTabNotLabel" type="int"/>
+			<preference id="forcethemecompatibility-pref" name="extensions.tabkit.forceThemeCompatibility" type="int"/>
+			<preference id="colortabnotlabel-pref" name="extensions.tabkit.colorTabNotLabel" type="bool"/>
+			<preference id="minsaturation-pref" name="extensions.tabkit.minSaturation" type="int"/>
+			<preference id="maxsaturation-pref" name="extensions.tabkit.maxSaturation" type="int"/>
+			<preference id="minlightness-pref" name="extensions.tabkit.minLightness" type="int"/>
+			<preference id="maxlightness-pref" name="extensions.tabkit.maxLightness" type="int"/>
 		</preferences>
 		
 		<groupbox><caption label="&tabs.caption;"/>
@@ -110,19 +116,59 @@
 					accesskey="&highlightUnreadTabs.accesskey;" preference="highlightunreadtabs-pref"/>
 			<checkbox id="emphasizecurrenttab" label="&emphasizeCurrentTab.label;"
 					accesskey="&emphasizeCurrentTab.accesskey;" preference="emphasizecurrenttab-pref"/>
+			<checkbox id="emphasizeprotectedtabs" label="&emphasizeProtectedTabs.label;"
+					accesskey="&emphasizeProtectedTabs.accesskey;" preference="emphasizeprotectedtabs-pref"/>
 		</groupbox>
 		
-		<groupbox><caption label="&advanced.caption;"/>
+		<groupbox><caption label="&coloring.caption;"/>
+			<hbox align="center">
+				<label control="forcethemecompatibility" value="&forceThemeCompatibility.label;" accesskey="&forceThemeCompatibility.accesskey;"/>
+				<menulist id="forcethemecompatibility" preference="forcethemecompatibility-pref">
+				<menupopup>
+					<menuitem value="0" label="&forceThemeCompatibility.never.label;"/>
+					<menuitem value="1" label="&forceThemeCompatibility.auto.label;"/>
+					<menuitem value="2" label="&forceThemeCompatibility.always.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
 			<hbox align="center">
 				<label control="colortabnotlabel" value="&colorTabNotLabel.label;" accesskey="&colorTabNotLabel.accesskey;"/>
 				<menulist id="colortabnotlabel" preference="colortabnotlabel-pref">
 				<menupopup>
-					<menuitem value="-1" label="&colorTabNotLabel.auto.label;"/>
-					<menuitem value="0" label="&colorTabNotLabel.false.label;"/>
-					<menuitem value="1" label="&colorTabNotLabel.true.label;"/>
+					<menuitem value="true" label="&colorTabNotLabel.true.label;"/>
+					<menuitem value="false" label="&colorTabNotLabel.false.label;"/>
 				</menupopup>
 				</menulist>
 			</hbox>
+			<grid>
+				<columns>
+					<column/>
+					<column/>
+					<column/>
+					<column/>
+					<column/>
+					<column/>
+				</columns>
+				<rows>
+					<row align="center">
+						<label control="minsaturation" value="&minSaturation.label;" accesskey="&minSaturation.accesskey;"/>
+						<textbox id="minsaturation" type="number" size="3" min="0" max="100" preference="minsaturation-pref"/>
+						<label value="%"/>
+						<label control="maxsaturation" value="&maxSaturation.label;" accesskey="&maxSaturation.accesskey;"/>
+						<textbox id="maxsaturation" type="number" size="3" min="0" max="100" preference="maxsaturation-pref"/>
+						<label value="%"/>
+					</row>
+					<row align="center">
+						<label control="minlightness" value="&minLightness.label;" accesskey="&minLightness.accesskey;"/>
+						<textbox id="minlightness" type="number" size="3" min="0" max="100" preference="minlightness-pref"/>
+						<label value="%"/>
+						<label control="maxlightness" value="&maxLightness.label;" accesskey="&maxLightness.accesskey;"/>
+						<textbox id="maxlightness" type="number" size="3" min="0" max="100" preference="maxlightness-pref"/>
+						<label value="%"/>
+					</row>
+				</rows>
+			</grid>
+			<label value="&hue.label;"/>
 		</groupbox>
 	</prefpane>
 
@@ -139,6 +185,9 @@
 			
 			<preference id="scrollbarsnotarrows-pref" name="extensions.tabkit.scrollbarsNotArrows" type="bool"/>
 			<preference id="scrolloneextra-pref" name="extensions.tabkit.scrollOneExtra" type="bool"/>
+			
+			<preference id="openselectedlinks-pref" name="extensions.tabkit.openSelectedLinks" type="bool"/>
+			<preference id="openselectedlinks-showall-pref" name="extensions.tabkit.openSelectedLinks.showAll" type="bool" inverted="true"/>
 		</preferences>
 		
 		<groupbox><caption label="&mouseGestures.caption;"/>
@@ -171,6 +220,15 @@
 					accesskey="&scrollbarsNotArrows.accesskey;" preference="scrollbarsnotarrows-pref"/>
 			<checkbox id="scrolloneextra" label="&scrollOneExtra.label;"
 					accesskey="&scrollOneExtra.accesskey;" preference="scrolloneextra-pref"/>
+		</groupbox>
+		
+		<groupbox><caption label="&openSelectedLinks.caption;"/>
+			<checkbox id="openselectedlinks" label="&openSelectedLinks.label;"
+					accesskey="&openSelectedLinks.accesskey;" preference="openselectedlinks-pref"/>
+			<vbox class="indent">
+				<checkbox id="openselectedlinks-showall" label="&openSelectedLinksShowOnlyOne.label;"
+						accesskey="&openSelectedLinksShowOnlyOne.accesskey;" preference="openselectedlinks-showall-pref"/>
+			</vbox>
 		</groupbox>
 		
 		<label value="&onlyAppliesToNewWindows.label1;"/>
@@ -265,12 +323,15 @@
 
 	<prefpane id="advanced-pane" label="&advanced.title;" image="chrome://tabkit/skin/prefs-advanced.png">
 		<preferences>
-			<preference id="autosortdomaingroups-pref" name="extensions.tabkit.autoSortDomainGroups" type="bool"/>
 			<preference id="autosortopenergroups-pref" name="extensions.tabkit.autoSortOpenerGroups" type="bool"/>
+			<preference id="autosortdomaingroups-pref" name="extensions.tabkit.autoSortDomainGroups" type="bool"/>
 			
 			<preference id="bookmarktabsarerelated-pref" name="extensions.tabkit.bookmarkTabsAreRelated" type="bool"/>
 			<preference id="historytabsarerelated-pref" name="extensions.tabkit.historyTabsAreRelated" type="bool"/>
 			<preference id="newtabsarerelated-pref" name="extensions.tabkit.newTabsAreRelated" type="bool"/>
+			
+			<preference id="opentabsfromaddressbar-pref" name="extensions.tabkit.openTabsFrom.addressBar" type="bool"/>
+			<preference id="opentabsfromsearchbar-pref" name="browser.search.openintab" type="bool"/>
 			
 			<preference id="closebeforeafternotother-pref" name="extensions.tabkit.closeBeforeAfterNotOther" type="bool"/>
 			
@@ -279,22 +340,28 @@
 		</preferences>
 		
 		<groupbox><caption label="&tabOrder.caption;"/>
-			<checkbox id="autosortdomaingroups" label="&autoSortDomainGroups.label;"
-					accesskey="&autoSortDomainGroups.accesskey;" preference="autosortdomaingroups-pref"/>
 			<checkbox id="autosortopenergroups" label="&autoSortOpenerGroups.label;"
 					accesskey="&autoSortOpenerGroups.accesskey;" preference="autosortopenergroups-pref"/>
+			<checkbox id="autosortdomaingroups" label="&autoSortDomainGroups.label;"
+					accesskey="&autoSortDomainGroups.accesskey;" preference="autosortdomaingroups-pref"/>
 		</groupbox>
 		
-		<groupbox><caption label="&typesOfTab.caption;"/>
-			<label value="&whenGroupingByOpener.label;"/>
-			<vbox class="indent">
-				<checkbox id="bookmarktabsarerelated" label="&bookmarkTabsAreRelated.label;"
-						accesskey="&bookmarkTabsAreRelated.accesskey;" preference="bookmarktabsarerelated-pref"/>
-				<checkbox id="historytabsarerelated" label="&historyTabsAreRelated.label;"
-						accesskey="&historyTabsAreRelated.accesskey;" preference="historytabsarerelated-pref"/>
-				<checkbox id="newtabsarerelated" label="&newTabsAreRelated.label;"
-						accesskey="&newTabsAreRelated.accesskey;" preference="newtabsarerelated-pref"/>
-			</vbox>
+		<groupbox><caption label="&whenGroupingByOpener.caption;"/>
+			<checkbox id="bookmarktabsarerelated" label="&bookmarkTabsAreRelated.label;"
+					accesskey="&bookmarkTabsAreRelated.accesskey;" preference="bookmarktabsarerelated-pref"/>
+			<checkbox id="historytabsarerelated" label="&historyTabsAreRelated.label;"
+					accesskey="&historyTabsAreRelated.accesskey;" preference="historytabsarerelated-pref"/>
+			<checkbox id="newtabsarerelated" label="&newTabsAreRelated.label;"
+					accesskey="&newTabsAreRelated.accesskey;" preference="newtabsarerelated-pref"/>
+		</groupbox>
+		
+		<groupbox><caption label="&openTabsFrom.caption;"/>
+			<hbox>
+				<checkbox id="opentabsfromaddressbar" label="&addressBar.label;"
+						accesskey="&addressBar.accesskey;" preference="opentabsfromaddressbar-pref"/>
+				<checkbox id="opentabsfromsearchbar" label="&searchBar.label;"
+						accesskey="&searchBar.accesskey;" preference="opentabsfromsearchbar-pref"/>
+			</hbox>
 		</groupbox>
 		
 		<groupbox><caption label="&misc.caption;"/>

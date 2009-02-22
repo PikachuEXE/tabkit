@@ -41,24 +41,45 @@
 <!ENTITY tabMinWidth.accesskey "W">
 <!ENTITY tabMinWidth.label2 "pixels">
 <!ENTITY closeButtons.label "Close buttons:">
-<!ENTITY closeButtons.accesskey "C">
+<!ENTITY closeButtons.accesskey "O">
 <!ENTITY closeButtons.active.label "show on the active tab only">
 <!ENTITY closeButtons.all.label "show on all tabs">
 <!ENTITY closeButtons.none.label "don't show any close buttons">
 <!ENTITY closeButtons.end.label "show a single close button at the end of the tab bar">
 
 <!ENTITY appearance.caption "Appearance">
-<!ENTITY highlightUnreadTabs.label "Highlight unread tabs">
+<!ENTITY highlightUnreadTabs.label "Highlight unread tabs in yellow">
 <!ENTITY highlightUnreadTabs.accesskey "H">
-<!ENTITY emphasizeCurrentTab.label "Emphasize current tab">
+<!ENTITY emphasizeCurrentTab.label "Emphasize current tab in black">
 <!ENTITY emphasizeCurrentTab.accesskey "E">
+<!ENTITY emphasizeProtectedTabs.label "Emphasize protected tabs in green">
+<!ENTITY emphasizeProtectedTabs.accesskey "P">
 
-<!ENTITY advanced.caption "Advanced">
-<!ENTITY colorTabNotLabel.label "Tab coloring:">
-<!ENTITY colorTabNotLabel.accesskey "T">
-<!ENTITY colorTabNotLabel.auto.label "Auto-detect themes">
-<!ENTITY colorTabNotLabel.false.label "Color labels by group and tabs if highlighted">
+<!ENTITY coloring.caption "Tab Coloring">
+<!ENTITY forceThemeCompatibility.label "Theme compatibility:">
+<!ENTITY forceThemeCompatibility.accesskey "T">
+<!ENTITY forceThemeCompatibility.never.label "Never override themes">
+<!ENTITY forceThemeCompatibility.auto.label "Auto-detect (recommended)">
+<!ENTITY forceThemeCompatibility.always.label "Always override themes">
+<!ENTITY colorTabNotLabel.label "Coloring:">
+<!ENTITY colorTabNotLabel.accesskey "C">
 <!ENTITY colorTabNotLabel.true.label "Color tabs by group and labels if highlighted">
+<!ENTITY colorTabNotLabel.false.label "Color labels by group and tabs if highlighted">
+<!ENTITY minSaturation.label "Group saturation - Min:">
+<!ENTITY minSaturation.accesskey "S">
+<!ENTITY maxSaturation.label "Max:">
+<!ENTITY maxSaturation.accesskey "M">
+<!ENTITY minLightness.label "Group lightness - Min:">
+<!ENTITY minLightness.accesskey "L">
+<!ENTITY maxLightness.label "Max:">
+<!ENTITY maxLightness.accesskey "M">
+<!ENTITY hue.label "The hue is picked automatically, so as to be distinct from nearby groups">
+
+<!ENTITY openSelectedLinks.caption "Open Selected Links">
+<!ENTITY openSelectedLinks.label "Open selected links in new tabs from page context menu (including text links)">
+<!ENTITY openSelectedLinks.accesskey "O">
+<!ENTITY openSelectedLinksShowOnlyOne.label "Offer best links only (instead of choice of most important / all / only text links)">
+<!ENTITY openSelectedLinksShowOnlyOne.accesskey "F">
 
 <!ENTITY controls.title "Controls">
 
@@ -101,7 +122,7 @@
 <!ENTITY autoCollapse.accesskey "U">
 
 <!ENTITY positioningTabs.caption "Positioning Tabs">
-<!ENTITY newTabPosition.label "New tabs should be positioned*">
+<!ENTITY newTabPosition.label "Ungrouped new tabs should be positioned*">
 <!ENTITY newTabPosition.accesskey "N">
 <!ENTITY newTabPosition.lastSort.label "according to the last sort">
 <!ENTITY newTabPosition.nextToCurrent.label "next to the current tab">
@@ -137,19 +158,24 @@
 <!ENTITY advanced.title "Advanced">
 
 <!ENTITY tabOrder.caption "Tab Order">
-<!ENTITY autoSortDomainGroups.label "Automatically sort tabs grouped by domain">
-<!ENTITY autoSortDomainGroups.accesskey "D">
-<!ENTITY autoSortOpenerGroups.label "Automatically sort tabs grouped by opener">
+<!ENTITY autoSortOpenerGroups.label "Automatically sort tabs grouped by opener (by parent)">
 <!ENTITY autoSortOpenerGroups.accesskey "O">
+<!ENTITY autoSortDomainGroups.label "Automatically sort tabs grouped by domain (by address)">
+<!ENTITY autoSortDomainGroups.accesskey "D">
 
-<!ENTITY typesOfTab.caption "Types of Tab">
-<!ENTITY whenGroupingByOpener.label "When grouping tabs by opener...">
+<!ENTITY whenGroupingByOpener.caption "When grouping tabs by opener:">
 <!ENTITY bookmarkTabsAreRelated.label "Treat bookmarks as related to the current tab">
 <!ENTITY bookmarkTabsAreRelated.accesskey "B">
 <!ENTITY historyTabsAreRelated.label "Treat history tabs as related to the current tab">
 <!ENTITY historyTabsAreRelated.accesskey "H">
 <!ENTITY newTabsAreRelated.label "Treat blank new tabs as related to the current tab">
 <!ENTITY newTabsAreRelated.accesskey "N">
+
+<!ENTITY openTabsFrom.caption "Open Tabs By Default From:">
+<!ENTITY addressBar.label "Address bar">
+<!ENTITY addressBar.accesskey "A">
+<!ENTITY searchBar.label "Search bar">
+<!ENTITY searchBar.accesskey "S">
 
 <!ENTITY misc.caption "Miscellaneous">
 <!ENTITY closeBeforeAfterNotOther.label "Replace 'Close Other Tabs' with Close Tabs Before and Close Tabs After">

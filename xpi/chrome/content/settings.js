@@ -1,6 +1,7 @@
 var dependencies = [
     //<depended upon>, <value for enabled>, <dependency1>, [<dependency2>,] ...
     ["indentedtree", "true", "maxtreelevel", "indentamount"],
+    ["openselectedlinks", "true", "openselectedlinks-showall"],
     ["shiftdraggroups", "true", "shiftdragsubtrees"],
     ["autogroupnewtabs", "true", "lastactivegrouping"],
     ["newtabposition", "2", "lastactivesort"]
@@ -74,7 +75,7 @@ function resetAll() {
     var prefs = document.getElementsByTagName("preference");
     for (var i = 0; i < prefs.length; i++) {
         var pref = prefs[i];
-        // Bug 390616 – <preference>'s defaultValue is wrong for string or unichar prefs – https://bugzilla.mozilla.org/show_bug.cgi?id=390616
+        // Bug 390616 - <preference>'s defaultValue is wrong for string or unichar prefs - https://bugzilla.mozilla.org/show_bug.cgi?id=390616
         var def = pref.type == "string" ? pref.preferences.defaultBranch.getCharPref(pref.name) : pref.defaultValue;
         if (pref.value != def)
             pref.value = def;
@@ -87,14 +88,24 @@ function disableAll() {
     resetAll();
     document.getElementById("multiplerows").checked = false;
     toggleMultipleRows();
+
     document.getElementById("highlightunreadtabs-pref").value = false;
     document.getElementById("emphasizecurrenttab-pref").value = false;
+    document.getElementById("forcethemecompatibility-pref").value = 0;
+
     document.getElementById("tabwheeltabswitch-pref").value = false;
-    document.getElementById("doubleclickshortcuts-pref").value = false;
+    document.getElementById("lmbrmbbackforward-pref").value = false;
+    document.getElementById("doubleclickcollapseexpand-pref").value = false;
+    document.getElementById("acceldragcopy-pref").value = false;
+    document.getElementById("shiftdraggroups-pref").value = false;
     document.getElementById("scrollbarsnotarrows-pref").value = false;
     document.getElementById("scrolloneextra-pref").value = false;
+    document.getElementById("openselectedlinks-pref").value = false;
+
     document.getElementById("autogroupnewtabs-pref").value = false;
     document.getElementById("newtabposition-pref").value = 0;
     document.getElementById("lastactivesort-pref").value = "creation";
     document.getElementById("customcloseorder-pref").value = 4;
+
+    document.getElementById("closebeforeafternotother-pref").value = false;
 }

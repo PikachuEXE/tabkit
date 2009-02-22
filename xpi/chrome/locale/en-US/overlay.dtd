@@ -22,8 +22,9 @@
 <!ENTITY groupByOpener.accesskey "P">
 <!ENTITY ungroupAll.label "Ungroup All Tabs">
 <!ENTITY ungroupAll.accesskey "U">
-<!ENTITY options.label "Options">
-<!ENTITY options.accesskey "O">
+
+<!ENTITY newTabs.label "New Tabs...">
+<!ENTITY newTabs.accesskey "N">
 <!ENTITY lastSort.label "Are Ordered By Last Sort">
 <!ENTITY lastSort.accesskey "S">
 <!ENTITY nextToCurrent.label "Open Next To Current Tab">
@@ -33,6 +34,9 @@
 <!ENTITY autoGroup.label "Are Grouped By Last Grouping">
 <!ENTITY autoGroup.accesskey "G">
 
+<!ENTITY options.label "Options">
+<!ENTITY options.accesskey "O">
+
 <!ENTITY tab.caption "This Tab:">
 <!ENTITY newTabHere.label "New Tab Here">
 <!ENTITY newTabHere.accesskey "N">
@@ -40,6 +44,8 @@
 <!ENTITY duplicateTab.accesskey "D">
 <!ENTITY makeGroup.label "Group Tabs From Here To Current">
 <!ENTITY makeGroup.accesskey "T">
+<!ENTITY toggleProtected.label "Protect Tab">
+<!ENTITY toggleProtected.accesskey "P">
 <!ENTITY toggleUnread.label "Mark As Read">
 <!ENTITY toggleUnread.accesskey "R">
 

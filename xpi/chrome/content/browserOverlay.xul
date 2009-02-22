@@ -55,6 +55,7 @@
 	<command id="cmd_tabkit-sortgroup-tab-duplicateTab" oncommand="tabkit.duplicateTab(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-tab-makeGroup" oncommand="tabkit.makeGroup(gBrowser.mContextTab);"/>
 	
+	<command id="cmd_tabkit-tab-toggleProtected" oncommand="tabkit.toggleProtected(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-tab-toggleUnread" oncommand="tabkit.toggleUnread(gBrowser.mContextTab);"/>
 	
 	
@@ -168,7 +169,7 @@
 					
 					<menuseparator/>
 					
-					<menu id="menu_tabkit-sortgroup-newtabs" label="New Tabs..." accesskey="N">
+					<menu id="menu_tabkit-sortgroup-newtabs" label="&newTabs.label;" accesskey="&newTabs.accesskey;">
 						<menupopup>
 							<menuitem id="menu_tabkit-sortgroup-newtabs-lastSort" label="&lastSort.label;" accesskey="&lastSort.accesskey;"
 								type="radio" name="radio_tabkit-newTabs" command="cmd_tabkit-sortgroup-newtabs-lastSort"/>
@@ -202,6 +203,8 @@
 				command="cmd_tabkit-sortgroup-tab-duplicateTab"/>
 			<menuitem id="menu_tabkit-sortgroup-tab-makeGroup" label="&makeGroup.label;" accesskey="&makeGroup.accesskey;"
 				command="cmd_tabkit-sortgroup-tab-makeGroup"/>
+			<menuitem id="menu_tabkit-tab-toggleProtected" label="&toggleProtected.label;" accesskey="&toggleProtected.accesskey;"
+				type="checkbox" command="cmd_tabkit-tab-toggleProtected"/>
 			<menuitem id="menu_tabkit-tab-toggleUnread" label="&toggleUnread.label;" accesskey="&toggleUnread.accesskey;"
 				command="cmd_tabkit-tab-toggleUnread"/>
 			
@@ -255,5 +258,14 @@
 		tbattr="tabbrowser-multiple"
 		oncommand="tabkit.removeTabsAfter(gBrowser.mContextTab);"/>
 </menupopup>
+
+<popup id="contentAreaContextMenu">
+	<menuitem id="context_tabkit-openselectedtextlinks" label="Open Selected Text Links" accesskey="P" hidden="true"
+		insertafter="context-openlinkintab" oncommand="window.setTimeout(tabkit.openSelectedLinks, 1, this);"/>
+	<menuitem id="context_tabkit-openselectedlinks" label="Open Selected Links" accesskey="O" hidden="true"
+		insertafter="context-openlinkintab" oncommand="window.setTimeout(tabkit.openSelectedLinks, 1, this);"/>
+	<menuitem id="context_tabkit-opentopselectedlinks" label="Open Main Selected Links" accesskey="M" hidden="true"
+		insertafter="context-openlinkintab" oncommand="window.setTimeout(tabkit.openSelectedLinks, 1, this);"/>
+</popup>
 
 </overlay>

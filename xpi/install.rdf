@@ -9,9 +9,10 @@
 		
 		<!-- Front End MetaData -->
 		<em:name>Tab Kit</em:name>
-		<em:version>0.3</em:version>
+		<em:version>0.4.3</em:version>
 		<em:description>Tab grouping, multi-rows, tree view, and other tweaks.</em:description>
 		<em:creator>John Mellor</em:creator>
+		<em:translator>Renda (Chinese [zh-CN])</em:translator>
 		<em:homepageURL>http://jomel.me.uk/software/firefox/tabkit/</em:homepageURL>
 		
 		<em:optionsURL>chrome://tabkit/content/settings.xul</em:optionsURL>
@@ -23,7 +24,7 @@
 			<Description>
 				<em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
 				<em:minVersion>2.0</em:minVersion>
-				<em:maxVersion>3.0.*</em:maxVersion>
+				<em:maxVersion>3.1b2pre</em:maxVersion>
 			</Description>
 		</em:targetApplication>
 	</Description>

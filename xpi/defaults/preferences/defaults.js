@@ -8,7 +8,7 @@ pref("extensions.tabkit.tabRows", 3); // 1 to disable
 
 //--- Vertical Tab Bar --- (disable as appropriate)
 pref("extensions.tabkit.indentedTree", true);
-    pref("extensions.tabkit.maxTreeLevel", 3);
+    pref("extensions.tabkit.maxTreeLevel", 5);
     pref("extensions.tabkit.indentAmount", 19);
 //}
 
@@ -21,9 +21,15 @@ pref("extensions.tabkit.indentedTree", true);
 //--- Appearance ---
 pref("extensions.tabkit.highlightUnreadTabs", true);
 pref("extensions.tabkit.emphasizeCurrentTab", true);
+pref("extensions.tabkit.emphasizeProtectedTabs", true);
 
 //--- Advanced ---
-pref("extensions.tabkit.colorTabNotLabel", -1); // -1: Auto, 0: Don't, 1: Do
+pref("extensions.tabkit.forceThemeCompatibility", 1); // 0: Never, 1: Auto, 2: Always
+pref("extensions.tabkit.colorTabNotLabel", true);
+pref("extensions.tabkit.minSaturation", 70);
+pref("extensions.tabkit.maxSaturation", 100);
+pref("extensions.tabkit.minLightness", 75);
+pref("extensions.tabkit.maxLightness", 80);
 //}
 
 
@@ -44,6 +50,10 @@ pref("extensions.tabkit.shiftDragGroups", true);
 //--- Scrolling ---
 pref("extensions.tabkit.scrollbarsNotArrows", false);
 pref("extensions.tabkit.scrollOneExtra", true);
+
+//--- Open Selected Links ---
+pref("extensions.tabkit.openSelectedLinks", true);
+pref("extensions.tabkit.openSelectedLinks.showAll", false);
 //}
 
 
@@ -66,13 +76,17 @@ pref("extensions.tabkit.customCloseOrder", 2); // 0: Auto, 1: Group left, 2: Gro
 
 //{ ### Advanced ###
 //--- Tab Order ---
-pref("extensions.tabkit.autoSortDomainGroups", true);
 pref("extensions.tabkit.autoSortOpenerGroups", true);
+pref("extensions.tabkit.autoSortDomainGroups", false);
 
 //--- Types of Tab ---
 pref("extensions.tabkit.bookmarkTabsAreRelated", false);
 pref("extensions.tabkit.historyTabsAreRelated", false);
 pref("extensions.tabkit.newTabsAreRelated", false);
+
+//--- Open Tabs From: ---
+pref("extensions.tabkit.openTabsFrom.addressBar", false);
+//pref("browser.search.openintab", false);
 
 //--- Misc ---
 pref("extensions.tabkit.closeBeforeAfterNotOther", true);
@@ -82,7 +96,8 @@ pref("extensions.tabkit.closeBeforeAfterNotOther", true);
 
 
 //{ ### (Hidden) ###
-pref("extensions.tabkit.warnOnRegroup", true); // TODO=P3: Add checkbox
+pref("extensions.tabkit.checkCompatibility", true); // TODO=P3: Add checkbox to re-enable
+pref("extensions.tabkit.warnOnRegroup", true); // TODO=P3: Add checkbox to re-enable
 
 pref("extensions.tabkit.debug", false); // Enables error and warning messages
 pref("extensions.tabkit.debugMinorToo", false); // Enables debugging messages

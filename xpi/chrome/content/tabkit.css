@@ -14,26 +14,83 @@
 }
 
 /*************************
- * Emphasize unread tabs *
+ * Emphasize unread/selected tabs *
  *************************/
 
-/* If Sorting and Grouping sets "colortabnotlabel" we do the opposite */
-#browser-stack .tabbrowser-tabs[highlightunread]:not([colortabnotlabel]) .tabbrowser-tab:not([read]) > */*[Fx2only]*/,
-.tabbrowser-tabs[highlightunread]:not([colortabnotlabel]) .tabs-container .tabbrowser-tab:not([read])/*[Fx3only]*/ {
-	background-color: yellow !important; /* = #ffff00; by comparison, colorizeTab would make yellow #ffff80 */
+/* Make sure tabs can be colored */
+/* (the alternative would have been to color them using a canvas, see ChromaTabs) */
+#content .tabbrowser-tabs[tk-forcethemecompatibility] .tabbrowser-tab {
+	-moz-appearance: none !important;
+	background: -moz-dialog url("chrome://tabkit/skin/tab-bkgnd.png") repeat-x !important;
+	color: -moz-dialogtext !important;
+	/*!!opacity: 0.7;*/
 }
-.tabbrowser-tabs[highlightunread][colortabnotlabel] .tabbrowser-tab:not([read]) .tab-text {
-	color: black !important; /* We can't take the risk of them having a white on black theme */
-	background-color: #ff6 !important;
+/*!!#content .tabbrowser-tabs[tk-forcethemecompatibility] .tabbrowser-tab:hover,
+#content .tabbrowser-tabs[tk-forcethemecompatibility] .tabbrowser-tab[selected="true"] {
+	opacity: 1.0;
+}*/
+#content .tabbrowser-tabs[tk-forcethemecompatibility] .tabbrowser-tab:not([selected="true"]):hover {
+	background-image: url("chrome://tabkit/skin/tab-hover-bkgnd.png") !important;
+}
+#content .tabbrowser-tabs[tk-forcethemecompatibility] .tabbrowser-tab[selected="true"] {
+	background-image: url("chrome://tabkit/skin/tab-active-bkgnd.png") !important;
 }
 
-.tabbrowser-tabs[multirow="true"] .tabbrowser-tab .tab-text {
-	-moz-border-radius: 3px 3px 1px 1px;
+/* Tweaks for dark themes */
+#content .tabbrowser-tabs[tk-darktheme] {
+	background-color: black;
 }
-.tabbrowser-tabs[multirow="true"] .tabbrowser-tab[selected="true"] .tab-text {
-	-moz-border-radius: 3px 3px 3px 3px;
+#content .tabbrowser-tabs[tk-darktheme][tk-forcethemecompatibility] .tabbrowser-tab {
+	opacity: 0.9;
+}
+#content .tabbrowser-tabs[tk-darktheme][tk-forcethemecompatibility] .tabbrowser-tab:hover,
+#content .tabbrowser-tabs[tk-darktheme][tk-forcethemecompatibility] .tabbrowser-tab[selected="true"] {
+	opacity: 1.0;
 }
 
+/*!!
+.tabbrowser-tab {
+		-moz-appearance: none;
+		background: url("chrome://tabkit/skin/tab-bkgnd.png") repeat-x;
+	margin: 3px 0px 4px;
+	padding: 0px 1px 1px 0px;
+	border: 2px solid;
+	border-right-width: 1px;
+	border-bottom: none;
+	-moz-border-radius-topleft: 2px;
+	-moz-border-radius-topright: 2px;
+	-moz-border-top-colors: ThreeDShadow rgba(255,255,255,.3);
+	-moz-border-right-colors: rgba(0,0,0,.1);
+	-moz-border-left-colors: ThreeDShadow rgba(255,255,255,.3);
+}
+
+.tabbrowser-tab:hover,
+.tabbrowser-tab[selected="true"] {
+	border-width: 1px;
+	-moz-border-radius-topleft: 4px;
+	-moz-border-radius-topright: 4px;
+	-moz-border-top-colors: ThreeDShadow;
+	-moz-border-right-colors: ThreeDShadow;
+	-moz-border-left-colors: ThreeDShadow;
+}
+
+.tabbrowser-tab:not([selected="true"]):hover {
+	margin: 2px 0px 4px;
+	padding: 2px 1px 1px;
+		background-image: url("chrome://tabkit/skin/tab-hover-bkgnd.png");
+}
+
+.tabbrowser-tab[selected="true"] {
+	margin: 2px 0px 3px;
+	padding: 1px;
+		background-image: url("chrome://tabkit/skin/tab-active-bkgnd.png");
+	background-color: -moz-dialog;
+	font-weight: bold;
+}
+*/
+
+
+/* Italicize unread tabs */
 .tabbrowser-tabs[highlightunread] .tabbrowser-tab:not([read]) .tab-text {
 	font-style: italic !important;
 }
@@ -41,17 +98,62 @@
 	font-style: normal !important; /* just in case themes use italic by default! */
 }
 
-
-#browser-stack .tabbrowser-tabs[emphasizecurrent]:not([colortabnotlabel]) .tabbrowser-tab[selected="true"] > */*[Fx2only]*/,
-.tabbrowser-tabs[emphasizecurrent]:not([colortabnotlabel]) .tabs-container .tabbrowser-tab[selected="true"]/*[Fx3only]*/ {
-	background-color: black;
+/* Highlight unread tabs */
+/* If Sorting and Grouping sets "colortabnotlabel" we do the opposite */
+#main-window > #browser-stack .tabbrowser-tabs[highlightunread]:not([colortabnotlabel]) .tabbrowser-tab:not([read]) > */*[Fx2only]*/,
+#main-window > #browser .tabbrowser-tabs[highlightunread]:not([colortabnotlabel]) .tabbrowser-tab:not([read])/*[Fx3only]*/ {
+	background-color: yellow !important; /* We rely on our theme detection to ensure that any background-image is suitably translucent */
+	color: black !important;
 }
-.tabbrowser-tabs[emphasizecurrent] .tabbrowser-tab[selected="true"] .tab-text {
+.tabbrowser-tabs[highlightunread][colortabnotlabel] .tabbrowser-tab:not([read]) .tab-text {
+	background-color: #ff6 !important;
+	color: black !important; /* We can't take the risk of them having a white on black theme */
+}
+/*!!.tabbrowser-tabs[highlightunread] .tabbrowser-tab[selected="true"] .tab-text {
+	color: black;
+}*/
+
+/* Highlight protected tabs */
+#main-window > #browser-stack .tabbrowser-tabs[emphasizeprotected]:not([colortabnotlabel]) .tabbrowser-tab[protected="true"] > */*[Fx2only]*/,
+#main-window > #browser .tabbrowser-tabs[emphasizeprotected]:not([colortabnotlabel]) .tabbrowser-tab[protected="true"]/*[Fx3only]*/ {
+	background-color: green !important; /* We rely on our theme detection to ensure that any background-image is suitably translucent */
+	color: white !important;
+}
+.tabbrowser-tabs[emphasizeprotected][colortabnotlabel] .tabbrowser-tab[protected="true"] .tab-text {
+	background-color: green !important;
+	color: white !important;
+}
+/*!!.tabbrowser-tabs[emphasizeprotected] .tabbrowser-tab[protected="true"] .tab-text {
 	color: white;
+}*/
+.tabbrowser-tab[protected="true"] .tab-close-button {
+	display: -moz-box !important; /* Display even if they're normally hidden */
+	list-style-image: url(chrome://browser/skin/Secure.png) !important; /* Show padlock instead of close button */
+	-moz-image-region: rect(1px, 15px, 15px, 1px) !important;
+	cursor: pointer !important; /* Since the image doesn't have a hover state */
+}
+
+/* Highlight current tab */
+#main-window > #browser-stack .tabbrowser-tabs[emphasizecurrent]:not([colortabnotlabel]) .tabbrowser-tab[selected="true"] > */*[Fx2only]*/,
+#main-window > #browser .tabbrowser-tabs[emphasizecurrent]:not([colortabnotlabel]) .tabbrowser-tab[selected="true"]/*[Fx3only]*/ {
+	background-color: black !important; /* We rely on our theme detection to ensure that any background-image is suitably translucent */
+	color: white !important;
 }
 .tabbrowser-tabs[emphasizecurrent][colortabnotlabel] .tabbrowser-tab[selected="true"] .tab-text {
 	background-color: black !important;
 	color: white !important;
+}
+/*!!.tabbrowser-tabs[emphasizecurrent] .tabbrowser-tab[selected="true"] .tab-text {
+	color: white;
+}*/
+
+
+/* Give tab labels pretty rounded borders */
+.tabbrowser-tabs[multirow="true"] .tabbrowser-tab .tab-text {
+	-moz-border-radius: 3px 3px 1px 1px;
+}
+.tabbrowser-tabs[multirow="true"] .tabbrowser-tab[selected="true"] .tab-text {
+	-moz-border-radius: 3px 3px 3px 3px;
 }
 
 /******************************
@@ -105,10 +207,15 @@ hbox					H #browser
  * The real work goes on in the JS that sets their corresponding attributes
  */
 
-/* This is set by JS. If you set both they cancel out! */
+/* This is set by JS. If you set both they cancel out! Instead we actually force this to inherit. */
 /*#browser[vertisidebar="reverse"],
-#browser[horizsidebar="reverse"],
-#browser[horizsidebar] > #sidebar-box > sidebarheader {
+#browser[horizsidebar="reverse"] {
+	-moz-box-direction: reverse !important;
+}*/
+#browser[vertisidebar], #browser[horizsidebar] {
+	direction: inherit;
+}
+/*!!#browser[horizsidebar] > #sidebar-box > sidebarheader {
 	-moz-box-direction: reverse !important;
 }*/
 
@@ -180,7 +287,6 @@ hbox					H #browser
 	-moz-box-align: start !important;
 }*/
 #content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
-	/*!! -moz-box-align: stretch !important; */
 	overflow-x: hidden !important;
 	overflow-y: auto !important;
 }
@@ -201,19 +307,21 @@ hbox					H #browser
 	padding-top: 0 !important; /*[sinceFx3]*/
 }
 
-/* The All Tabs button is redundant since the vertical tab bar is a permanent
- * equivalent to the All Tabs popup.
- * There's nowhere pretty for a single close button to go - close buttons ought
+/* The All Tabs button is redundant in Firefox 2 since the vertical tab bar is
+ * a permanent equivalent to the All Tabs popup (Firefox 3 however adds the tab
+ * quickmenu, which is useful).
+ */
+/*!! There's nowhere pretty for a single close button to go - close buttons ought
  * to go on tabs or nowhere (and anyone who's changed browser.tabs.closeButtons
  * will know about Ctrl-W or Ctrl/middle-clicking anyway...)
  */
-#content[vertitabbar] .tabs-alltabs-stack/*[Fx2only]*/,
-#content[vertitabbar] .tabs-closebutton-box/*[Fx2only]*/,
-#content[vertitabbar] .tabs-alltabs-box/*[Fx3only]*/,
-#content[vertitabbar] .tabs-alltabs-box-animate/*[Fx3only]*/,
-#content[vertitabbar] .tabs-alltabs-button/*[Fx3only]*/,
+#content[vertitabbar] .tabs-alltabs-stack/*[Fx2only]*//*!!,
+#content[vertitabbar] .tabs-closebutton-box/*[Fx2only]*//*!!,
+#content[vertitabbar] .tabs-alltabs-box/*[Fx3only]*//*!!,
+#content[vertitabbar] .tabs-alltabs-box-animate/*[Fx3only]*//*!!,
+#content[vertitabbar] .tabs-alltabs-button/*[Fx3only]*//*!!,
 #content[vertitabbar] .tabs-closebutton/*[Fx3only]*/ {
-	display: none; /* Not !important though, allow user to override */
+	display: none; /*!! Not !important though, allow user to override */
 }
 
 /* Hide bottom border */
@@ -222,21 +330,20 @@ hbox					H #browser
 }
 
 #content[vertitabbar] .tabbrowser-tabs {
-	/* Background was designed for repeat-y, and looks ugly when tiled vertically */
-	background-image: none !important;
-	/*!! Pretending that the tab bar is a tabpanel is quite pretty under Windows,
-	 * and while somewhat illogical should never look awful.
-	 * Not !important though, allow user to override!
-	-moz-appearance: tabpanels;*/
+	-moz-box-align: stretch !important; /* Make sure tabs fill width */
+	background-image: none !important; /* Background was designed for repeat-x, and looks ugly when tiled vertically */
 }
+/*!!#content[vertitabbar] #tk-tabbrowser-tabs-bkgnd {
+	display: -moz-box !important;
+}*/
 /* Cosmetic: hide tab side images */
-#content[vertitabbar] .tabbrowser-tab .tab-image-left/*[Fx2only]*/,
-#content[vertitabbar] .tabbrowser-tab .tab-image-right/*[Fx2only]*/ {
+#content[vertitabbar] .tabbrowser-tab .tab-image-left/*[Fx2only] (and apparently Fx3/Mac)*/,
+#content[vertitabbar] .tabbrowser-tab .tab-image-right/*[Fx2only] (and apparently Fx3/Mac)*/ {
 	display: none !important;
 }
 
 /* Hide splitter when tab bar is hidden */
-.tabbrowser-strip[collapsed="true"] + #tabkit-splitter {
+.tabbrowser-strip[collapsed="true"] + #tabkit-splitter:not([state="collapsed"]) {
 	visibility: collapse;
 }
 
@@ -247,6 +354,42 @@ hbox					H #browser
 .tabbrowser-tab[groupcollapsed] {
 	text-decoration: underline;
 }
+
+/* Show plus icon next to favicon for collapsed groups */
+/*!! width: 27px; border-left: 11px solid transparent; background-position: -11px 50%; */
+.tabbrowser-tab[groupcollapsed] > .tab-icon-image {
+	width: 32px;
+	border-left: 16px solid transparent;
+	background: none;
+	background-position: -13px 50%;
+	background-repeat: no-repeat;
+	background-image: url(chrome://tabkit/skin/twisty-clsd.png);
+}
+
+/*!! TODO=P3: ADD TWISTYS FOR COLLAPSED/EXPANDED SUBTREES
+	Need to work out how this combines (or replaces) collapsible groups
+.tabbrowser-tab > .tab-icon-image {
+	width: 25px;
+	border-left: 9px solid transparent;
+	background: none;
+	background-position: -9px 50%;
+	background-repeat: no-repeat;
+}
+.tabbrowser-tab[subtree="open"] > .tab-icon-image {
+	background-image: url(chrome://global/skin/tree/twisty-open.png);
+}
+.tabbrowser-tab[subtree="closed"] > .tab-icon-image {
+	background-image: url(chrome://global/skin/tree/twisty-clsd.png);
+}
+	DEFAULT AERO THEME ONLY:
+.tabbrowser-tab[subtree="open"] > .tab-icon-image:hover {
+	background-image: url(chrome://global/skin/tree/twisty-open-hover.png);
+}
+	DEFAULT AERO THEME ONLY:
+.tabbrowser-tab[subtree="closed"] > .tab-icon-image:hover {
+	background-image: url(chrome://global/skin/tree/twisty-clsd-hover.png);
+}
+*/
 
 /* Override colors inherited from tabs */
 .tabs-alltabs-button > menupopup > menuitem:hover,
@@ -295,6 +438,10 @@ hbox					H #browser
 #tabkit-tab-drop-indicator-bar {
 	/*!!display: -moz-box;*/
 	height: 0 !important; /* Prevent moving mouse over indicator bar causing drop arrow to flash and drops to fail */
+	left: -5px !important; /* TODO=P3: [Fx3only] Hack as it was misaligned */
+}
+#browser-stack #tabkit-tab-drop-indicator-bar {
+	left: 0 !important; /*[Fx2only] Undo hack*/
 }
 #tabkit-tab-drop-indicator-bar[dragging="false"] {
     display: none;
@@ -308,7 +455,11 @@ hbox					H #browser
 
 .tabbrowser-tabs[multirow="true"] {
 	max-height: none !important;
+	/*!!background-image: none !important; /* Normal background looks ugly if more than 1-3 rows */
 }
+/*!!.tabbrowser-tabs[multirow="true"] #tk-tabbrowser-tabs-bkgnd {
+	display: -moz-box !important;
+}*/
 
 .tabbrowser-tabs[multirow] .tabbrowser-arrowscrollbox .scrollbutton-up,
 .tabbrowser-tabs[multirow] .tabbrowser-arrowscrollbox .scrollbutton-down-stack/*[Fx2only]*/,
@@ -318,6 +469,7 @@ hbox					H #browser
 
 .tabbrowser-tabs[multirow="true"] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
 	display: block !important; /*!! or table ? */
+	text-align: left !important;
 }
 
 .tabbrowser-tabs[multirow="true"][multirowscroll] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
