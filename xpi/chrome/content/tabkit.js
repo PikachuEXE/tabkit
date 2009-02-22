@@ -71,8 +71,9 @@
  
  * TODO=P2: Fx3: Properly align drop indicator for multi-row tabs
  
+ * TODO=P3: Use preventChangeOfAttributes to set vertical tabbar increment (though not pageincrement)
  * TODO=P3: Fx3: Update Sorting & Grouping method hooks
- * TODO=P3: Prevent flashing when __maintainScrollPosition (on close tab)
+ * TODO=P3: Fx3: Prevent tabbar on bottom from expanding when dragging tabs
  * TODO=P3: Fx3: Coloring the All Tabs menu has stopped working
  
  * TODO=P3: Investigate http://piro.sakura.ne.jp/xul/_treestyletab.html.en
@@ -83,16 +84,21 @@
  * TODO=P3: Fx3: Bottom row of multirow tabs is 1px too tall
  * TODO=P3: Fx2: Can't drag scrollbar slider on bookmarks menu without closing menu (works in Fx3)
  
-
- * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
- * TODO=P3: BabelZilla
+ * TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
  * TODO=P3: Implement lite version of LastTab Ctrl-Tab stack switching
+ * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
+ * TODO=P3: Multi-row on hover (for more than ~1 second)
+ * TODO=P3: Multi-row: vertical splitter to adjust [max] no. of rows?
+ * TODO=P3: Allow dragging into collapsed groups (especially with auto-collapse tabs), e.g. by temporarily expanding hovered-over groups (alternatively show a popup menu)
+ * TODO=P3: Collapsed tabs should have a plus symbol
+ * TODO=P3: BabelZilla
  * TODO=P3: (Re)implement tab scrollbar (though with centered tabs?)
  * TODO=P3: Collapsed group underline is invisible for the active tab when emphasizecurrent is on
  * TODO=P3: MTH-like ctrl/shift-click, and corresponding actions
+ * TODO=P3: Make All Tabs scroll to current tab (preferably vertically centered)
  
- * TODO=P3: When dragging tabs and auto-collapse inactive groups is on, temporarily expand hovered-over groups
-
+ * TODO=P4: Use existing tab duplication code in Fx3 rather than reimplementing
+ * TODO=P4: Fisheye vertical tabs, c.f. https://addons.mozilla.org/en-US/firefox/addon/4845 (horizontal fisheye tabs)   
  * TODO=P4: Locking tabs and/or tab groups
  * TODO=P4: Fix mouse rocker back/forward on linux (where context menu is onmousedown)
  * TODO=P4: Mark group start/end with /--|---|--\ for colorblind people
@@ -455,12 +461,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (!scrollbar) {
             /*
             // Alternative way to scroll things (can only scroll within an <xul:scrollbox> though)
+            if (overflowPane.localName != "scrollbox")
+                overflowPane = overflowPane.parentNode;
             if (overflowPane.localName == "scrollbox") {
                 var nsIScrollBoxObject = overflowPane.boxObject.QueryInterface(Ci.nsIScrollBoxObject);
                 nsIScrollBoxObject.ensureElementIsVisible(element);
             }
             //TODO: Make sure overflowPane is never scrolled halfway across elements at both the top and bottom
-            //TODO: Scroll things like menus without an explicit scrollbox
             //TODO: _prefs.getBoolPref("scrollOneExtra")
             */
             return;
@@ -594,6 +601,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
      * chrome://browser/content/history/history-panel.xul
      */
     this.onDOMContentLoaded_global = function onDOMContentLoaded_global(event) {
+        if (event.originalTarget != document)
+            return;
+        
         try {
             window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded_global, false);
         }
@@ -609,6 +619,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     // This gets called for new browser windows, once the DOM tree is loaded
     this.onDOMContentLoaded = function onDOMContentLoaded(event) {
+        if (event.originalTarget != document)
+            return; // Sometimes in Fx3 there's a random HTMLDocument that fires a DOMContentLoaded before the main window does
+        
         window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded, false);
 
         // Run module early initialisation code (before any init* listeners, and before most extensions):
@@ -620,8 +633,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         tk.onDOMContentLoaded_global(event);
     };
 
-    // This gets called for new browser windows, once they've finished loading
+    // This gets called for new browser windows, once they've completely finished loading
     this.onLoad = function onLoad(event) {
+        if (event.originalTarget != document)
+            return;
+        
         window.removeEventListener("load", tk.onLoad, false);
 
         // Run module specific initialisation code, such as registering event listeners:
@@ -686,14 +702,19 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         getBrowser();
         
         /// Private Globals:
+        var _isFx2;
+        var _isFx3;
+
         var _tabContainer;
         var _tabstrip;
         var _tabInnerBox;
         var _tabs;
-
-        /// Initialisation:
+        
+       /// Initialisation:
         this.preInitShortcuts = function preInitShortcuts(event) {
-            _tabContainer = gBrowser.mTabContainer
+            _isFx2 = !(_isFx3 = (document.getElementById("browser-stack") == null));
+            
+            _tabContainer = gBrowser.mTabContainer;
             _tabstrip = _tabContainer.mTabstrip;
             _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
             _tabs = gBrowser.mTabs
@@ -834,10 +855,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             for (var i = 2; i < hook.length; ) {
                 var newCode = code.replace(hook[i++], hook[i++]);
-                if (newCode == code)
-                    tk.debug("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + hook[i - 2] + "\nwith:\n" + hook[i - 1]);
-                else
+                if (newCode == code) {
+                    if ((!_isFx2 || !tk.startsWith(hook[i-1], "/*[Fx3only]*/")) && (!_isFx3 || !tk.startsWith(hook[i-1], "/*[Fx2only]*/")))
+                        tk.log("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + hook[i - 2] + "\nwith:\n" + hook[i - 1]);
+                }
+                else {
                     code = newCode;
+                }
             }
             
             eval(hook[0] + "=" + code);
@@ -847,6 +871,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
     };
 
+    // TODO=P4: prepend/append/wrapMethodCode could be done without modifying the actual method
     this.prependMethodCode = function prependMethodCode(methodname, codestring) {
         tk.addMethodHook([methodname, null, '{', '{' + codestring]);
     };
@@ -1401,7 +1426,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{>>> Sorting & Grouping
     //|##########################
 
-    // TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
     // TODO=P3: Allow viewing tabs in sorted order without reordering them OR undoing sorts
     // TODO=P4: Check outoforder is set as appropriate (tabs that have been moved or added contrary to the prevailing sort and should be ignored when placing new tabs by sort order)
     // TODO=P5: Back to the tab the current tab is opened from, by the "Back" button; Forward to tabs opened from the current tab, by the "Forward" button
@@ -1681,7 +1705,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         // And a sometimes related, sometimes unrelated tab source:
         tk.wrapMethodCode(
             'nsBrowserAccess.prototype.openURI',
-            'tabkit.addingTab(aContext == nsCI.nsIBrowserDOMWindow.OPEN_EXTERNAL ? "unrelated" : "related"); try {',
+            'tabkit.addingTab(aContext == Ci.nsIBrowserDOMWindow.OPEN_EXTERNAL ? "unrelated" : "related"); try {',
             '} finally { tabkit.addingTabOver(); }'
         );
         
@@ -1720,7 +1744,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.preInitListeners.push(this.preInitSortingAndGroupingMethodHooks);
     
     this.globalPreInitSortingAndGroupingMethodHooks = function globalPreInitSortingAndGroupingMethodHooks(event) {
-        try {
+        if ("BookmarksCommand" in window) { // [Fx2only] // TODO=P4: Fx3: bookmarks are now unrelated - does that matter?
             tk.wrapMethodCode(
                 'BookmarksCommand.openOneBookmark',
                 'var topWin; if (aTargetBrowser.indexOf("tab") != -1) topWin = getTopWin(); if (topWin && topWin.tabkit) topWin.tabkit.addingTab("bookmark"); try {',
@@ -1750,9 +1774,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 } \
                 else if (false) {'
             ]);
-        }
-        catch (ex) {
-            tk.dump("Is places on already? - " + ex);
         }
     };
     this.globalPreInitListeners.push(this.globalPreInitSortingAndGroupingMethodHooks);
@@ -2313,7 +2334,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     
     // TODO=P3: Call updateAutoCollapse on restore if selected before the groupid is restored
-    // TODO=P3: Allow dragging into collapsed groups
     this.updateAutoCollapse = function updateAutoCollapse(group) {
         // Autocollapse inactive groups
         if (!group || !("length" in group)) {
@@ -2686,7 +2706,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (gBrowser.selectedTab.getAttribute("groupid") != gid) {            
                     if (next && next.getAttribute("groupid") == gid)
                         next.hidden = false;
-                    else
+                    else if (prev && prev.getAttribute("groupid") == gid) // Almost always true
                         prev.hidden = false;
                 }
             }, 0, gid, tab.nextSibling, tab.previousSibling);
@@ -2711,12 +2731,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         //!!tk._cancelMakeGroup();
         
-        // Maintain the scroll position (as this seems to get reset when a tab is closed)
+        /*!! // Maintain the scroll position (as this seems to get reset when a tab is closed)
         var scrollbar = _tabstrip._scrollbox.mVerticalScrollbar;
         var curpos = scrollbar.getAttribute("curpos");
         window.setTimeout(function __maintainScrollPosition(scrollbar, curpos) {
                 scrollbar.setAttribute("curpos", curpos); // This is automatically clipped
-        }, 0, scrollbar, curpos);
+        }, 0, scrollbar, curpos);*/
     };
 
     this.sortgroup_onClickTab = function sortgroup_onClickTab(event) {
@@ -2947,8 +2967,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var openerGroup = oldTab.getAttribute(tabkit.Groupings.opener); \
         $&',*/
         
-        'newIndex = index == l - 1 ? index - 1 : index;',
-        'newIndex = tabkit.pickNextIndex(index, l - 1);' //!!, gid, tid, pid, openerGroup);'
+        /newIndex = \(?index == l - 1\)? \? index - 1 : index;/,
+        'newIndex = tabkit.pickNextIndex(index, l - 1);', //!!, gid, tid, pid, openerGroup);'
     ]);//}
     
     this.chosenNextIndex = -1;
@@ -3267,7 +3287,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     // TODO=P4: Left click on already selected collapsed tab shows group as menu (with expand option obviously) - or maybe on right-click? (see auto-collapse/expanding)
     this.toggleGroupCollapsed = function toggleGroupCollapsed(contextTab) {
-        // TODO=P3: collapsed tabs should have a plus symbol
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
         var group = tk.getGroupFromTab(contextTab);
@@ -4021,17 +4040,22 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
     };
 
-    const COLOR_MENUITEMS =//{
+    const COLOR_MENUITEMS =//{ // [Fx2only] and [Fx3only]
+        // TODO=P4: Fx3: Make All Tabs prettier (since we mess things up a little by setting -moz-appearance: none)
         'try { \
+            var isFx2 = (gBrowser.mCurrentTab.boxObject.firstChild.className.indexOf("tab-image-") == 0); \
+            var bgSample = isFx2 ? document.getAnonymousNodes(curTab)[0] : curTab; \
             if (gBrowser.mTabContainer.getAttribute("colortabnotlabel") == "true") { \
-                menuItem.style.backgroundColor = document.getAnonymousNodes(curTab)[0].style.backgroundColor; \
+                menuItem.style.backgroundColor = bgSample.style.backgroundColor; \
             } \
             else if ((gBrowser.mTabContainer.hasAttribute("highlightunread") && !curTab.hasAttribute("read")) \
                      || (gBrowser.mTabContainer.hasAttribute("emphasizecurrent") && curTab.getAttribute("selected") == "true")) \
             { \
-                var bgStyle = window.getComputedStyle(document.getAnonymousNodes(curTab)[0], null); \
+                var bgStyle = window.getComputedStyle(bgSample, null); \
                 menuItem.style.backgroundColor = bgStyle.backgroundColor; \
             } \
+            if (!isFx2) \
+                menuItem.style.MozAppearance = "none"; \
             window.setTimeout(function _colorMenuText(menuItem, curTab) { \
                 try { \
                     var menuText = document.getAnonymousElementByAttribute(menuItem, "class", "menu-iconic-text"); \
@@ -4058,13 +4082,42 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         //}
     
     this.postInitAllTabsMenuColors = function postInitAllTabsMenuColors(event) {
-        tk.addMethodHook([ // All tabs popup inherits tab colors (this also works for unread tabs)
-            '_tabContainer.mAllTabsPopup._onShowingAllTabsPopup',//{
-            null,
-            'menuItem.setAttribute("image", curTab.getAttribute("image"));',
-            '$& ' + COLOR_MENUITEMS
-        ]);//}
-        
+        _tabContainer.mAllTabsPopup.addEventListener("popupshowing", function __colorizeMenu(event) {
+                for (var i = 0; i < _tabs.length; i++) {
+                    var curTab = _tabs[i];
+                    var menuItem = curTab.mCorrespondingMenuitem;
+                    eval(COLOR_MENUITEMS);
+                    curTab.addEventListener("DOMAttrModified", function __reColorMenuItem(event) {
+                        if (event.attrName != "selected")
+                            return;
+                        var curTab = event.target;
+                        var menuItem = curTab.mCorrespondingMenuitem;
+                        if (!menuItem)
+                            return;
+                        eval(COLOR_MENUITEMS);
+                    }, false);
+                    curTab.addEventListener("DOMAttrModified", __colorizeMenu, false);
+                }
+            }, false);
+        /*!!
+        if ("_createTabMenuItem" in _tabContainer.mAllTabsPopup) { // [Fx3only]
+            tk.addMethodHook([
+                '_tabContainer.mAllTabsPopup._createTabMenuItem',//{
+                null,
+                'return menuItem;',
+                'var curTab = aTab; ' + COLOR_MENUITEMS + ' $&'
+            ]);//}
+        }
+        else { // [Fx2only]
+            tk.addMethodHook([ // All tabs popup inherits tab colors (this also works for unread tabs)
+                '_tabContainer.mAllTabsPopup._onShowingAllTabsPopup',//{
+                null,
+                'menuItem.setAttribute("image", curTab.getAttribute("image"));',
+                '$& ' + COLOR_MENUITEMS
+            ]);//}
+        }
+        */
+            
         if ("LastTab" in window && window.LastTab && LastTab.Browser && LastTab.Browser.OnTabMenuShowing) {
             tk.appendMethodCode('LastTab.Browser.OnTabMenuShowing',//{
                 'for (var i = 0; i < menu.childNodes.length; i++) { \
@@ -4578,9 +4631,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         "gBrowser.moveTabTo",//{
         null,
         'this.mTabContainer.insertBefore(aTab, this.mTabContainer.childNodes[aIndex]);',
-        'this.mTabContainer.insertBefore(aTab, this.mTabContainer.childNodes.item(aIndex));'
+        '/*[Fx2only]*/this.mTabContainer.insertBefore(aTab, this.mTabContainer.childNodes.item(aIndex));'
     ]);//}
     
+    /* // Commented out since people might prefer to skip over them (only worked in Fx2 anyway) //TODO=P4: Show warning when tabs are skipped because their group is collapsed
     // Allow selecting hidden tabs of a collapsed group (which will then be automatically raised to the top)
     this.earlyMethodHooks.push([
         "_tabContainer.selectNewTab",//{
@@ -4588,6 +4642,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         '(aNewTab.getAttribute("hidden"))',
         '(aNewTab.hidden && !aNewTab.hasAttribute("groupcollapsed"))'
     ]);//}
+    */
 
     /// Implement Bug 298571 - support tab duplication (using ctrl) on tab drag and drop
     /// Partly based on Simon Bünzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
@@ -4951,7 +5006,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             */
             // Allow Accel-dragging a url onto a tab to create a new tab instead of replacing it
             /if \(document\.getBindingParent\(aEvent\.originalTarget\)\.localName != "tab"\) \{\s+this\.loadOneTab\(getShortcutOrURI\(url\), null, null, null, bgLoad, false\);/,
-            'if (document.getBindingParent(aEvent.originalTarget).localName != "tab" || \
+            '/*[Fx2only]*/if (document.getBindingParent(aEvent.originalTarget).localName != "tab" || \
                 (navigator.platform.indexOf("Mac") == -1 ? aEvent.ctrlKey : aEvent.metaKey)) \
             { \
                 newIndex = this.getNewIndex(aEvent); \
@@ -4973,12 +5028,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         tk.addMethodHook([
             'gBrowser.onDragOver',//{
             null,
-            // Firefox 2
+            
             'var isTabDrag = aDragSession.sourceNode.parentNode == this.mTabContainer;',
-            'var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";',
-            // Firefox 3
+            '/*[Fx2only]*/var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";',
+            
             /var isTabDrag = aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer;/,
-            'var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";'
+            '/*[Fx3only]*/var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";'
         ]);//}
     };
     this.preInitListeners.push(this.preInitTabDragModifications);
@@ -5202,7 +5257,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             // Ensure newly opened tabs can be seen (even if, in some cases, this may put the selected tab offscreen - TODO=P4: Make sure not to move selected tab offscreen if it is onscreen)
             window.setTimeout(function() {
-                tk.scrollToElement(_tabstrip._scrollbox, tab);
+                tk.scrollToElement(_tabInnerBox, tab);
             }, 0);
         }
     };
@@ -5219,7 +5274,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             
             // Ensure selected tabs become visible (and the tabs before/after if scrollOneExtra)
-            tk.scrollToElement(_tabstrip._scrollbox, tab);
+            tk.scrollToElement(_tabInnerBox, tab);
         }
     };
     this.positionedTabbar_onResize = function positionedTabbar_onResize(event) {
@@ -5380,9 +5435,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{>>> Multi-row tabs
     //|##########################
 
-    // TODO=P4: Multi-row on hover
-    // TODO=P3: Vertical splitter to adjust [max] no. of rows?
-
     /// Initialisation:
     this.initMultiRowTabs = function initMultiRowTabs(event) {
         //!! Prevent infinite recursions!
@@ -5489,7 +5541,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     _tabstrip.style.setProperty("min-height", 24 * maxRows + "px", "important");
                     _tabstrip.style.setProperty("max-height", 24 * maxRows + "px", "important");
 
-                    var scrollbar = _tabstrip._scrollbox.mVerticalScrollbar;
+                    var scrollbar = _tabInnerBox.mVerticalScrollbar;
                     try {
                         scrollbar.removeEventListener("DOMAttrModified", tk.preventChangeOfAttributes, true);
                     }
@@ -5554,7 +5606,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
     this.preventChangeOfAttributes = function preventChangeOfAttributes(event) {
-        var scrollbar = _tabstrip._scrollbox.mVerticalScrollbar;
+        var scrollbar = _tabInnerBox.mVerticalScrollbar;
         if (event.attrName == "increment") {
             //event.preventDefault(); // does not work for this event...
             scrollbar.setAttribute("increment", 24);
@@ -5570,7 +5622,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (_tabContainer.getAttribute("multirow") == "true") {
             var tab = gBrowser.selectedTab;
 
-            tk.scrollToElement(_tabstrip._scrollbox, tab);
+            tk.scrollToElement(_tabInnerBox, tab);
 
             // Tabs on different rows shouldn't get before/afterselected attributes
             if (tab.previousSibling != null && tab.boxObject.y != tab.previousSibling.boxObject.y) {
@@ -5613,8 +5665,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         'ib.boxObject.x + ib.boxObject.width',
         'gBrowser.boxObject.width',
         
-        'ind.style.marginLeft = newMarginLeft + "px";', // [Fx2only]
-        'if (gBrowser.hasAttribute("vertitabbar")) { \
+        'ind.style.marginLeft = newMarginLeft + "px";',
+        '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
             var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
             newMarginLeft = Math.floor(this.mStrip.width / 2); \
             if (gBrowser.getAttribute("vertitabbar") == "reverse") \
@@ -5622,8 +5674,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         } \
         $&',
         
-        'ind.style.marginRight = newMarginRight + "px";', // [Fx2only]
-        'if (gBrowser.hasAttribute("vertitabbar")) { \
+        'ind.style.marginRight = newMarginRight + "px";',
+        '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
             var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
             newMarginRight = Math.floor(this.mStrip.width / 2); \
             if (gBrowser.getAttribute("vertitabbar") == "reverse") \
@@ -5631,23 +5683,23 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         } \
         $&',
         
-        /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/, // [Fx2only]
-        '$& \
+        /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
+        '/*[Fx2only]*/$& \
         if (newIndex == this.mTabs.length) \
             ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
         else \
             ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";',
         
-        'ind.style.MozMarginStart = newMargin + "px";', // [Fx3only]
-        'if (gBrowser.hasAttribute("vertitabbar")) { \
+        'ind.style.MozMarginStart = newMargin + "px";',
+        '/*[Fx3only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
             var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
             newMargin = Math.floor(this.mStrip.width / 2); \
         } \
         ib.style.display = "none"; \
         $&',
         // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
-        'ind.style.MozMarginStart = newMargin + "px";', // [Fx3only]
-        '$& \
+        'ind.style.MozMarginStart = newMargin + "px";',
+        '/*[Fx3only]*/$& \
         if (newIndex == this.mTabs.length) \
             ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
         else \
@@ -5768,7 +5820,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         gBrowser.addEventListener("draggesture", tk.onMouseDragGesture, true);
         gBrowser.addEventListener("mouseout", tk.onMouseOutGesture, false);
         gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", tk.onRMBWheelGesture, true);
-        _tabstrip._scrollbox.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
+        _tabInnerBox.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.mTabstripClosebutton.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.addEventListener("TabSelect", function(event) { _mouseScrollWrapCounter = 0; }, false);
         
@@ -5876,9 +5928,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var name = event.originalTarget.localName;
         if (name == "scrollbar" || name == "scrollbarbutton" || name == "slider" || name == "thumb") {
             // Scrollwheeling above an overflow scrollbar should still scroll 3 lines if vertical or 2 lines if multi-row tab bar
-            var scrollbar = event.originalTarget;
-            while (scrollbar && scrollbar.localName != "scrollbar")
-                scrollbar = scrollbar.parentNode;
+            var scrollbar = _tabInnerBox.mVerticalScrollbar;
+            if (!scrollbar) {
+                tk.dump("tabInnerBox.mVerticalScrollbar is null - so what scrollbar did we scroll over?!");
+                return;
+            }
             
             if (gBrowser.hasAttribute("vertitabbar"))
                 var delta = (Math.abs(event.detail) != 1 ? event.detail : (event.detail < 0 ? -3 : 3)) * 24;
@@ -5944,13 +5998,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{=== Scrollbars not arrows
     //|##########################
 
-    // TODO=P3: Make All Tabs scroll to current tab (preferably vertically centered)
     // TODO=P4: Bug 345378 â€“ tab preview from all tabs menupopup
     // TODO=P4: Middle/right-click All Tabs menu, drag & drop
     // TODO=P5: Double-click scroll buttons -> scroll to start/end
 
     /// Private Globals:
-    var _allTabsScrollBox;
+    var _allTabsInnerBox;
 
     /// Initialisation:
     this.initScrollbarsNotArrows = function initScrollbarsNotArrows(event) {
@@ -5963,15 +6016,15 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Event Listeners:
     this.scrollAllTabsMenu = function scrollAllTabsMenu(event) {
-        if (!_allTabsScrollBox) {
+        if (!_allTabsInnerBox) {
             var arrowScrollBox = _tabContainer.mAllTabsPopup.popupBoxObject.firstChild;
             if (!arrowScrollBox) {
                 tk.dump("_tabContainer.mAllTabsPopup.popupBoxObject.firstChild is null");
                 return;
             }
-            _allTabsScrollBox = arrowScrollBox._scrollbox;
+            _allTabsInnerBox = document.getAnonymousElementByAttribute(arrowScrollBox._scrollbox, "class", "box-inherit scrollbox-innerbox");
         }
-        tk.scrollToElement(_allTabsScrollBox, gBrowser.selectedTab.mCorrespondingMenuitem);
+        tk.scrollToElement(_allTabsInnerBox, gBrowser.selectedTab.mCorrespondingMenuitem);
     };
 
     //}##########################
@@ -6009,12 +6062,15 @@ functions at any time.
 
 **** Snippets ***
 
+/ *!!** /
+if ("assert" in window) assert('normallyTrueCondition', function(e){return eval(e);}, "UnexpectedError");
+if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpoint requires QuickPrompt extension
+/ **!!* /
+
+
+
 // Move To End:
 tabkit.moveTabOrGroupToEnd = function moveTabOrGroupToEnd(tab) { if (!tab) tab = gBrowser.selectedTab; var tabs = tab.hasAttribute("groupid") ? tabkit.getGroupFromTab(tab) : [ tab ]; for each (var tab in tabs) gBrowser.moveTabTo(tab, _tabs.length - 1); }; var menuseparator = document.createElementNS(XUL_NS, "menuseparator"); var menuitem = document.createElementNS(XUL_NS, "menuitem"); menuitem.setAttribute("label", "Move To End"); menuitem.setAttribute("oncommand", "tabkit.moveTabOrGroupToEnd(gBrowser.mContextTab);"); var nodes = [ menuseparator, menuitem ]; for each (var node in nodes) gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0].appendChild(node);
-
-
-
-if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpoint requires QuickPrompt extension
 
 
 

@@ -179,7 +179,7 @@ hbox					H #browser
 /*!!#content[vertitabbar] .tabbrowser-tabs {
 	-moz-box-align: start !important;
 }*/
-#content[vertitabbar] .tabbrowser-arrowscrollbox scrollbox {
+#content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
 	/*!! -moz-box-align: stretch !important; */
 	overflow-x: hidden !important;
 	overflow-y: auto !important;
@@ -320,7 +320,7 @@ hbox					H #browser
 	display: block !important; /*!! or table ? */
 }
 
-.tabbrowser-tabs[multirow="true"][multirowscroll] .tabbrowser-arrowscrollbox scrollbox {
+.tabbrowser-tabs[multirow="true"][multirowscroll] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
 	overflow-y: auto !important;
 	/* note that min/max-height will be set to 24*rows too */
 }
@@ -357,7 +357,7 @@ hbox					H #browser
  * Scrollbars not arrows *
  *************************/
 
-#main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > scrollbox {
+#main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > scrollbox > .scrollbox-innerbox {
 	overflow-y: auto !important;
 }
 #main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > .autorepeatbutton-up,
