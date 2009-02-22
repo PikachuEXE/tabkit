@@ -42,7 +42,7 @@ pref("extensions.tabkit.shiftDragGroups", true);
     pref("extensions.tabkit.shiftDragSubtrees", false);
 
 //--- Scrolling ---
-pref("extensions.tabkit.scrollbarsNotArrows", true);
+pref("extensions.tabkit.scrollbarsNotArrows", false);
 pref("extensions.tabkit.scrollOneExtra", true);
 //}
 

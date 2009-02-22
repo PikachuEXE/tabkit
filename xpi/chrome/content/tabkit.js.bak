@@ -455,12 +455,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (!scrollbar) {
             /*
             // Alternative way to scroll things (can only scroll within an <xul:scrollbox> though)
+            if (overflowPane.localName != "scrollbox")
+                overflowPane = overflowPane.parentNode;
             if (overflowPane.localName == "scrollbox") {
                 var nsIScrollBoxObject = overflowPane.boxObject.QueryInterface(Ci.nsIScrollBoxObject);
                 nsIScrollBoxObject.ensureElementIsVisible(element);
             }
             //TODO: Make sure overflowPane is never scrolled halfway across elements at both the top and bottom
-            //TODO: Scroll things like menus without an explicit scrollbox
             //TODO: _prefs.getBoolPref("scrollOneExtra")
             */
             return;
@@ -2711,12 +2712,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         //!!tk._cancelMakeGroup();
         
-        // Maintain the scroll position (as this seems to get reset when a tab is closed)
+        /*!! // Maintain the scroll position (as this seems to get reset when a tab is closed)
         var scrollbar = _tabstrip._scrollbox.mVerticalScrollbar;
         var curpos = scrollbar.getAttribute("curpos");
         window.setTimeout(function __maintainScrollPosition(scrollbar, curpos) {
                 scrollbar.setAttribute("curpos", curpos); // This is automatically clipped
-        }, 0, scrollbar, curpos);
+        }, 0, scrollbar, curpos);*/
     };
 
     this.sortgroup_onClickTab = function sortgroup_onClickTab(event) {
@@ -5202,7 +5203,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             // Ensure newly opened tabs can be seen (even if, in some cases, this may put the selected tab offscreen - TODO=P4: Make sure not to move selected tab offscreen if it is onscreen)
             window.setTimeout(function() {
-                tk.scrollToElement(_tabstrip._scrollbox, tab);
+                tk.scrollToElement(_tabInnerBox, tab);
             }, 0);
         }
     };
@@ -5219,7 +5220,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             
             // Ensure selected tabs become visible (and the tabs before/after if scrollOneExtra)
-            tk.scrollToElement(_tabstrip._scrollbox, tab);
+            tk.scrollToElement(_tabInnerBox, tab);
         }
     };
     this.positionedTabbar_onResize = function positionedTabbar_onResize(event) {
@@ -5489,7 +5490,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     _tabstrip.style.setProperty("min-height", 24 * maxRows + "px", "important");
                     _tabstrip.style.setProperty("max-height", 24 * maxRows + "px", "important");
 
-                    var scrollbar = _tabstrip._scrollbox.mVerticalScrollbar;
+                    var scrollbar = _tabInnerBox.mVerticalScrollbar;
                     try {
                         scrollbar.removeEventListener("DOMAttrModified", tk.preventChangeOfAttributes, true);
                     }
@@ -5554,7 +5555,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
     this.preventChangeOfAttributes = function preventChangeOfAttributes(event) {
-        var scrollbar = _tabstrip._scrollbox.mVerticalScrollbar;
+        var scrollbar = _tabInnerBox.mVerticalScrollbar;
         if (event.attrName == "increment") {
             //event.preventDefault(); // does not work for this event...
             scrollbar.setAttribute("increment", 24);
@@ -5570,7 +5571,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (_tabContainer.getAttribute("multirow") == "true") {
             var tab = gBrowser.selectedTab;
 
-            tk.scrollToElement(_tabstrip._scrollbox, tab);
+            tk.scrollToElement(_tabInnerBox, tab);
 
             // Tabs on different rows shouldn't get before/afterselected attributes
             if (tab.previousSibling != null && tab.boxObject.y != tab.previousSibling.boxObject.y) {
@@ -5768,7 +5769,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         gBrowser.addEventListener("draggesture", tk.onMouseDragGesture, true);
         gBrowser.addEventListener("mouseout", tk.onMouseOutGesture, false);
         gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", tk.onRMBWheelGesture, true);
-        _tabstrip._scrollbox.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
+        _tabInnerBox.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.mTabstripClosebutton.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.addEventListener("TabSelect", function(event) { _mouseScrollWrapCounter = 0; }, false);
         
@@ -5876,6 +5877,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var name = event.originalTarget.localName;
         if (name == "scrollbar" || name == "scrollbarbutton" || name == "slider" || name == "thumb") {
             // Scrollwheeling above an overflow scrollbar should still scroll 3 lines if vertical or 2 lines if multi-row tab bar
+            //var scrollbar = _tabInnerBox.mVerticalScrollbar;
             var scrollbar = event.originalTarget;
             while (scrollbar && scrollbar.localName != "scrollbar")
                 scrollbar = scrollbar.parentNode;
