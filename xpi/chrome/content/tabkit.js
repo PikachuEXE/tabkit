@@ -1,21 +1,29 @@
 /**
- * Tab Kit
- * http://jomel.me.uk/software/firefox/tabkit/
+ * Tab Kit - http://jomel.me.uk/software/firefox/tabkit/
+ * Copyright (c) 2007 John Mellor
+ * 
+ * This file is part of Tab Kit.
+ * Tab Kit is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * Tab Kit is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/* TODOLIST
- * -------- //TODO:URGENT
- + Fix up Session Manager, basing it on Recently Closed Windows code (& test)
- + Sort out Sorting and Grouping
- + Get permission from zeniko
- 
- - Allow keeping closed windows across sessions
- - Integrate with purge history
- - Limit no. of saved closed windows
- - Ability to delete sessions
- **********************************/
+// TODO=P2: Install.rdf
+// TODO=P2: Website (remember to credit zeniko & pinstripe icon makers)
+// TODO=P3: BabelZilla
+// TODO=P4: en-uk translation
 
-var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
+var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide our stuff in
 
     //|##########################
     //{### Basic Constants
@@ -37,8 +45,8 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     
     // Make sure we can use gPrefService from now on (even if this isn't a browser window!)
     if (typeof gPrefService == "undefined" || !gPrefService)
-        gPrefService = Components.classes["@mozilla.org/preferences-service;1"].
-                       getService(Components.interfaces.nsIPrefBranch);
+        gPrefService = Cc["@mozilla.org/preferences-service;1"].
+                       getService(Ci.nsIPrefBranch);
 
     /// Private globals:
     var _console = Cc["@mozilla.org/consoleservice;1"].
@@ -47,15 +55,24 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     var _ds = Cc["@mozilla.org/file/directory_service;1"].
               getService(Ci.nsIProperties);
 
+    var _ios = Cc["@mozilla.org/network/io-service;1"].
+               getService(Ci.nsIIOService);
+
     var _os = Cc["@mozilla.org/observer-service;1"].
               getService(Ci.nsIObserverService);
 
     var _prefs = Cc["@mozilla.org/preferences-service;1"].
                  getService(Ci.nsIPrefService).
                  getBranch(PREF_BRANCH);
+    
+    var _ps = Cc["@mozilla.org/embedcomp/prompt-service;1"].
+              getService(Ci.nsIPromptService);
 
-    var _ss = Cc["@mozilla.org/browser/sessionstore;1"].
-              getService(Ci.nsISessionStore);
+    if ("@mozilla.org/browser/sessionstore;1" in Components.classes)
+        var _ss = Cc["@mozilla.org/browser/sessionstore;1"].
+                  getService(Ci.nsISessionStore);
+    else
+        var _winvars = {}; // For self.get/setWindowValue
 
     var _wm = Cc["@mozilla.org/appshell/window-mediator;1"].
               getService(Ci.nsIWindowMediator);
@@ -63,16 +80,26 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     //}##########################
     //{### Utility Functions
     //|##########################
+    
+    // A log of all reported errors is kept, in case the Error Console loses them!
+    this.logs = {
+        dump: [],
+        log: [],
+        debug: []
+    };
 
-    this.dump = function _dump(error, ignoreDebug) {
+    // For errors or warnings, with automatic line numbers, call stack, etc.
+    this.dump = function dump(error, actualException) {
         try {
-            if (ignoreDebug || _prefs.getBoolPref("debug")) {
+            if (_prefs.getBoolPref("debug")) {
                 var scriptError = Cc["@mozilla.org/scripterror;1"].
                                   createInstance(Ci.nsIScriptError);
 
-                var isError = (typeof error == "object");
-                if (isError && error.stack) {
-                    var stack = error.stack;
+                if (!actualException && typeof error == "object")
+                    actualException = error;
+                var haveException = actualException ? true : false;
+                if (haveException && actualException.stack) {
+                    var stack = actualException.stack;
                 }
                 else {
                     var stack = new Error().stack; // Get call stack (could use Components.stack.caller instead)
@@ -82,37 +109,53 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                 var sourceName = Components.stack.caller.filename;
                 var sourceLine = Components.stack.caller.sourceLine; // Unfortunately this is probably null
                 var lineNumber = Components.stack.caller.lineNumber; // error.lineNumber isn't always accurate, so ignore it
-                var columnNumber = (isError && error.columnNumber) ? error.columnNumber : 0;
-                var flags = isError ? scriptError.errorFlag : scriptError.warningFlag;
-                var category = "JavaScript error"; // TODO: Check this
+                var columnNumber = (haveException && actualException.columnNumber) ? actualException.columnNumber : 0;
+                var flags = haveException ? scriptError.errorFlag : scriptError.warningFlag;
+                var category = "JavaScript error"; // TODO-P6: Check this
                 scriptError.init(message, sourceName, sourceLine, lineNumber, columnNumber, flags, category);
+                self.logs.dump.push(scriptError);
                 _console.logMessage(scriptError);
             }
         }
         catch (ex) {
-            if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires QuickPrompt extension
+            if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
         }
     };
 
-    // Only use this when you don't want line numbers, call stack, etc.
-    this.log = function _log(message, ignoreDebug) {
+    // For logging information (no line numbers, call stack, etc.)
+    this.log = function log(message) {
         try {
-            if (ignoreDebug || _prefs.getBoolPref("debug")) {
-                _console.logStringMessage("TK: " + message);
+            if (_prefs.getBoolPref("debug")) {
+                var msg = "TK: " + message;
+                self.logs.log.push(msg);
+                _console.logStringMessage(msg);
             }
         }
         catch (ex) {
-            // The hidden debug pref isn't set and the ignoreDebug override
-            // was off, so don't spam the Error Console with messages
+            if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
+        }
+    };
+    
+    // For minor/normal information that could still be interesting
+    this.debug = function debug(message) {
+        try {
+            if (_prefs.getBoolPref("debug") && _prefs.getBoolPref("debugMinorToo")) {
+                var msg = "TK Debug: " + message;
+                self.logs.debug.push(msg);
+                _console.logStringMessage(msg);
+            }
+        }
+        catch (ex) {
+            if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
         }
     };
 
 
-    this.startsWith = function(str, start) {
-        return str.indexOf(start) === 0;
-    }
-
-    this.endsWith = function(str, end) {
+    this.startsWith = function startsWith(str, start) {
+        return str.indexOf(start) == 0;
+    };
+    
+    this.endsWith = function endsWith(str, end) {
         var startPos = str.length - end.length;
         if (startPos < 0)
             return false;
@@ -120,18 +163,48 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     };
 
     
-    this.hash = function _hash(str) {
-        // Uses djb2 algorithm (http://www.cse.yorku.ca/~oz/hash.html#djb2) for compatibility with ChromaTabs and Fashion Tabs
-		var hash = 5381;
-		for (var i = 0; i < str.length; i++) {
-			var charCode = str.charCodeAt(i);
-			hash = (hash << 5) + hash + charCode; // hash * 33 + charCode
-		}
-		return hash;
-	};
+    /*!!this.hash = function hash(str) {
+        // Uses djb2 algorithm (http://www.cse.yorku.ca/~oz/hash.html#djb2), same as ChromaTabs and Fashion Tabs
+        var hash = 5381;
+        for (var i = 0; i < str.length; i++) {
+            var charCode = str.charCodeAt(i);
+            hash = (hash << 5) + hash + charCode; // hash * 33 + charCode
+        }
+        return Math.abs(hash); // In case of overflow it can go negative
+    };*/
     
+    this.rawMD5 = function rawMD5(str) {
+        var converter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].
+                        createInstance(Ci.nsIScriptableUnicodeConverter);
+        converter.charset = "UTF-8";
+        // result is an out parameter, result.value will contain the array length
+        var result = {};
+        // data is an array of bytes
+        var data = converter.convertToByteArray(str, result);
+        var ch = Cc["@mozilla.org/security/hash;1"].
+                 createInstance(Ci.nsICryptoHash);
+        ch.init(ch.MD5);
+        ch.update(data, data.length);
+        return ch.finish(false);
+    };
 
-    /*this.fileToString = function _fileToString(filename, dir) {
+
+    this.getWindowValue = function getWindowValue(aKey) {
+        if (_ss)
+            return _ss.getWindowValue(window, aKey);
+        else
+            return (aKey in _winvars ? _winvars[aKey] : "");
+    };
+    
+    this.setWindowValue = function setWindowValue(aKey, aStringValue) {
+        if (_ss)
+            _ss.setWindowValue(window, aKey, aStringValue);
+        else
+            _winvars[aKey] = aStringValue;
+    };
+
+
+    /*!!this.fileToString = function fileToString(filename, dir) {
         if (!dir) dir = Directories.PROFILE;
 
         // Get chosen directory
@@ -166,7 +239,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         return str;
     };
 
-    this.stringToFile = function _stringToFile(str, filename, dir) {
+    this.stringToFile = function stringToFile(str, filename, dir) {
         if (!dir) dir = Directories.PROFILE;
 
         // Get chosen directory
@@ -197,15 +270,15 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         file.moveTo(null, filename);
     };*/
 
-    this.getFile = function _getFile(filename, dir) {
+    /*!!this.getFile = function getFile(filename, dir) {
         if (!dir) dir = "ProfD"; // Profile dir, other directories of note are user chrome: "UChrm" and temp: "TmpD"
         var file = _ds.get(dir, Ci.nsILocalFile);
         file.append(filename);
         return file;
-    };
+    };*/
 
-    // Based on http://lxr.mozilla.org/mozilla1.8/source/browser/components/sessionstore/src/nsSessionStartup.js#341
-    this.readFile = function _readFile(aFile) {
+    //!! Based on http://lxr.mozilla.org/mozilla1.8/source/browser/components/sessionstore/src/nsSessionStartup.js#341
+    /*!!this.readFile = function readFile(aFile) {
         try {
             var stream = Cc["@mozilla.org/network/file-input-stream;1"].
                          createInstance(Ci.nsIFileInputStream);
@@ -226,10 +299,10 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         catch (ex) {
             return null; // non-existant file?
         }
-    };
+    };*/
 
-    // Based on http://lxr.mozilla.org/mozilla1.8/source/browser/components/sessionstore/src/nsSessionStore.js#1988
-    this.writeFile = function _writeFile(aString, aFile) {
+    //!! Based on http://lxr.mozilla.org/mozilla1.8/source/browser/components/sessionstore/src/nsSessionStore.js#1988
+    /*!!this.writeFile = function writeFile(aString, aFile) {
         // init stream
         var stream = Cc["@mozilla.org/network/safe-file-output-stream;1"].
                      createInstance(Ci.nsIFileOutputStream);
@@ -249,10 +322,10 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         } else {
             stream.close();
         }
-    };
+    };*/
 
 
-    this.getPrettyDate = function _getPrettyDate() {
+    /*!!this.getPrettyDate = function getPrettyDate() {
         var d = new Date();
         var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         var day = days[d.getDay()];
@@ -261,7 +334,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         return day+", "+d.getDate()+" "+month+" "+d.getFullYear();
     };
 
-    this.getPrettyTime = function _getPrettyTime() {
+    this.getPrettyTime = function getPrettyTime() {
         var d = new Date();
         var hours = d.getHours();
         if (hours < 10) hours = "0" + hours;
@@ -270,42 +343,53 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         return hours+":"+minutes;
     };
 
-    this.getPrettyDateTime = function _getPrettyDateTime() {
+    this.getPrettyDateTime = function getPrettyDateTime() {
         return self.getPrettyDate() + " " + self.getPrettyTime();
-    };
+    };*/
 
 
-    this.addDelayedEventListener = function _addDelayedEventListener(target, eventType, listener) {
+    this.addDelayedEventListener = function addDelayedEventListener(target, eventType, listener) {
         if (typeof listener == "object") {
             target.addEventListener(eventType, function __delayedEventListener(event) {
-                window.setTimeout(function() { listener.handleEvent(event); }, 0);
+                window.setTimeout(function(listener) { listener.handleEvent(event); }, 0, listener);
             }, false);
         }
         else {
             target.addEventListener(eventType, function __delayedEventListener(event) {
-                window.setTimeout(function() { listener(event); }, 0);
+                window.setTimeout(function(listener) { listener(event); }, 0, listener);
             }, false);
         }
     };
 
 
-    this.scrollToElement = function _scrollToElement(overflowPane, element) {
-        // TODO: cleanup code [based on toomanytabs]:
+    // TODO=P4: scrollOneExtra should also apply with a single-row horizontal tab bar
+    this.scrollToElement = function scrollToElement(overflowPane, element) { // TODO-P6: cleanup code? [based on toomanytabs]
         var scrollbar = overflowPane.mVerticalScrollbar;
         if (!scrollbar)
             return;
 
         var container = element.parentNode;
+        var firstChild = container.firstChild;
+        while (firstChild.getAttribute("hidden") == "true")
+            firstChild = firstChild.nextSibling;
+        var lastChild = container.lastChild;
+        while (lastChild.getAttribute("hidden") == "true")
+            lastChild = lastChild.previousSibling;
 
         var curpos = parseInt(scrollbar.getAttribute("curpos"));
-        var firstY = container.firstChild.boxObject.y
+        if (isNaN(curpos)) {
+            self.debug("curpos was NaN");
+            curpos = 0;
+        }
+        var firstY = firstChild.boxObject.y
         var elemY = element.boxObject.y;
-        var lastY = container.lastChild.boxObject.y;
+        var lastY = lastChild.boxObject.y;
         var height = element.boxObject.height;
         var relY = elemY - firstY;
+        var paneHeight = overflowPane.boxObject.height;
 
-        // Make sure overflowPane is never scrolled halfway across an element
-        if ((lastY - firstY) % height == 0 && curpos % height != 0) {
+        // Make sure overflowPane is never scrolled halfway across elements at both the top and bottom
+        if ((lastY - firstY) % height == 0 && curpos % height != 0 && (curpos + paneHeight + firstY - lastY) % height != 0) {
             curpos = height * Math.round(curpos / height);
         }
 
@@ -317,7 +401,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             curpos = minpos; // Set it to minpos
         }
         else {
-            var maxpos = relY + height - overflowPane.boxObject.height;
+            var maxpos = relY + height - paneHeight;
             if (_prefs.getBoolPref("scrollOneExtra") && lastY > elemY && lastY - firstY > height) {
                 maxpos += height;
             }
@@ -325,11 +409,11 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                 curpos = maxpos; // Set it to maxpos
             }
         }
-
+        
         scrollbar.setAttribute("curpos", curpos);
     };
 
-    this.closeWindowIfHomeOrBlank = function _closeWindowIfHomeOrBlank() {
+    /*!!this.windowIsHomeOrBlank = function windowIsHomeOrBlank() {
         var uris = gHomeButton.getHomePage().split("|");
         for (var i = 0; i < gBrowser.browsers.length; i++) {
             var uri = gBrowser.browsers[i].webNavigation.currentURI.spec;
@@ -341,29 +425,51 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                     break;
                 }
             }
-            if (!matched) return;
+            if (!matched) return false;
         }
 
-        window.close();
+        return true;
+    };*/
+
+
+    this.moveBefore = function moveBefore(tabToMove, target) {
+        try {
+            var newIndex = target._tPos;
+            if (newIndex > tabToMove._tPos)
+                newIndex--;
+            if (newIndex != tabToMove._tPos)
+                gBrowser.moveTabTo(tabToMove, newIndex);
+        }
+        catch (ex) {
+            self.dump(ex);
+        }
+    };
+    
+    this.moveAfter = function moveAfter(tabToMove, target) {
+        try {
+            var newIndex = target._tPos + 1;
+            if (newIndex > tabToMove._tPos)
+                newIndex--;
+            if (newIndex != tabToMove._tPos)
+                gBrowser.moveTabTo(tabToMove, newIndex);
+        }
+        catch (ex) {
+            self.dump(ex);
+        }
+    };
+
+
+    this.quickStack = function quickStack() {
+        // Intended mainly for outputting to the console
+        var func = arguments.callee.caller.caller;
+        var stack = "";
+        for (var i = 1; func && i < 8; i++) {
+            stack += " " + i + ". " + func.name;
+            func = func.caller;
+        }
+        return stack;
     }
 
-    
-    this.moveBefore = function _moveBefore(tabToMove, target) {
-        var newIndex = target._tPos;
-        if (newIndex > tabToMove._tPos)
-            newIndex--;
-        if (newIndex != tabToMove._tPos)
-            gBrowser.moveTabTo(tabToMove, newIndex);
-    };
-    
-    this.moveAfter = function _moveAfter(tabToMove, target) {
-        var newIndex = target._tPos + 1;
-        if (newIndex > tabToMove._tPos)
-            newIndex--;
-        if (newIndex != tabToMove._tPos)
-            gBrowser.moveTabTo(tabToMove, newIndex);
-    };
-    
     //}##########################
     //{### Initialisation
     //|##########################
@@ -389,8 +495,13 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
      * chrome://browser/content/bookmarks/bookmarksPanel.xul and
      * chrome://browser/content/history/history-panel.xul
      */
-    this.onDOMContentLoaded_global = function _onDOMContentLoaded_global(event) {
-        window.removeEventListener("DOMContentLoaded", self.onDOMContentLoaded_global, false);
+    this.onDOMContentLoaded_global = function onDOMContentLoaded_global(event) {
+        try {
+            window.removeEventListener("DOMContentLoaded", self.onDOMContentLoaded_global, false);
+        }
+        catch (ex) {
+            // This is a browser window, it wasn't set
+        }
 
         // Run module global early initialisation code (before any init* listeners, and before most extensions):
         for each (var listener in self.globalPreInitListeners) {
@@ -399,17 +510,20 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     };
 
     // This gets called for new browser windows, once the DOM tree is loaded
-    this.onDOMContentLoaded = function _onDOMContentLoaded(event) {
+    this.onDOMContentLoaded = function onDOMContentLoaded(event) {
         window.removeEventListener("DOMContentLoaded", self.onDOMContentLoaded, false);
 
         // Run module early initialisation code (before any init* listeners, and before most extensions):
         for each (var listener in self.preInitListeners) {
             listener(event);
         }
+        
+        // Run global init too
+        self.onDOMContentLoaded_global(event);
     };
 
     // This gets called for new browser windows, once they've finished loading
-    this.onLoad = function _onLoad(event) {
+    this.onLoad = function onLoad(event) {
         window.removeEventListener("load", self.onLoad, false);
 
         // Run module specific initialisation code, such as registering event listeners:
@@ -429,22 +543,28 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     //{### Useful shortcuts
     //|##########################
 
-    // Make sure we can use gBrowser from now on if this is a browser window
-    if (typeof gBrowser != "undefined" && !gBrowser)
-        getBrowser();
-    
-    /// Private Globals:
-    var _tabContainer = gBrowser.mTabContainer; // Arguably should get this in the listener too, but seems to work...
-    var _tabstrip;
-    var _tabInnerBox;
-    var _tabs = gBrowser.mTabs; // Arguably should get this in the listener too, but seems to work...
+    // Only get these shortcuts for browser windows
+    if (typeof gBrowser != "undefined") {
+        // Make sure we can use gBrowser from now on if this is a browser window
+        if (!gBrowser)
+            getBrowser();
+        
+        /// Private Globals:
+        var _tabContainer = gBrowser.mTabContainer; // Arguably should get this in the listener too, but seems to work...
+        var _tabstrip;
+        var _tabInnerBox;
+        var _tabs = gBrowser.mTabs; // Arguably should get this in the listener too, but seems to work...
+        
+        // Public Globals
+        this.strings = document.getElementById("bundle_tabkit");
 
-    /// Initialisation:
-    this.preInitShortcuts = function _preInitShortcuts(event) {
-        _tabstrip = _tabContainer.mTabstrip;
-        _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
-    };
-    this.preInitListeners.push(this.preInitShortcuts);
+        /// Initialisation:
+        this.preInitShortcuts = function preInitShortcuts(event) {
+            _tabstrip = _tabContainer.mTabstrip;
+            _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
+        };
+        this.preInitListeners.push(this.preInitShortcuts);
+    }
 
     //}##########################
     //{### Prefs Observers
@@ -456,11 +576,11 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     var _localPrefListeners = {};
 
     /// Initialisation:
-    this.preInitPrefsObservers = function _preInitPrefsObservers(event) {
+    this.preInitPrefsObservers = function preInitPrefsObservers(event) {
         // Make sure we can use addObserver on this
         gPrefService.QueryInterface(Ci.nsIPrefBranch2);
 
-        // Do this in preInit just in case something expects their init prefListener to work instantly (TODO: check it works!)
+        // Do this in preInit just in case something expects their init prefListener to work 'instantly'
         self.addGlobalPrefListener(PREF_BRANCH, self.localPrefsListener);
     };
     this.preInitListeners.push(this.preInitPrefsObservers);
@@ -468,7 +588,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     /// Pref Listeners:
     // This listener checks all changes to the extension's pref branch, and delegates them to their registered listeners
     // Presumeably more efficient than simply adding a global observer for each one...
-    this.localPrefsListener = function _localPrefsListener(changedPref) {
+    this.localPrefsListener = function localPrefsListener(changedPref) {
         changedPref = changedPref.substring(PREF_BRANCH.length); // Remove prefix for these local prefs
         for (var pref in _localPrefListeners) {
             if (changedPref.substring(0, pref.length) == pref) {
@@ -480,7 +600,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     };
 
     /// Methods:
-    this.addGlobalPrefListener = function _addGlobalPrefListener(prefString, prefListener) {
+    this.addGlobalPrefListener = function addGlobalPrefListener(prefString, prefListener) {
         if (!_globalPrefObservers[prefString]) {
             _globalPrefObservers[prefString] = {
                 listeners: [],
@@ -510,7 +630,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         _globalPrefObservers[prefString].listeners.push(prefListener);
     };
 
-    this.addPrefListener = function _addPrefListener(pref, listener) {
+    this.addPrefListener = function addPrefListener(pref, listener) {
         if (!_localPrefListeners[pref]) {
             _localPrefListeners[pref] = [];
         }
@@ -521,7 +641,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     //{### Pref-attribute Mapping
     //|##########################
 
-    this.mapPrefsToAttribute = function _mapPrefsToAttribute(prefs, test, node, attribute) {
+    this.mapPrefsToAttribute = function mapPrefsToAttribute(prefs, test, node, attribute) {
         var listener = function() {
             var value = test();
             if (value !== undefined) {
@@ -539,7 +659,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         listener();
     };
 
-    this.mapBoolPrefToAttribute = function _mapBoolPrefToAttribute(pref, node, attribute) {
+    this.mapBoolPrefToAttribute = function mapBoolPrefToAttribute(pref, node, attribute) {
         self.mapPrefsToAttribute([pref], function() { return _prefs.getBoolPref(pref) ? "true" : undefined; }, node, attribute);
     };
 
@@ -557,185 +677,292 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     this.lateMethodHooks = [];
 
     /// Initialisation:
-    this.preInitMethodHooks = function _preInitMethodHooks(event) {
+    this.preInitMethodHooks = function preInitMethodHooks(event) {
         for each (var hook in self.earlyMethodHooks)
             self.addMethodHook(hook);
     };
     this.preInitListeners.push(this.preInitMethodHooks);
 
-    this.postInitMethodHooks = function _postInitMethodHooks(event) {
+    this.postInitMethodHooks = function postInitMethodHooks(event) {
         for each (var hook in self.lateMethodHooks)
             self.addMethodHook(hook);
     };
     this.postInitListeners.push(this.postInitMethodHooks);
 
     /// Methods:
-    this.addMethodHook = function _addMethodHook(hook) {
+    this.addMethodHook = function addMethodHook(hook) {
         try {
             if (hook[1])
                 eval(hook[1] + "=" + hook[0]);
 
             var code = eval(hook[0] + ".toString()");
             
-            for (var i = 2; i < hook.length; )
-                code = code.replace(hook[i++], hook[i++]);
+            for (var i = 2; i < hook.length; ) {
+                var newCode = code.replace(hook[i++], hook[i++]);
+                if (newCode == code)
+                    self.log("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + hook[i - 2] + "\nwith:\n" + hook[i - 1]);
+                else
+                    code = newCode;
+            }
             
             eval(hook[0] + "=" + code);
         }
         catch (ex) {
-            self.dump("Method hook failed (" + hook + ") with exception:\n" + ex);
+            self.dump("Method hook of \"" + hook[0] + "\" failed with exception:\n" + ex, ex);
         }
     };
 
-    this.prependMethodCode = function _prependMethodCode(methodname, codestring) {
+    this.prependMethodCode = function prependMethodCode(methodname, codestring) {
         self.addMethodHook([methodname, null, '{', '{' + codestring]);
     };
 
-    this.appendMethodCode = function _appendMethodCode(methodname, codestring) {
+    this.appendMethodCode = function appendMethodCode(methodname, codestring) {
         self.addMethodHook([methodname, null, /\}$/, codestring + '}']);
     };
 
-    this.wrapMethodCode = function _wrapMethodCode(methodname, startcode, endcode) {
+    this.wrapMethodCode = function wrapMethodCode(methodname, startcode, endcode) {
         //self.addMethodHook([methodname, null, /\{([^]*)\}$/, '{' + startcode + '$&' + endcode + '}']);
         self.addMethodHook([methodname, null, '{', '{' + startcode, /\}$/, endcode + '}']);
     }
 
-    //}##########################
-    //{### Menus
-    //|##########################
-
-    /// Initialisation:
-    this.postInitMenus = function _postInitMenus() {
-        // Do anything that needs doing for the menus
-    };
-    this.postInitListeners.push(this.postInitMenus);
-
-    //}##########################
-    //{>>> Sessions/Closed Windows
-    //|##########################//TODO:URGENT
-
+    //!!}##########################
+    //!!{--- Sessions/Closed Windows
+    //!!|##########################
+    
+    /*!! // (ENTIRELY) COMMENTED OUT, SINCE UPDATE OF "SESSION MANAGER" EXTENSION MAKES THIS OBSOLETE, T O D Os have spaces so they aren't found
+    
+    // T O D O: TEST, TEST, TEST
+    // T O D O: Add a keyboard shortcut for Undo Close Window? https://bugzilla.mozilla.org/show_bug.cgi?id=344736 https://bugzilla.mozilla.org/show_bug.cgi?id=357235 https://bugzilla.mozilla.org/show_bug.cgi?id=344140
+    // T O D O: ability to delete sessions
+    // T O D O: require browser.sessionstore.enabled = true
+    
     /// Globals:
-    var _sessionFile;
-
-    this.sessionData = null;
+    var _sessionFile; // Don't use this directly
+    
+    var _sessionData; // Don't use this directly, use self.get/setSessionData (below) instead
+    this.getSessionData = function getSessionData() {
+        if (!_sessionData)
+            _os.notifyObservers(window, "tabkit:init-my-session-data", null);
+        
+        if (!_sessionData) {
+            _sessionData = eval(self.readFile(_sessionFile));
+            if (_sessionData === null) {
+                self.log("Note: failed to read tabkitsessions.json (this is *normal* if this is the first time you use Tab Kit)");
+                _sessionData = {
+                    sessions: {},
+                    windows: []
+                };
+                _requestSessionSave(); // Just so we don't keep bugging them about having no sessions
+            }
+        }
+        return _sessionData;
+    };
+    this.setSessionData = function setSessionData(sessions) {
+        _saveOnNextSessionUpdate = true;
+        
+        // Broadcast new session data to all windows (including this one)
+        _os.notifyObservers(null, "tabkit:update-session-data", uneval(sessions));
+        
+        return sessions;
+    };
+    this._initSessionData = function _initSessionData(sessions) {
+        // Must only be used in response to a tabkit:init-my-session-data
+        if (!_sessionData)
+            _sessionData = sessions;
+    }
+    
+    var _saveOnNextSessionUpdate = false;
+    var _sessionSaveInterval = 1000; // T O D O: pref // T O D O: check always saves on quit // per window
+    var _lastSessionSave = 0;
+    var _sessionSavePending = false;
 
     /// Initialisation:
-    this.initSessionManager = function _initSessionManager(event) {
+    this.initSessionManager = function initSessionManager(event) {
         _sessionFile = self.getFile("tabkitsessions.json");
 
-        self.sessionData = eval(self.readFile(_sessionFile));
-        if (!self.sessionData) {
-            self.log("Note: failed to read tabkitsessions.json (this is *normal* if this is the first time you use Tab Kit)");
-            self.sessionData = {
-                sessions: {},
-                windows: []
-            };
-        }
-        else if (!prefs.getBoolPref("keepClosedWindows")) {
-            self.sessionData.windows = [];
+        if (!_prefs.getBoolPref("keepClosedWindows")) {
+            var sessions = self.getSessionData();
+            if (sessions.windows !== []) {
+                sessions.windows = [];
+                self.setSessionData(sessions);
+            }
         }
 
-        //self.sessionObserver.register();
-        //window.addEventListener("unload", function() { self.sessionObserver.unregister(); }, false);
+        self.sessionObserver.register();
+        window.addEventListener("unload", function() { self.sessionObserver.unregister(); }, false);
+        
+        //window.addEventListener("beforeunload", function() { self.backupWindowState(); }, false); // Pre closingWindow
+        
+        document.getElementById("goPopup").addEventListener("popupshowing", self.sessions_updateGoMenu, false);
+        
+        self.addPrefListener("maxRecentWindows", _boundRecentWindows);
 
-        /*
-        if (_prefs.prefHasUserValue("log")) _prefs.setCharPref("log", "\n\n\n" + _prefs.getCharPref("log"));
+        //{ Old testing code
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //~ if (_prefs.prefHasUserValue("log")) _prefs.setCharPref("log", "\n\n\n" + _prefs.getCharPref("log"));
+        //~ 
+        //~ var observer = {
+            //~ observe: function(aSubject, aTopic, aData) {
+                //~ var winType = (typeof aSubject == "object" && aSubject && "document" in aSubject) ? aSubject.document.documentElement.getAttribute("windowtype") : "";
+                //~ var log = aSubject + ":" + winType + "; " + aTopic + "; " + aData;
+                //~ try { log += "\n" + _prefs.getCharPref("log"); } catch(ex) {}
+                //~ _prefs.setCharPref("log", log);
+                //~ self.log(log);
+            //~ }
+        //~ };
+        //~ 
+        //~ window.addEventListener("DOMWindowClose", function(event) { observer.observe("<event>", "DOMWindowClose", prettyPrint(event.target)); }, false);
+        //~ window.addEventListener("DOMWindowClosed", function(event) { observer.observe("<event>", "DOMWindowClosed", prettyPrint(event.target)); }, false);
+        //~ window.addEventListener("unload", function(event) { observer.observe("<event>", "unload", prettyPrint(event.target)); }, false);
+        //~ window.addEventListener("beforeunload", function(event) { observer.observe("<event>", "beforeunload", prettyPrint(event.target)); }, false);
+        //~ 
+        //~ _os.addObserver(observer, "domwindowopened", false);
+        //~ _os.addObserver(observer, "domwindowclosed", false);
+        //~ _os.addObserver(observer, "quit-application-requested", false);
+        //~ _os.addObserver(observer, "quit-application-granted", false);
+        //~ _os.addObserver(observer, "quit-application", false);
+        //~ _os.addObserver(observer, "xpcom-shutdown", false);
+        //~ 
+        //~ window.addEventListener("unload", function() {
+            //~ _os.removeObserver(observer, "domwindowopened");
+            //~ _os.removeObserver(observer, "domwindowclosed");
+            //~ _os.removeObserver(observer, "quit-application-requested");
+            //~ _os.removeObserver(observer, "quit-application-granted");
+            //~ _os.removeObserver(observer, "quit-application");
+            //~ _os.removeObserver(observer, "xpcom-shutdown");
+        //~ }, false);
 
-        var observer = {
-            observe: function(aSubject, aTopic, aData) {
-                var winType = (typeof aSubject == "object" && aSubject && "document" in aSubject) ? aSubject.document.documentElement.getAttribute("windowtype") : "";
-                var log = aSubject + ":" + winType + "; " + aTopic + "; " + aData;
-                try { log += "\n" + _prefs.getCharPref("log"); } catch(ex) {}
-                _prefs.setCharPref("log", log);
-                self.log(log);
-            }
-        };
-
-        window.addEventListener("DOMWindowClose", function(event) { observer.observe("<event>", "DOMWindowClose", prettyPrint(event.target)); }, false);
-        window.addEventListener("DOMWindowClosed", function(event) { observer.observe("<event>", "DOMWindowClosed", prettyPrint(event.target)); }, false);
-        window.addEventListener("unload", function(event) { observer.observe("<event>", "unload", prettyPrint(event.target)); }, false);
-        window.addEventListener("beforeunload", function(event) { observer.observe("<event>", "beforeunload", prettyPrint(event.target)); }, false);
-
-        _os.addObserver(observer, "domwindowopened", false);
-        _os.addObserver(observer, "domwindowclosed", false);
-        _os.addObserver(observer, "quit-application-requested", false);
-        _os.addObserver(observer, "quit-application-granted", false);
-        _os.addObserver(observer, "quit-application", false);
-        _os.addObserver(observer, "xpcom-shutdown", false);*/
-
-        /*window.addEventListener("unload", function() {
-            _os.removeObserver(observer, "domwindowopened");
-            _os.removeObserver(observer, "domwindowclosed");
-            _os.removeObserver(observer, "quit-application-requested");
-            _os.removeObserver(observer, "quit-application-granted");
-            _os.removeObserver(observer, "quit-application");
-            _os.removeObserver(observer, "xpcom-shutdown");
-        }, false);
-
-        /*
-        case "domwindowopened":
-            aSubject.addEventListener("load", onWindowLoad_window, false); //.document.documentElement.getAttribute("windowtype") == "navigator:browser"
-            break;
-        case "domwindowclosed":
-            onWindowClose(aSubject, gQuitRequest && gQuitRequest > Date.now() - 3000);
-            break;
-        case "quit-application-requested":
-            forEachBrowserWindow(collectWindowData);
-            gDirty = {};
-            gQuitRequest = Date.now();
-            break;
-        case "quit-application-granted":
-            gLoadState = STATE_QUITTING;
-            break;
-        case "quit-application":
-            if (aData == "restart")
-            {
-                gPrefBranch.setBoolPref("resume_session_once", true);
-            }
-            gLoadState = STATE_QUITTING;
-            this.uninit();
-            break;
-        */
+        //~ case "domwindowopened":
+            //~ aSubject.addEventListener("load", onWindowLoad_window, false); //.document.documentElement.getAttribute("windowtype") == "navigator:browser"
+            //~ break;
+        //~ case "domwindowclosed":
+            //~ onWindowClose(aSubject, gQuitRequest && gQuitRequest > Date.now() - 3000);
+            //~ break;
+        //~ case "quit-application-requested":
+            //~ forEachBrowserWindow(collectWindowData);
+            //~ gDirty = {};
+            //~ gQuitRequest = Date.now();
+            //~ break;
+        //~ case "quit-application-granted":
+            //~ gLoadState = STATE_QUITTING;
+            //~ break;
+        //~ case "quit-application":
+            //~ if (aData == "restart")
+            //~ {
+                //~ gPrefBranch.setBoolPref("resume_session_once", true);
+            //~ }
+            //~ gLoadState = STATE_QUITTING;
+            //~ this.uninit();
+            //~ break;
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //} End old testing code
     };
-    this.initListeners.push(this.initSessionManager);
+    if (_ss)
+        this.initListeners.push(this.initSessionManager);
 
-    this.postInitSessionManager = function _postInitSessionManager() {
+    this.postInitSessionManager = function postInitSessionManager() {
         if (_prefs.prefHasUserValue("nextwindow")) {
             _ss.setWindowState(window, _prefs.getCharPref("nextwindow"), true);
             _prefs.clearUserPref("nextwindow");
         }
     };
-    this.postInitListeners.push(this.postInitSessionManager);
+    if (_ss)
+        this.postInitListeners.push(this.postInitSessionManager);
 
+    /// Method hooks
+    // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
+    if (_ss)
+        self.earlyMethodHooks.push([
+            'closeWindow',
+            null,
+            'window.close();',
+            'tabkit.closingWindow(); $&'
+        ]);
+    
     /// Observer
     // Warning: there will be one of these per currently open window, don't do things several times!
     this.sessionObserver = {
         register: function() {
-            _os.addObserver(this, "domwindowclosed", false);
+            //_os.addObserver(this, "domwindowclosed", false); // Pre closingWindow
+            _os.addObserver(this, "tabkit:update-session-data", false);
+            _os.addObserver(this, "tabkit:init-my-session-data", false);
+            _os.addObserver(this, "browser:purge-session-history", false);
             _os.addObserver(this, "quit-application-granted", false);
         },
 
         observe: function _observeSession(aSubject, aTopic, aData) {
             switch (aTopic) {
-            case "domwindowclosed":
-                if (aSubject.document.documentElement.getAttribute("windowtype") != "navigator:browser")
-                    return;
+            //{ Pre closingWindow
+            //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            //~ case "domwindowclosed":
+                //~ if (aSubject.document.documentElement.getAttribute("windowtype") != "navigator:browser")
+                    //~ return;
 
-                var title = aSubject.document.title.length > 40 ? aSubject.document.title.substring(0,37) + "..." : aSubject.document.title;
-                var name = "[ " + aSubject._tabs.length + " tabs - " + self.getPrettyDateTime() + " ] " + title;
+                //~ // I can't just do _ss.getWindowState(aSubject); because _ss voids the window on domwindowclosed
+                //~ // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
+                //~ if (!"tkt_lastSaved" in aSubject || aSubject.tkt_lastSaved === undefined) {
+                    //~ if (!"tkt_savedState" in aSubject) {
+                        //~ self.dump("No state backup for closed browser window!");
+                    //~ }
+                    //~ return;
+                //~ }
+                //~ if (Date.now() - aSubject.tkt_lastSaved > 3000) {
+                    //~ self.log("Whoah, this state backup is ancient: " + (Date.now() - aSubject.tkt_lastSaved) + "ms!");
+                //~ }
+                //~ delete aSubject.tkt_lastSaved; // Stop windows' observers from firing
+                //~ var state = aSubject.tkt_savedState;
 
-                self.recentlyClosedWindows.shift([name, _ss.getWindowState(aSubject)]);
+                //~ if (!aSubject.content.document.title) {
+                    //~ if (aSubject.content.location.href.length > 40) {
+                        //~ var title = aSubject.content.location.href.substring(0, 18) + "...";
+                    //~ }
+                    //~ else {
+                        //~ var title = aSubject.content.location.href;
+                    //~ }
+                //~ }
+                //~ else if (aSubject.content.document.title.length > 40) {
+                    //~ var title = aSubject.content.document.title.substring(0,37) + "...";
+                //~ }
+                //~ else {
+                    //~ var title = aSubject.content.document.title;
+                //~ }
+                //~ var name = "[ " + aSubject._tabs.length + " tabs - " + self.getPrettyDateTime() + " ] " + title;
+
+                //~ // Now let each window add this to their list of recently closed windows
+                //~ _os.notifyObservers(aSubject, "tabkit:add-recent-window", uneval([name, state]));
+                //~ break;
+            //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            //} End pre closingWindow
+            case "tabkit:update-session-data":
+                _sessionData = eval(aData);
+                if (_saveOnNextSessionUpdate) {
+                    _saveOnNextSessionUpdate = false;
+                    _requestSessionSave();
+                }
+                break;
+            case "tabkit:init-my-session-data":
+                if (_sessionData)
+                    aSubject.tabkit._initSessionData(self.getSessionData());
+                break;
+            case "browser:purge-session-history":
+                self.setSessionData({
+                    sessions: {},
+                    windows: []
+                });
                 break;
             case "quit-application-granted":
-                self.saveAllWindows("[ Closed browser: " + self.getPrettyDateTime() + " ]");
-                this.unregister(); // Note: this prevents domwindowclosed calls for the closed windows
+                self.saveAllWindowsSession("[ Closed browser: " + self.getPrettyDateTime() + " ]"); // T O D O : check this always works
+                this.unregister();
                 break;
             }
         },
 
         unregister: function() {
             try {
-                _os.removeObserver(this, "domwindowclosed");
+                //_os.removeObserver(this, "domwindowclosed"); // Pre closingWindow
+                _os.removeObserver(this, "tabkit:update-session-data");
+                _os.removeObserver(this, "tabkit:init-my-session-data");
+                _os.removeObserver(this, "browser:purge-session-history");
                 _os.removeObserver(this, "quit-application-granted");
             }
             catch (ex) {
@@ -744,39 +971,39 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };
 
-    /// Event Handlers:
-    // TODO: integrate with purge history
-
-    // TODO: limit no. of saved closed windows
-    //~ this.sessionManager_onUnload = function _sessionManager_onUnload(event) {
-        //~ self.log("DOMWindowClose");
-        //~ self.saveWindow("[ Closed window: " + self.getPrettyDateTime() + " ]");
-    //~ };
-
-    // TODO: ability to delete sessions
-    this.updateSessionsMenu = function _updateSessionsMenu(event, popup) {
+    /// 'Event' Handlers:
+    this.sessions_updateGoMenu = function sessions_updateGoMenu(event) {
+        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("hidden", _prefs.getIntPref("maxRecentWindows") == 0);
+        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("disabled", self.getSessionData().windows.length == 0);
+    };
+    
+    this.updateSessionsMenu = function updateSessionsMenu(event, popup) {
         if (event.target != event.currentTarget) return;
 
         //var startSeparator = document.getElementById("menu_tabkit-sessions-startList");
         var endSeparator = document.getElementById("menu_tabkit-sessions-endList");
 
-        /*var i = 0;
-        var destroy = false;
-        while (i < popup.childNodes.length) {
-            var item = popup.childNodes[i];
-            if (item == endSeparator)
-                break;
+        //{ Old code
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //~ var i = 0;
+        //~ var destroy = false;
+        //~ while (i < popup.childNodes.length) {
+            //~ var item = popup.childNodes[i];
+            //~ if (item == endSeparator)
+                //~ break;
 
-            if (destroy) {
-                i--;
-                goMenu.removeChild(item);
-            }
+            //~ if (destroy) {
+                //~ i--;
+                //~ goMenu.removeChild(item);
+            //~ }
 
-            if (item == startSeparator)
-                destroy = true;
+            //~ if (item == startSeparator)
+                //~ destroy = true;
 
-            i++;
-        }*/
+            //~ i++;
+        //~ }
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //} End old code
 
         var oldSessions = popup.getElementsByAttribute("isSession", "true");
         for (var i = oldSessions.length - 1; i >= 0; i--) {
@@ -798,6 +1025,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             //menuitem.setAttribute("statustext", url);
             menuitem.setAttribute("isSession", "true");
             menuitem.setAttribute("oncommand", "tabkit.restoreSession(\""+sessionName+"\");");
+            
             popup.insertBefore(menuitem, endSeparator);
 
             index++;
@@ -805,15 +1033,142 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
 
         endSeparator.setAttribute("hidden", index == 1);
     };
+    this.updateRecentWindowsMenu = function updateRecentWindowsMenu(event, popup) {
+        if (event.target != event.currentTarget) return;
 
+        var endSeparator = document.getElementById("menu_tabkit-recentwindows-endList");
+
+        var oldWindows = popup.getElementsByAttribute("isRecentWindow", "true");
+        for (var i = oldWindows.length - 1; i >= 0; i--) {
+            popup.removeChild(oldWindows[i]);
+        }
+        
+        var newWindows = self.getSessionData().windows;
+
+        var index = 1;
+        for each (var recentWin in newWindows) {
+            var name = recentWin[0];
+            var menuitem = document.createElementNS(XUL_NS, "menuitem");
+            if (index <= 10) {
+                menuitem.setAttribute("label", (index % 10) + ") " + name);
+                menuitem.setAttribute("accesskey", (index % 10));
+            }
+            else {
+                menuitem.setAttribute("label", "   " + name);
+            }
+            //menuitem.setAttribute("statustext", urls);
+            menuitem.setAttribute("isRecentWindow", "true");
+            menuitem.setAttribute("oncommand", "tabkit.restoreRecentWindow(" + uneval(recentWin) + ");");
+
+            popup.insertBefore(menuitem, endSeparator);
+
+            index++;
+        }
+    };
+
+    this.closingWindow = function closingWindow() { // T O D O: Check this always triggers!
+        try {
+            if (_prefs.getIntPref("maxRecentWindows") == 0)
+                return;
+            
+            var title = window.content.document.title ? window.content.document.title : window.content.location.href;
+            if (title.length > 40)
+                title = title.substring(0, 37) + "...";
+            var name = "[ " + _tabs.length + " tabs - " + self.getPrettyDateTime() + " ] " + title;
+            
+            var state = _ss.getWindowState(window);
+            
+            // Now let each window add this to their list of recently closed windows
+            self.addWindow([name, state]);
+        }
+        catch (ex) {
+            // We absolutely mustn't block closeWindow!
+            self.dump("closingWindow failed: \n" + ex, ex);
+        }
+    };
+    
+    //{ Pre closingWindow
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~ this.backupWindowState = function backupWindowState(event) {
+        //~ window.tkt_savedState = _ss.getWindowState(window);
+        //~ window.tkt_lastSaved = Date.now();
+    //~ };
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //} End pre closingWindow
+    
     /// Private Methods:
+    function _requestSessionSave() {
+        if (_sessionSavePending)
+            return;
+        
+        var timeSinceLastSave = Date.now() - _lastSessionSave;
+        if (timeSinceLastSave > _sessionSaveInterval) {
+            // Make sessions file slightly more human readable
+            var sessionStr = uneval(self.getSessionData()).replace(/ ('(\\'|[^'])*':\{state:)/g, "\n\n$1").replace(/ ("(\\"|[^"])*":\{state:)/g, "\n\n$1");
+            
+            self.writeFile(sessionStr, _sessionFile);
+            
+            _lastSessionSave = Date.now();
+        }
+        else {
+            _sessionSavePending = true;
+            window.setTimeout(function() { _sessionSavePending = false; _requestSessionSave(); }, _sessionSaveInterval - timeSinceLastSave + 1); // + 1 just to make sure timeSinceLastSave > _sessionSaveInterval
+        }
+    }
+
+    function _boundRecentWindows(arg) {
+        // See similar code under addWindow
+        var sessionData = self.getSessionData();
+        var maxWindows = _prefs.getIntPref("maxRecentWindows");
+        while (sessionData.windows.length > maxWindows && maxWindows >= 0)
+            sessionData.windows.pop();
+        self.setSessionData(sessionData);
+    }
+    
     function _compareSessionDates(a, b) {
         return b.date - a.date; // Note that we want most recent first
     }
-
+    
     /// Methods:
-    this.getSortedSessionNames = function _getSortedSessionNames() {
-        var sessions = self.getSessions();
+    this.addWindow = function addWindow(nameAndState) { //nameAndState = [name, state];
+        var sessionData = self.getSessionData();
+
+        sessionData.windows.unshift(nameAndState);
+        
+        // Limit number of stored windows
+        var maxWindows = _prefs.getIntPref("maxRecentWindows");
+        while (sessionData.windows.length > maxWindows && maxWindows >= 0)
+            sessionData.windows.pop();
+
+        self.setSessionData(sessionData);
+    };
+    this.removeWindow = function removeWindow(nameAndState) {
+        var sessionData = self.getSessionData();
+
+        var index = sessionData.windows.indexOf(nameAndState);
+        if (index != -1) sessionData.windows.splice(index, 1);
+        else self.dump("sessionData.windows didn't contain: " + uneval(nameAndState));
+
+        self.setSessionData(sessionData);
+    };
+    
+    this.addSession = function addSession(name, value) {
+        var sessionData = self.getSessionData();
+
+        sessionData.sessions[name] = { state: value, date: Date.now() };
+
+        self.setSessionData(sessionData);
+    };
+    this.removeSession = function removeSession(name) {
+        var sessions = self.getSessionData();
+
+        delete sessionData.sessions[name];
+
+        self.setSessionData(sessions);
+    };
+
+    this.getSortedSessionNames = function getSortedSessionNames() {
+        var sessions = self.getSessionData().sessions;
 
         var sessionArray = [];
         for (var sessionName in sessions) {
@@ -828,39 +1183,34 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         return sessionNameArray;
     };
 
-    this.saveWindow = function _saveWindow(sessionName, aWindow) {
-        if (!aWindow) {
+    this.saveSingleWindowSession = function saveSingleWindowSession(sessionName, aWindow) {
+        if (!aWindow)
             aWindow = window;
-        }
+        
         if (!sessionName) {
-            // TODO: pretty dialog letting you replace existing sessions, a la Session Manager
-            var defaultName;
-            if (aWindow.document.title.length > 40) {
-                defaultName = aWindow.document.title.substring(0,37) + "...";
-            }
-            else {
-                defaultName = aWindow.document.title;
-            }
+            // T O D O: pretty dialog letting you replace existing sessions, a la Session Manager
+            var defaultName = aWindow.content.document.title ? aWindow.content.document.title : aWindow.content.location.href;
+            if (defaultName.length > 52)
+                defaultName = defaultName.substring(0, 49) + "...";
             defaultName += " (" + self.getPrettyDate() + ")";
-            sessionName = prompt("What do you want to call this session?", defaultName);
+            sessionName = prompt("What do you want to call this (single window) session?", defaultName);
+            if (!sessionName)
+                return; // The user must have clicked cancel
         }
-        if (!sessionName) return; // The user must have clicked cancel
 
-        self.addSession(sessionName, _ss.getWindowState(window));
+        self.addSession(sessionName, _ss.getWindowState(aWindow));
     };
-
-    this.saveAllWindows = function _saveAllWindows(sessionName) {
+    this.saveAllWindowsSession = function saveAllWindowsSession(sessionName) {
         if (!sessionName) {
-            // TODO: pretty dialog letting you replace existing sessions, a la Session Manager
-            var defaultName;
-            if (document.title.length > 40)
-                defaultName = document.title.substring(0,37) + "...";
-            else
-                defaultName = document.title;
+            // T O D O: pretty dialog letting you replace existing sessions, a la Session Manager
+            var defaultName = window.content.document.title ? window.content.document.title : window.content.location.href;
+            if (defaultName.length > 52)
+                defaultName = defaultName.substring(0, 49) + "...";
             defaultName += " (" + self.getPrettyDate() + ")";
-            sessionName = prompt("What do you want to call this session?", defaultName);
+            sessionName = prompt("What do you want to call this (multi window) session?", defaultName);
+            if (!sessionName)
+                return; // The user must have clicked cancel
         }
-        if (!sessionName) return; // The user must have clicked cancel
 
         var windows = _wm.getEnumerator("navigator:browser");
         var state = [];
@@ -872,436 +1222,317 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         self.addSession(sessionName, state);
     };
 
-    this.restoreSession = function _restoreSession(name) {
-        var session = self.getSessions()[name];
+    this.restoreSession = function restoreSession(name) {
+        var session = self.getSessionData().sessions[name];
         if (session) {
             if (typeof session.state == "string") {
-                // TODO: Only open a new window if the current one isn't just gHomeButton.getHomePage() and/or blanks
-                //_ss.setWindowState(window, session, true);
-                _prefs.setCharPref("nextwindow", session.state);
-                window.open("about:blank");
+                if (self.windowIsHomeOrBlank()) {
+                    _ss.setWindowState(window, session.state, true);
+                }
+                else {
+                    _prefs.setCharPref("nextwindow", session.state);
+                    window.open("about:blank");
+                }
             }
-            else for (var win in session.state) {
+            else for each (var win in session.state) {
                 _prefs.setCharPref("nextwindow", win);
-                // TODO: test, apparently using about:blank might not work :s
-                window.open("about:blank");
+                window.open("about:blank"); // T O D O: test, apparently using about:blank might not work :s
             }
         }
     };
-
-    this.addSession = function _addSession(name, value) {
-        var sessions = self.getSessions();
-
-        sessions[name] = { state: value, date: Date.now() };
-
-        self.setSessions(sessions);
-    };
-
-    this.removeSession = function _removeSession(name) {
-        var sessions = self.getSessions();
-
-        delete sessions[name];
-
-        self.setSessions(sessions);
-    };
-
-    this.getSessionData = function _getSessionData() {
-        try {
-            //return eval(_prefs.getCharPref("sessions"));
-
-            return eval(self.fileToString(SESSION_FILE));
+    
+    this.restoreRecentWindow = function restoreRecentWindow(recentWin, keepOpen) {
+        if (!keepOpen && self.windowIsHomeOrBlank()) {
+            _ss.setWindowState(window, recentWin[1], true);
         }
-        catch (ex) {
-            self.log("Note: failed to read tabkitsessions.json, this is *normal* if you have no sessions:\n" + ex);
-            return {};
+        else {
+            _prefs.setCharPref("nextwindow", recentWin[1]);
+            window.open("about:blank"); // T O D O: test, apparently using about:blank might not work :-s
+        }
+        
+        self.removeWindow(recentWin);
+    };
+    this.openAllRecentWindows = function openAllRecentWindows() {
+        var notFirst = false;
+        for (var i = self.recentWindows.length - 1; i >= 0; --i) {
+            self.restoreRecentWindow(self.recentWindows[i], notFirst);
+            notFirst = true;
         }
     };
 
-    this.setSessions = function _setSessions(sessions) {
-        //_prefs.setCharPref("sessions", uneval(sessions));
-
-        // Make sessions file slightly more human readable...
-        var sessionStr = uneval(sessions).replace(/ ('(\\'|[^'])*':\{state:)/g, "\n\n$1").replace(/ ("(\\"|[^"])*":\{state:)/g, "\n\n$1");
-
-        self.stringToFile(sessionStr, SESSION_FILE);
-    };
-
-    //}##########################
-    //{>>> Recently Closed Wins
-    //|##########################//TODO:URGENT
-
-    // TODO: Add a keyboard shortcut for Undo Close Window? https://bugzilla.mozilla.org/show_bug.cgi?id=344736 https://bugzilla.mozilla.org/show_bug.cgi?id=357235 https://bugzilla.mozilla.org/show_bug.cgi?id=344140
-    // TODO: Allow keeping closed windows across sessions
-
-    /// Globals:
-    this.recentWindows = [];
-
-    /// Initialisation:
-    this.initRecentWindows = function _initRecentWindows(event) {
-        self.recentWindowsObserver.register();
-        window.addEventListener("unload", function() { self.recentWindowsObserver.unregister(); }, false);
-
-        window.addEventListener("beforeunload", function() { self.backupWindowState(); }, false);
-
-        document.getElementById("goPopup").addEventListener("popupshowing", self.recentWindows_updateMenu, false);
-    };
-    this.initListeners.push(this.initRecentWindows);
-
-    this.postInitRecentWindows = function _postInitRecentWindows() {
-        if (_prefs.prefHasUserValue("restorerecentwindow")) {
-            _ss.setWindowState(window, _prefs.getCharPref("restorerecentwindow"), true);
-            _prefs.clearUserPref("restorerecentwindow");
-        }
-    };
-    this.postInitListeners.push(this.postInitRecentWindows);
-
-    /// Observer:
-    // Keeps this.recentWindows up to date (and synchronised across windows)
-    this.recentWindowsObserver = {
-        register: function() {
-            _os.addObserver(this, "domwindowclosed", false);
-            _os.addObserver(this, "tabkit:add-recent-window", false);
-            _os.addObserver(this, "tabkit:remove-recent-window", false);
-            _os.addObserver(this, "browser:purge-session-history", false);
-            _os.addObserver(this, "quit-application-granted", false);
-        },
-
-        observe: function _observeSession(aSubject, aTopic, aData) {
-            switch (aTopic) {
-                case "domwindowclosed":
-                    if (aSubject.document.documentElement.getAttribute("windowtype") != "navigator:browser")
-                        return;
-
-                    // I can't just do _ss.getWindowState(aSubject); because _ss voids the window on domwindowclosed
-                    // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
-                    if (!"tkt_lastSaved" in aSubject || aSubject.tkt_lastSaved === undefined) {
-                        if (!"tkt_savedState" in aSubject) {
-                            self.dump("No state backup for closed browser window!");
-                        }
-                        return;
-                    }
-                    if (Date.now() - aSubject.tkt_lastSaved > 3000) {
-                        self.log("Whoah, this state backup is ancient: " + (Date.now() - aSubject.tkt_lastSaved) + "ms!");
-                    }
-                    delete aSubject.tkt_lastSaved; // Stop windows' observers from firing
-                    var state = aSubject.tkt_savedState;
-
-                    if (!aSubject.content.document.title) {
-                        if (aSubject.content.location.href.length > 40) {
-                            var title = aSubject.content.location.href.substring(0, 18) + "...";
-                        }
-                        else {
-                            var title = aSubject.content.location.href;
-                        }
-                    }
-                    else if (aSubject.content.document.title.length > 40) {
-                        var title = aSubject.content.document.title.substring(0,37) + "...";
-                    }
-                    else {
-                        var title = aSubject.content.document.title;
-                    }
-                    var name = "[ " + aSubject._tabs.length + " tabs - " + self.getPrettyDateTime() + " ] " + title;
-
-                    // Now let each window add this to their list of recently closed windows
-                    _os.notifyObservers(aSubject, "tabkit:add-recent-window", uneval([name, state]));
-                    break;
-
-                case "tabkit:add-recent-window":
-                    self.recentWindows.unshift(eval(aData));
-                    break;
-                case "tabkit:remove-recent-window":
-                    var recentWin = eval(aData);
-                    var index = self.recentWindows.indexOf(recentWin);
-                    if (index != -1) self.recentWindows.splice(index, 1);
-                    else self.dump("self.recentWindows didn't contain: " + aData);
-                    break;
-                case "browser:purge-session-history":
-                    self.recentWindows = [];
-                case "quit-application-granted":
-                    // Prevent domwindowclosed calls for the remaining windows
-                    this.unregister();
-            }
-        },
-
-        unregister: function() {
-            try {
-                _os.removeObserver(this, "domwindowclosed");
-                _os.removeObserver(this, "tabkit:add-recent-window");
-                _os.removeObserver(this, "tabkit:remove-recent-window");
-                _os.removeObserver(this, "browser:purge-session-history");
-                _os.removeObserver(this, "quit-application-granted");
-            }
-            catch (ex) {
-                // They've already been removed
-            }
-        }
-    };
-
-    /// Event Listeners:
-    this.backupWindowState = function _backupWindowState(event) {
-        window.tkt_savedState = _ss.getWindowState(window);
-        window.tkt_lastSaved = Date.now();
-    };
-
-    this.recentWindows_updateMenu = function _recentWindows_updateMenu(event) {
-        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("disabled", self.recentWindows.length == 0);
-    };
-
-    this.updateRecentWindowsMenu = function _updateRecentWindowsMenu(event, popup) {
-        if (event.target != event.currentTarget) return;
-
-        var oldWindows = popup.getElementsByAttribute("isRecentWindow", "true");
-        for (var i = oldWindows.length - 1; i >= 0; i--) {
-            popup.removeChild(oldWindows[i]);
-        }
-
-        var endSeparator = document.getElementById("menu_tabkit-recentwindows-endList");
-
-        var index = 1;
-        for each (var recentWin in self.recentWindows) {
-            var name = recentWin[0];
-            var menuitem = document.createElementNS(XUL_NS, "menuitem");
-            if (index <= 10) {
-                menuitem.setAttribute("label", (index % 10) + ") " + name);
-                menuitem.setAttribute("accesskey", (index % 10));
-            }
-            else {
-                menuitem.setAttribute("label", name);
-            }
-            //menuitem.setAttribute("statustext", urls);
-            menuitem.setAttribute("isRecentWindow", "true");
-            menuitem.setAttribute("oncommand", "tabkit.restoreRecentWindow(" + uneval(recentWin) + ");");
-
-            popup.insertBefore(menuitem, endSeparator);
-
-            index++;
-        }
-    };
-
-    /// Methods:
-    this.restoreRecentWindow = function _restoreRecentWindow(recentWin, keepOpen) {
-        _prefs.setCharPref("restorerecentwindow", recentWin[1]);
-        window.open("about:blank"); // TODO: test, apparently using about:blank might not work :-s
-
-        if (!keepOpen)
-            self.closeWindowIfHomeOrBlank(); // TODO: prevent this from being added to recently closed windows list?
-
-        _os.notifyObservers(null, "tabkit:remove-recent-window", uneval(recentWin));
-    };
-
-    this.openAllRecentWindows = function _openAllRecentWindows() {
-        for (var i = self.recentWindows.length - 1; i >= 0; i++) {
-            self.restoreRecentWindow(self.recentWindows[i], true);
-        }
-
-        self.closeWindowIfHomeOrBlank();
-    };
+    */
 
     //}##########################
     //{>>> Sorting & Grouping
     //|##########################
 
-    /// Constants
-    //var GROUP_START_URL = "data:text/html,<style>h1{font-size:256px;margin-bottom:32px}h1,p{text-align:center}p{font-size:1.2em}</style><h1>{&nbsp;&nbsp;&nbsp;...</h1><p><b>Tab Kit:</b> This is a <i>temporary</i> tab to indicate the <b>start</b> of a tab group.<br>It will go away when you stop dragging tabs.<p>"; // TODO: use these!
+    // TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
+    // TODO=P4: Check outoforder is set as appropriate (tabs that have been moved or added contrary to the prevailing sort and should be ignored when placing new tabs by sort order)
+    // TODO=P5: Back to the tab the current tab is opened from, by the "Back" button; Forward to tabs opened from the current tab, by the "Forward" button
 
-    //var GROUP_END_URL = "data:text/html,<style>h1{font-size:256px;margin-bottom:32px}h1,p{text-align:center}p{font-size:1.2em}</style><h1>...&nbsp;&nbsp;&nbsp;}</h1><p><b>Tab Kit:</b> This is a <i>temporary</i> tab to indicate the <b>end</b> of a tab group.<br>It will go away when you stop dragging tabs.<p>";
+    //!!/ Constants
+    /*!!var GROUP_START_URL = "data:text/html,<style>h1{font-size:256px;margin-bottom:32px}h1,p{text-align:center}p{font-size:1.2em}</style><h1>{&nbsp;&nbsp;&nbsp;...</h1><p><b>Tab Kit:</b> This is a <i>temporary</i> tab to indicate the <b>start</b> of a tab group.<br>It will go away when you stop dragging tabs.<p>";
+    var GROUP_END_URL = "data:text/html,<style>h1{font-size:256px;margin-bottom:32px}h1,p{text-align:center}p{font-size:1.2em}</style><h1>...&nbsp;&nbsp;&nbsp;}</h1><p><b>Tab Kit:</b> This is a <i>temporary</i> tab to indicate the <b>end</b> of a tab group.<br>It will go away when you stop dragging tabs.<p>";*/
 
     /// Enums:
     this.Sorts = {
-        created:    "createdKey",    // == Firefox: new tabs to far right
+        creation:   "tabid",          // == Firefox: new tabs to far right
         lastLoaded: "lastLoadedKey",
-        lastViewed: "lastViewedKey", // == Visual Studio: last used tabs to far left
+        lastViewed: "lastViewedKey",  // == Visual Studio: last used tabs to far left (except they go to the right for consistency :/)
+        origin:     "possibleparent", // == Tabs Open Relative [n.b. possibleparent is _not_ a key, it is special cased]
         title:      "label",
         uri:        "uriKey"
     };
 
     this.Groupings = {
-        origin:     "originGroup",
-        uri:        "uriGroup"
+        none:       "",
+        opener:     "openerGroup",    // Can be internally sorted by origin
+        domain:     "uriGroup"        // Can be internally sorted by uri
     };
     
     this.RelativePositions = {
-        LEFT: 1,
-        RIGHT: 2,
-        RIGHT_OF_RECENT: 3,
-        RIGHT_OF_CHILDREN: 4
+        left:               1,
+        right:              2,
+        rightOfRecent:      3,        // Right of consecutive tabs sharing a possibleparent marked recent; all recent tabs are reset on TabSelect
+        rightOfConsecutive: 4         // Right of consecutive tabs sharing a possibleparent
     };
 
     // Sort keys in here will have larger items sorted to the top/left of the tabbar
-    this.ReverseKeys = {};
-    //this.ReverseKeys["lastLoadedKey"] = true;
-    //this.ReverseKeys["lastViewedKey"] = true;
+    this.ReverseSorts = {};
+    //this.ReverseSorts["lastLoaded"] = true; // TODO=P5: pref
+    //this.ReverseSorts["lastViewed"] = true; // TODO=P5: pref
 
     // Sort keys listed here should be converted to numbers before comparison
-    this.NumericKeys = {};
-    this.NumericKeys["createdKey"] = true;
-    this.NumericKeys["lastLoadedKey"] = true;
-    this.NumericKeys["lastViewedKey"] = true;
+    this.NumericSorts = {};
+    this.NumericSorts["lastLoaded"] = true;
+    this.NumericSorts["lastViewed"] = true;
+    
+    //~ // Sort keys listed here are dates, so groups should probably be positioned by most recent instead of median
+    //~ this.DateSorts = {};
+    //~ this.DateSorts["creation"] = true;
+    //~ this.DateSorts["lastLoaded"] = true;
+    //~ this.DateSorts["lastViewed"] = true;
 
     /// Globals:
-    this.__defineGetter__("lastSort", function __get_lastSort() {
-        return _ss.getWindowValue(window, "lastSort"); // "" if unset
+    this.__defineGetter__("activeSort", function __get_activeSort() {
+        var sortName = self.getWindowValue("activeSort");
+        if (!sortName) {
+            sortName = _prefs.getCharPref("lastActiveSort");
+            if (!sortName in self.Sorts)
+                sortName = "creation";
+            self.setWindowValue("activeSort", sortName);
+        }
+        return sortName;
     });
-    this.__defineSetter__("lastSort", function __set_lastSort(keyname) {
-        _ss.setWindowValue(window, "lastSort", keyname);
-        return keyname;
+    this.__defineSetter__("activeSort", function __set_activeSort(sortName) {
+        if (sortName in self.Sorts) {
+            self.setWindowValue("activeSort", sortName);
+            _prefs.setCharPref("lastActiveSort", sortName);
+        }
+        else self.dump("activeSort - invalid sort name: " + sortName);
+        return sortName;
     });
-
-    this.groupScheme = {};
-
-    for (var g in this.Groupings) {
-        this.groupScheme.__defineGetter__(g, function _getGroupEnabled() {
-            var enabled = _ss.getWindowValue(window, g + "Grouped");
-            return enabled !== "" ? enabled : self.groupScheme[g] = _prefs.getBoolPref("groupBy" + g[0].toUpperCase() + g.substring(1));
-        });
-        this.groupScheme.__defineSetter__(g, function _setGroupEnabled(enabled) {
-            _ss.setWindowValue(window, g + "Grouped", enabled);
-            _prefs.setBoolPref("groupBy" + g[0].toUpperCase() + g.substring(1), enabled);
-            return enabled;
-        });
-    }
+    
+    this.__defineGetter__("activeGrouping", function __get_activeGrouping() {
+        var groupingName = self.getWindowValue("activeGrouping");
+        if (!groupingName) {
+            groupingName = _prefs.getCharPref("lastActiveGrouping");
+            if (!groupingName in self.Groupings)
+                groupingName = "none";
+            self.setWindowValue("activeGrouping", groupingName);
+        }
+        return groupingName;
+    });
+    this.__defineSetter__("activeGrouping", function __set_activeGrouping(groupingName) {
+        if (groupingName in self.Groupings) {
+            self.setWindowValue("activeGrouping", groupingName);
+            _prefs.setCharPref("lastActiveGrouping", groupingName);
+        }
+        else self.dump("activeGrouping - invalid grouping name: " + groupingName);
+        return groupingName;
+    });
     
     this.__defineGetter__("openRelativePosition", function __get_openRelativePosition() {
-        var position = _ss.getWindowValue(window, "openRelativePosition");
+        var positionName = /*!!self.getWindowValue("openRelativePosition");
+        if (!positionName) {
+            positionName = */_prefs.getCharPref("openRelativePosition");
+            if (!positionName in self.RelativePositions)
+                positionName = "rightOfRecent";
+            /*!!self.setWindowValue("openRelativePosition", positionName);
+        }*/
+        return positionName;
+        /*!!var position = self.getWindowValue("openRelativePosition");
         if (position !== "")
             return Number(position);
         position = _prefs.getIntPref("openRelativePosition");
-        _ss.setWindowValue(window, "openRelativePosition", position);
+        self.setWindowValue("openRelativePosition", position);
+        return position;*/
+    });
+    this.__defineSetter__("openRelativePosition", function __set_openRelativePosition(positionName) {
+        if (positionName in self.RelativePositions) {
+            //!!self.setWindowValue("openRelativePosition", positionName);
+            _prefs.setCharPref("openRelativePosition", positionName);
+        }
+        else self.dump("openRelativePosition - invalid position name: " + positionName);
+        return positionName;
+        /*!!self.setWindowValue("openRelativePosition", position);
+        _prefs.setIntPref("openRelativePosition", position);
+        return position;*/
+    });
+    
+    this.__defineGetter__("newTabPosition", function __get_newTabPosition() {
+        var position = self.getWindowValue("newTabPosition");
+        if (position !== "")
+            return Number(position);
+        position = _prefs.getIntPref("newTabPosition");
+        if (position >= 0 && position <= 2) {
+            self.setWindowValue("newTabPosition", position);
+            return position;
+        }
+        else {
+            self.log("newTabPosition - invalid pref value: " + position);
+            return 0;
+        }
+    });
+    this.__defineSetter__("newTabPosition", function __set_newTabPosition(position) {
+        if (position >= 0 && position <= 2) {
+            self.setWindowValue("newTabPosition", position);
+            _prefs.setIntPref("newTabPosition", position);
+        }
+        else self.dump("newTabPosition - invalid position: " + position);
         return position;
     });
-    this.__defineSetter__("openRelativePosition", function __set_openRelativePosition(position) {
-        _ss.setWindowValue(window, "openRelativePosition", position);
-        _prefs.setIntPref("openRelativePosition", position);
-        return position;
+    
+    this.__defineGetter__("autoGroupNewTabs", function __get_autoGroupNewTabs() {
+        var bool = self.getWindowValue("autoGroupNewTabs");
+        if (bool != "") {
+            return bool == "true" ? true : false;
+        }
+        else {
+            bool = _prefs.getBoolPref("autoGroupNewTabs");
+            self.setWindowValue("autoGroupNewTabs", bool);
+            return bool;
+        }
+    });
+    this.__defineSetter__("autoGroupNewTabs", function __set_autoGroupNewTabs(bool) {
+        self.setWindowValue("autoGroupNewTabs", bool);
+        _prefs.setBoolPref("autoGroupNewTabs", bool);
+        return bool;
     });
 
+    var _makingGroupStart;
+    
+    
     /// Initialisation:
-    this.initSortingAndGrouping = function _initSortingAndGrouping(event) {
-        var colorTabNotLabel = _prefs.getIntPref("colorTabNotLabel");
-        if (colorTabNotLabel != 0 && colorTabNotLabel != 1) {
-            // Note: we deliberately recalculate this, in case the user switches theme
-            var currentTheme = gPrefService.getCharPref("general.skins.selectedSkin");
-            if (currentTheme == "classic/1.0") {
-                var minAppVersion = Cc["@mozilla.org/extensions/manager;1"].
-                                    getService(Ci.nsIExtensionManager).
-                                    getItemForID("{972ce4c6-7e08-4474-a285-3208198ce6fd}").
-                                    minAppVersion;
-                var compatibleTheme = minAppVersion == "2.0" || minAppVersion == "3.0a1" // See https://addons.mozilla.org/faq.php for valid version strings
+    this.initSortingAndGrouping = function initSortingAndGrouping(event) {
+        // Persist Attributes
+        if (_ss) {
+                _ss.persistTabAttribute("tabid");
+                _ss.persistTabAttribute("possibleparent");
+                // n.b. we deliberately don't persist recentlyadded
+                _ss.persistTabAttribute("outoforder");
+                _ss.persistTabAttribute("hidden");
+            for each (var attr in self.Sorts) {
+                if (self.endsWith(attr, "Key"))
+                    _ss.persistTabAttribute(attr);
             }
-            else {
-                // TODO: test and add other themes, see list at http://en.design-noir.de/mozilla/aging-tabs
-                compatibleTheme = false; //currentTheme == "..." || currentTheme == "..."
+            _ss.persistTabAttribute("groupid");
+            _ss.persistTabAttribute("singletonid");
+            _ss.persistTabAttribute("groupcollapsed");
+            for each (var attr in self.Groupings) {
+                if (self.endsWith(attr, "Group"))
+                    _ss.persistTabAttribute(attr);
             }
-            colorTabNotLabel = compatibleTheme ? 1 : 0;
         }
-        if (colorTabNotLabel)
-            _tabContainer.setAttribute("colortabnotlabel", "true");
+        
+        self.updateColorTabNotLabel();
         
         // Add event listeners:
         _tabContainer.addEventListener("TabOpen", self.sortgroup_onTabAdded, false);
-        //self.addDelayedEventListener(_tabContainer, "TabOpen", self.sortgroup_onAfterTabAdded);
-        _tabContainer.addEventListener("TabSelect", self.sortgroup_onTabSelect, false);
+        //!!self.addDelayedEventListener(_tabContainer, "TabOpen", self.sortgroup_onAfterTabAdded);
+        _tabContainer.addEventListener("TabSelect", self.sortgroup_onTabSelect, true);
         gBrowser.addEventListener("DOMContentLoaded", self.sortgroup_onTabLoading, true);
         gBrowser.addEventListener("load", self.sortgroup_onTabLoaded, true);
         // This is called just before the tab starts loading its content, use SSTabRestored for once that's finished
         document.addEventListener("SSTabRestoring", self.sortgroup_onSSTabRestoring, false);
         _tabContainer.addEventListener("TabMove", self.sortgroup_onTabMoved, false);
         _tabContainer.addEventListener("TabClose", self.sortgroup_onTabRemoved, false);
-
+        
         gBrowser.mStrip.addEventListener("dblclick", self.sortgroup_onDblclickTab, true);
-
-        // Persist groups
-        _ss.persistTabAttribute("groupid");
-        // Persist sort attrs
-        for each (var attr in self.Sorts) {
-            if (self.endsWith(attr, "Key"))
-                _ss.persistTabAttribute(attr);
-        }
-        // Persist group attrs
-        for each (var attr in self.Groupings) {
-            if (self.endsWith(attr, "Group"))
-                _ss.persistTabAttribute(attr);
-        }
+        gBrowser.mStrip.addEventListener("mousedown", self.sortgroup_onTabMousedown, true);
+        
+        self.addPrefListener("colorTabNotLabel", self.updateColorTabNotLabel);
+        self.addPrefListener("indentedTree", self.toggleIndentedTree);
+        self.addPrefListener("maxTreeLevel", self.updateIndents);
+        self.addPrefListener("indentAmount", self.updateIndents);
+        
+        // Set attributes for first tab (as it never fires a TabOpen event, and may never load either if it remains blank)
+        self.sortgroup_onTabAdded({target: _tabs[0]});
+        _tabs[0].setAttribute(self.Sorts.lastLoaded, Date.now());
         
         // Move Sorting and Grouping menu to the tab context menu (from the Tools menu)
         var tabContextMenu = gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0];
-	    tabContextMenu.insertBefore(document.getElementById("menu_tabkit-sortgroup"), tabContextMenu.childNodes[1]);
+        tabContextMenu.insertBefore(document.getElementById("menu_tabkit-sortgroup"), tabContextMenu.childNodes[1]);
     };
     this.initListeners.push(this.initSortingAndGrouping);
 
-    this.postInitSortingAndGrouping = function _postInitSortingAndGrouping(event) {
-        self.sortgroup_onTabAdded({target: _tabs[0]});
-    };
-    this.postInitListeners.push(this.postInitSortingAndGrouping);
-
-    /// More globals:
+    /// More globals (for group by opener):
     this.nextType = null;
+    this.isBookmarkGroup = false;
     this.nextParent = null;
-    this.ignoreOvers = 0;
+    this.lastParent = null;
+    this.dontMoveNextTab = false;
+    this.ignoreOvers = 0; // TODO=P5: Auto unset this after a timeout?
     this.addedTabs = [];
     
-    /// Method Hooks:
+    /// Method Hooks (for group by opener):
     this.relatedTabSources = [
-        'gotoHistoryIndex',
-        'BrowserForward',
-        'BrowserBack',
-        'BrowserSearch.loadSearch',
-        // And nsBrowserAccess.prototype.openURI if !isExternal
-        'nsContextMenu.prototype.openLinkInTab',
+        'nsContextMenu.prototype.openLinkInTab',//{
         'nsContextMenu.prototype.openFrameInTab',
         'nsContextMenu.prototype.viewImage',
         'nsContextMenu.prototype.viewBGImage',
         'nsContextMenu.prototype.addDictionaries',
-        'handleLinkClick'
+        // And nsBrowserAccess.prototype.openURI if !isExternal
         // And <menuitem id="menu_HelpPopup_reportPhishingtoolmenu">
-    ];
+        // See also sourceTypes
+    ];//}
     
     this.newTabSources = [
-        'gBrowser.removeTab',
-        'BrowserOpenTab', // Covers many cases
-        'delayedOpenTab',
-        'BrowserLoadURL',
-        'middleMousePaste',
-        'BrowserSearch.getSearchBar().doSearch' // TODO: won't work if searchbar is added after opening window (tough!)
+        // See sourceTypes
     ];
     
     this.unrelatedTabSources = [
-        'gBrowser.onDrop',
-        // TODO: And extensions.js -> openURL
-        'newTabButtonObserver.onDrop',
-        'BrowserSearch.loadAddEngines',
-        'openReleaseNotes'
-    ];
+        'BrowserSearch.loadAddEngines',//{
+        // Should add extensions.js->openURL too, but unrelated is the default after all...
+        // See also sourceTypes
+    ];//}
     
-    this.preInitSortingAndGroupingMethodHooks = function _preInitSortingAndGroupingMethodHooks(event) {
+    this.preInitSortingAndGroupingMethodHooks = function preInitSortingAndGroupingMethodHooks(event) {
         // Process all simple related tab sources:
-        for (var s in self.relatedTabSources) {
-            self.wrapMethodCode(s, 'tabkit.addingTab("related");', 'tabkit.addingTabOver();');
+        for each (var s in self.relatedTabSources) {
+            self.wrapMethodCode(s, 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // And a sometimes related, sometimes unrelated tab source:
-        self.addMethodHook([
+        self.wrapMethodCode(
             'nsBrowserAccess.prototype.openURI',
-            null,
-            /var newTab =/,
-            'tabkit.addingTab(isExternal ? "unrelated" : "related"); $&',
-            /\}$/,
-            'tabkit.addingTabOver(); }'
-        ]);
+            'tabkit.addingTab(aContext == nsCI.nsIBrowserDOMWindow.OPEN_EXTERNAL ? "unrelated" : "related"); try {',
+            '} finally { tabkit.addingTabOver(); }'
+        );
         
         // And an attribute based related tab source:
         var reportPhishing = document.getElementById("menu_HelpPopup_reportPhishingtoolmenu");
         if (reportPhishing)
-            reportPhishing.setAttribute("oncommand", 'tabkit.addingTab("related");' + reportPhishing.getAttribute("oncommand") + 'tabkit.addingTabOver();');
+            reportPhishing.setAttribute("oncommand", 'tabkit.addingTab("related"); try {' + reportPhishing.getAttribute("oncommand") + '} finally { tabkit.addingTabOver(); }');
         
         // Process all simple new tab sources:
-        for (var s in self.newTabSources) {
-            self.wrapMethodCode(s, 'tabkit.addingTab("newtab");', 'tabkit.addingTabOver();');
+        for each (var s in self.newTabSources) {
+            self.wrapMethodCode(s, 'tabkit.addingTab("newtab"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // Process all simple unrelated tab sources:
-        for (var s in self.unrelatedTabSources) {
-            self.wrapMethodCode(s, 'tabkit.addingTab("unrelated");', 'tabkit.addingTabOver();');
+        for each (var s in self.unrelatedTabSources) {
+            self.wrapMethodCode(s, 'tabkit.addingTab("unrelated"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // And an attribute based history tab source:
@@ -1309,150 +1540,618 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         if (!goMenu)
             goMenu = document.getElementById("go-menu");
         if (goMenu)
-            goMenu.setAttribute("oncommand", 'tabkit.addingTab("history");' + reportPhishing.getAttribute("oncommand") + 'tabkit.addingTabOver();');
+            goMenu.setAttribute("oncommand", 'tabkit.addingTab("history"); try {' + goMenu.getAttribute("oncommand") + '} finally { tabkit.addingTabOver(); }');
         
         // And another
-        // TODO: document.getElementById("sidebar").contentDocument.getElementById("miOpenInNewTab") [set onload and onopensidebar]
+        // TODO=P5: document.getElementById("sidebar").contentDocument.getElementById("miOpenInNewTab") [set onload and onopensidebar]
         
         // And deal with tab groups
-        this.wrapMethodCode(
+        self.wrapMethodCode(
             'gBrowser.loadTabs',
-            'tabkit.addingTabs(aReplace ? gBrowser.selectedTab : null);',
-            'tabkit.addingTabsOver();'
+            'tabkit.addingTabs(aReplace ? gBrowser.selectedTab : null); try {',
+            '} finally { tabkit.addingTabsOver(); }'
         );
     };
     this.preInitListeners.push(this.preInitSortingAndGroupingMethodHooks);
     
-    this.addingTab = function _addingTab(type, parent) {
-        if (self.nextType) {
-            self.ignoreOvers++; // TODO: unset after timeout?
-            return;
+    this.globalPreInitSortingAndGroupingMethodHooks = function globalPreInitSortingAndGroupingMethodHooks(event) {
+        try {
+            self.wrapMethodCode(
+                'BookmarksCommand.openOneBookmark',
+                'var topWin; if (aTargetBrowser.indexOf("tab") != -1) topWin = getTopWin(); if (topWin && topWin.tabkit) topWin.tabkit.addingTab("bookmark"); try {',
+                '} finally { if (topWin && topWin.tabkit) topWin.tabkit.addingTabOver(); }'
+            );
+            
+            self.addMethodHook([
+                'BookmarksCommand.openGroupBookmark',
+                null,
+                'if (aTargetBrowser == "current" || aTargetBrowser == "tab") {',
+                'if (aTargetBrowser == "current" || aTargetBrowser == "tab") { \
+                    var URIs = []; \
+                    while (containerChildren.hasMoreElements()) { \
+                       var res = containerChildren.getNext().QueryInterface(kRDFRSCIID); \
+                        var target = BMDS.GetTarget(res, urlArc, true); \
+                        if (target) \
+                            URIs.push(target.QueryInterface(kRDFLITIID).Value); \
+                    } \
+                    var browser = w.document.getElementById("content"); \
+                    var loadInBackground = PREF.getBoolPref("browser.tabs.loadBookmarksInBackground"); \
+                    var replace = (aTargetBrowser == "current"); \
+                    try { \
+                        w.tabkit.isBookmarkGroup = true; \
+                    } \
+                    catch (ex) {} \
+                    browser.loadTabs(URIs, loadInBackground, replace); \
+                } \
+                else if (false) {'
+            ]);
         }
-        
-        self.nextType = type;
-        self.nextParent = parent != undefined ? parent : gBrowser.selectedTab;
+        catch (ex) {
+            self.dump("Is places on already? - " + ex);
+        }
     };
+    this.globalPreInitListeners.push(this.globalPreInitSortingAndGroupingMethodHooks);
     
-    this.addingTabOver = function _addingTabOver() {
-        if (self.ignoreOvers > 0) {
-            self.ignoreOvers--;
-            return;
-        }
-        
-        if (self.addedTabs.length == 1) {
-            var type = self.nextType;
-            var parent = self.nextParent;
-            var tab = self.addedTabs.pop();
-            
-            var tabNeedsPlacing = true;
-            
-            if (type == "newtab" && _prefs.getBoolPref("newTabsAreRelated"))
-                type = "related";
-            
-            if (type == "history" && _prefs.getBoolPref("historyTabsAreRelated"))
-                type = "related";
-            
-            // Group tab, if applicable
-            if (type == "related") {
-                self.addToGroupOf(tab, parent, "origin");
-                
-                // Insert it into the subtree (will move it if applicable)
-                switch (self.openRelativePosition) {
-                case self.RelativePositions.LEFT:
-                    self.subTreeInsertBefore(tab, parent);
-                    break;
-                case self.RelativePositions.RIGHT:
-                    self.subTreeInsertAfter(tab, parent);
-                    break;
-                case self.RelativePositions.RIGHT_OF_RECENT:
-                    self.subTreeInsertAfterRecent(tab, parent);
-                    break;
-                case self.RelativePositions.RIGHT_OF_CHILDREN:
-                    self.subTreeInsertAfterChildren(tab, parent);
-                }
-                
-                if (self.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder"))
-                    tabNeedsPlacing = false;
-            }
-            
-            // TODO: Allow tab to be sorted by "new tabs to right of current"
-            
-            // Sort tab, if not already positioned
-            if (tabNeedsPlacing) {
-                //insertTabBy...(tab);//TODO:URGENT
-            }
-        }
-        else if (self.addedTabs.length > 1) { // Shouldn't happen
-            self.addingTabsOver();
-            return;
-        }
-        
-        self.nextType = null;
-        self.nextParent = null;
-    };
-    
-    this.addingTabs = function _addingTabs(firstTab) {
-        if (self.nextType) { // Unlikely
-            self.ignoreOvers++; // TODO: unset after timeout?
-            return;
-        }
-        
-        if (firstTab) {
-            self.addedTabs.push(firstTab);
-            self.nextType = "loadOneOrMoreURIs";
+    this.postInitSortingAndGroupingMethodHooks = function postInitSortingAndGroupingMethodHooks(event) {
+        if ("duplicateTab" in gBrowser) {
+            /*!!self.wrapMethodCode(
+                'gBrowser.duplicateTab',
+                'if (aTab.parentNode == this.mTabContainer) \
+                    tabkit.addingTab("related", aTab, "true"); \
+                else \
+                    tabkit.addingTab("unrelated", null, "true"); \
+                try {',
+                '} \
+                finally { \
+                    document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id).setAttribute("tabid", self.generateId()); \
+                    tabkit.addingTabOver(); \
+                }' // Note that we overwrite the restored tabid, as we mustn't allow duplicates
+            );*/
+            self.addMethodHook([
+                "gBrowser.duplicateTab",
+                null,
+                'return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);',
+                'var newTab = document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id); \
+                newTab.setAttribute("tabid", self.generateId()); \
+                tabkit.removeGID(newTab); \
+                return newTab;' // We overwrite the restored tabid to prevent duplicates
+            ]);
         }
         else {
-            self.nextType = "loadTabs";
+            self.debug("duplicateTab not found");
         }
         
+        if ("openselectedlinks" in window && window.openselectedlinks && window.openselectedlinks.goCol) {
+            self.wrapMethodCode('window.openselectedlinks.goCol', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
+        }
+    };
+    this.postInitListeners.push(this.postInitSortingAndGroupingMethodHooks);
+    
+    /// Methods dealing with new tabs:
+    this.addingTab = function addingTab(type, parent, dontMoveNextTab) {
+        try {
+            if (self.nextType) {
+                self.ignoreOvers++;
+                return;
+            }
+            
+            self.nextType = type;
+            self.isBookmarkGroup = false;
+            self.nextParent = parent != undefined ? parent : gBrowser.selectedTab;
+            self.dontMoveNextTab = dontMoveNextTab ? true : false;
+        }
+        catch (ex) {
+            self.dump(ex);
+        }
     };
     
-    this.addingTabsOver = function _addingTabsOver() {
-        if (self.ignoreOvers > 0) {
-            self.ignoreOvers--;
-            return;
+    this.addingTabOver = function addingTabOver() {
+        try {
+            if (self.ignoreOvers > 0) {
+                // self.ignoreOvers will be decremented in the finally clause at the end of this function
+                return;
+            }
+            
+            if (self.addedTabs.length == 1) {
+                var type = self.nextType;
+                var parent = (type == "unrelated" || type == "sessionrestore") ? null : self.nextParent;
+                var tab = self.addedTabs.pop();
+                
+                // Keep recentlyadded tags up to date
+                if (!parent || parent != self.lastParent)
+                    for (var i = 0; i < _tabs.length; i++)
+                        _tabs[i].removeAttribute("recentlyadded");
+                self.lastParent = self.nextParent;
+                
+                // We do *nothing else* for sessionrestore tabs, as they will (hopefully) be dealt with later after a sortgroup_onSSTabRestoring
+                if (type == "sessionrestore")
+                    return;
+                
+                // Get pid, set possibleparent
+                var pid = parent ? parent.getAttribute("tabid") : null;
+                if (pid) {
+                    tab.setAttribute("possibleparent", pid);
+                    self.updateIndents();
+                }
+                else if (type != "unrelated")
+                    self.dump("addingTabOver: no parent for " + type + " tab");
+                
+                // Adjust openerGroup sensitivity
+                if (type == "bookmark" && _prefs.getBoolPref("bookmarkTabsAreRelated"))
+                    type = "related";
+                else if (type == "history" && _prefs.getBoolPref("historyTabsAreRelated"))
+                    type = "related";
+                else if (type == "newtab" && _prefs.getBoolPref("newTabsAreRelated"))
+                    type = "related";
+                else if (type == "sessionrestore")
+                    type = "unrelated";
+                
+                // Set openerGroup (reused later if autoGroupNewTabs and activeGrouping == "opener")
+                if (type == "related" && pid) {
+                    var ogAttr = self.Groupings.opener;
+                    var openerGroup = parent.getAttribute(ogAttr);
+                    if (openerGroup) {
+                        tab.setAttribute(ogAttr, openerGroup);
+                    }
+                    else {
+                        openerGroup = ":oG-" + pid;
+                        parent.setAttribute(ogAttr, openerGroup);
+                        tab.setAttribute(ogAttr, openerGroup);
+                    }
+                }
+                
+                var tabNeedsPlacing = !self.dontMoveNextTab;
+                
+                if (_prefs.getBoolPref("autoGroupNewTabs")) {
+                    if (!tabNeedsPlacing
+                        && tab.previousSibling
+                        && tab.nextSibling
+                        && tab.previousSibling.hasAttribute("groupid")
+                        && tab.previousSibling.getAttribute("groupid") == tab.nextSibling.getAttribute("groupid"))
+                    {
+                        if (type != "unrelated") {
+                            var gid = tab.previousSibling.getAttribute("groupid");
+                            self.setGID(tab, gid);
+                        }
+                        else {
+                            window.setTimeout(self.keepGroupsTogether, 0);
+                        }
+                    }
+                    else if (self.activeGrouping == "opener") {
+                        if (type == "related" && pid) {
+                            var pgid = parent.getAttribute("groupid");
+                            // If tabNeedsPlacing or is already in place
+                            if (tabNeedsPlacing
+                                || (pgid ? ((tab.previousSibling && tab.previousSibling.getAttribute("groupid") == pgid)
+                                            || (tab.nextSibling && tab.nextSibling.getAttribute("groupid") == pgid))
+                                         : ((tab.previousSibling && tab.previousSibling == parent)
+                                            || (tab.nextSibling && tab.nextSibling == parent))))
+                            {
+                                // Group tab
+                                var grouped = false;
+                                if (pgid) {
+                                    // TODO=P4: allow forcing all groups to act as openergroups?
+                                    //if (pgid.indexOf(openerGroup) != -1 || pgid.indexOf(":tmpOG-") != -1) {
+                                    if (pgid.indexOf(":oG-") != -1 || pgid.indexOf(":tmpOG-") != -1) { // So :oG-bookmarkGroup- works as intended
+                                        self.setGID(tab, pgid);
+                                        grouped = true;
+                                    }
+                                }
+                                else if (!pgid) {
+                                    if (self.getGroupById(openerGroup).length != 0 || self.getUngroupedTabsByAttr(ogAttr, openerGroup).length != 2) {
+                                        openerGroup = ":tmpOG-" + pid;
+                                    }
+                                    self.setGID(parent, openerGroup);
+                                    self.setGID(tab, openerGroup);
+                                    grouped = true;
+                                }
+                                
+                                // If we have permission to move the tab
+                                if (tabNeedsPlacing && grouped) {
+                                    // Position tab
+                                    var gid = parent.getAttribute("groupid");
+                                    
+                                    var newPos = self.newTabPosition;
+                                    var autoSortOpenerGroups = _prefs.getBoolPref("autoSortOpenerGroups");
+                                    if ((autoSortOpenerGroups && (self.countGroups(gid) == 1 || self.activeSort == "origin")) // We can't really autosort merged groups
+                                        || newPos == 1
+                                        || (newPos == 2 && self.activeSort == "origin"))
+                                    { // Next to current
+                                        switch (self.openRelativePosition) {
+                                        case "left":
+                                            self.moveBefore(tab, parent);
+                                            break;
+                                        case "right":
+                                            self.moveAfter(tab, parent);
+                                            break;
+                                        default: //case "rightOfRecent": case "rightOfConsecutive":
+                                            var target = parent;
+                                            while (target.nextSibling && target.nextSibling.getAttribute("groupid") == gid && target.nextSibling.hasAttribute("recentlyadded"))
+                                                target = target.nextSibling;
+                                            self.moveAfter(tab, target);
+                                            tab.setAttribute("recentlyadded", "true");
+                                        }
+                                        tab.setAttribute("outoforder", "true");
+                                    }
+                                    else if (newPos == 0) { // At far right
+                                        var target = parent;
+                                        while (target.nextSibling && target.nextSibling.getAttribute("groupid") == gid)
+                                            target = target.nextSibling;
+                                        self.moveAfter(tab, target);
+                                        tab.setAttribute("outoforder", "true");
+                                    }
+                                    else { // By last sort (newPos == 2)
+                                        self.insertTab(tab, gid);
+                                    }
+                                    
+                                    tabNeedsPlacing = false;
+                                }
+                            }
+                        }
+                    }
+                    else if (self.activeGrouping == "domain") {
+                        var domain = tab.getAttribute(self.Groupings.domain);
+                        if (domain) {
+                            var group = self.getGroupById(domain);
+                            // If tabNeedsPlacing or is already in place
+                            if (tabNeedsPlacing
+                                || ((group.length > 0) ? ((tab.previousSibling && tab.previousSibling.getAttribute("groupid").indexOf(domain) != -1)
+                                                          || (tab.nextSibling && tab.nextSibling.getAttribute("groupid").indexOf(domain) != -1))
+                                                       : ((tab.previousSibling && tab.previousSibling.getAttribute(self.Groupings.domain) == domain)
+                                                          || (tab.nextSibling && tab.nextSibling.getAttribute(self.Groupings.domain) == domain))))
+                            {
+                                // Group tab
+                                if (group.length == 0) {
+                                    group = self.getUngroupedTabsByAttr(self.Groupings.domain, domain);
+                                    if (group.length == 2)
+                                        for (var i = 0; i < group.length; i++)
+                                            self.setGID(group[i], domain);
+                                    else
+                                        group = [];
+                                }
+                                else {
+                                    domain = group[0].getAttribute("groupid");
+                                    self.setGID(tab, domain);
+                                }
+                                // If we have permission to move the tab
+                                if (tabNeedsPlacing && group.length > 0) {
+                                    // Position tab
+                                    var autoSortDomainGroups = _prefs.getBoolPref("autoSortDomainGroups");
+                                    if (autoSortDomainGroups && self.countGroups(domain) == 1) { // We can't really autosort merged groups
+                                        self.insertTab(tab, domain, "uri");
+                                    }
+                                    else {
+                                        var newPos = self.newTabPosition;
+                                        if (newPos == 2)
+                                            newPos = (self.activeSort == "origin") ? 1 : (autoSortDomainGroups ? 0 : newPos);
+                                        if (newPos == 1 && (!pid || parent.getAttribute("groupid").indexOf(domain) == -1))
+                                            newPos = 0;
+                                        if (newPos == 1) { // Next to current
+                                            switch (self.openRelativePosition) {
+                                            case "left":
+                                                self.moveBefore(tab, parent);
+                                                break;
+                                            case "right":
+                                                self.moveAfter(tab, parent);
+                                                break;
+                                            default: //case "rightOfRecent": case "rightOfConsecutive":
+                                                var target = parent;
+                                                while (target.nextSibling && target.nextSibling.getAttribute("groupid") == domain && target.nextSibling.hasAttribute("recentlyadded"))
+                                                    target = target.nextSibling;
+                                                self.moveAfter(tab, target);
+                                                tab.setAttribute("recentlyadded", "true");
+                                            }
+                                            tab.setAttribute("outoforder", "true");
+                                        }
+                                        else if (newPos == 0) { // At far right
+                                            var target = parent;
+                                            while (target.nextSibling && target.nextSibling.getAttribute("groupid") == gid)
+                                                target = target.nextSibling;
+                                            self.moveAfter(tab, target);
+                                            tab.setAttribute("outoforder", "true");
+                                        }
+                                        else { // By last sort (newPos == 2)
+                                            self.insertTab(tab, domain);
+                                        }
+                                    }
+                                    
+                                    tabNeedsPlacing = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (tabNeedsPlacing) {
+                    var newPos = self.newTabPosition;
+                    if (newPos == 2 && self.activeSort == "origin")
+                        newPos = 1;
+                    if (newPos == 1 && !pid)
+                        newPos = 0;
+                    switch (newPos) {
+                    case 1: // Next to current
+                        var target = parent;
+                        var pgid = parent.getAttribute("groupid");
+                        // First exit any groups
+                        if (self.openRelativePosition == "left") {
+                            if (pgid)
+                                while (target.previousSibling && target.previousSibling.getAttribute("groupid") == pgid)
+                                    target = target.previousSibling;
+                            self.moveBefore(tab, target);
+                        }
+                        else {
+                            if (pgid)
+                                while (target.nextSibling && target.nextSibling.getAttribute("groupid") == pgid)
+                                    target = target.nextSibling;
+                            while (self.openRelativePosition != "right" && target.nextSibling && !target.nextSibling.hasAttribute("groupid") && target.nextSibling.hasAttribute("recentlyadded"))
+                                target = target.nextSibling;
+                            self.moveAfter(tab, target);
+                            if (self.openRelativePosition != "right")
+                                tab.setAttribute("recentlyadded", "true");
+                        }
+                        tab.setAttribute("outoforder", "true");
+                        break;
+                    case 0: // At far right
+                        // No need to move it, since it is already in the right place
+                        tab.setAttribute("outoforder", "true");
+                        break;
+                    case 2: // By last sort
+                        self.insertTab(tab);
+                    }
+                }
+            }
+            else if (self.addedTabs.length > 1) { // Shouldn't happen
+                self.dump("addingTabsOver: More than one tab was added (" + self.addedTabs.length + " tabs, to be precise)!");
+                self.addingTabsOver();
+                return;
+            }
         }
-        
-        // TODO: position group appropriately
-        
-        self.nextType = null;
-        self.addedTabs.length = 0;
+        catch (ex) {
+            self.dump(ex);
+        }
+        finally {
+            if (self.ignoreOvers > 0) {
+                self.ignoreOvers--;
+            }
+            else {
+                self.nextType = null;
+                self.isBookmarkGroup = false;
+                self.nextParent = null;
+                self.dontMoveNextTab = false;
+            }
+        }
+    };
+    
+    this.addingTabs = function addingTabs(firstTab) {
+        try {
+            if (self.nextType) { // Unlikely
+                self.ignoreOvers++;
+                return;
+            }
+            
+            if (firstTab) {
+                self.addedTabs = [firstTab];
+                self.nextType = "loadOneOrMoreURIs";
+            }
+            else {
+                self.nextType = "loadTabs";
+                self.nextParent = gBrowser.selectedTab; // To make addingTabOver happy!
+            }
+        }
+        catch (ex) {
+            self.dump(ex);
+        }
+    };
+    
+    this.addingTabsOver = function addingTabsOver() {
+        try {
+            if (self.ignoreOvers > 0) {
+                self.ignoreOvers--;
+                return;
+            }
+            
+            if (self.addedTabs.length > 1) {
+                // We always do loadOneOrMoreURIs, thanks to sortgroup_onTabAdded
+                var firstTab = self.addedTabs[0];
+                var pid = firstTab.getAttribute("possibleparent");
+                var openerGroup = firstTab.getAttribute(self.Groupings.opener);
+                var gid = firstTab.getAttribute("groupid");
+                if (!openerGroup) {
+                    openerGroup = ":oG-bookmarkGroup-" + firstTab.getAttribute("tabid");
+                    firstTab.setAttribute(self.Groupings.opener, openerGroup);
+                    if (!gid) {
+                        gid = openerGroup;
+                        self.setGID(firstTab, gid);
+                    }
+                }
+                else if (!gid) {
+                    gid = ":oG-bookmarkGroup-" + self.generateId(); // Pretend to be an openerGroup ;)
+                    self.setGID(firstTab, gid);
+                }
+                for (var i = self.addedTabs.length - 1; i >= 1; i--) {
+                    var tab = self.addedTabs[i];
+                    self.moveAfter(tab, firstTab); // n.b. this is sometimes redundant since loadTabs already moves the tabs if loadOneOrMoreURIs (from Fx2)
+                    self.setGID(tab, gid);
+                    if (pid) {
+                        tab.setAttribute("possibleparent", pid);
+                        self.updateIndents();
+                    }
+                    tab.setAttribute(self.Groupings.opener, openerGroup);
+                    //tab.setAttribute("outoforder", "true"); // Hmm, this will generally be the case...
+                }
+            }
+            
+            for (var i = 0; i < _tabs.length; i++)
+                _tabs[i].removeAttribute("recentlyadded");
+            //self.lastParent = null; // Irrelevant since we've already cleared recentlyadded...
+        }
+        catch (ex) {
+            self.dump(ex);
+        }
+        finally {
+            self.nextType = null;
+            self.isBookmarkGroup = false;
+            self.nextParent = null; // For good measure
+            self.dontMoveNextTab = false; // For good measure
+            self.addedTabs.length = 0; // Clear added tabs
+        }
     };
 
+    // A collection of stack signatures we use to classify tab sources (see the end of sortgroup_onTabAdded)
+    // Note: This can't replace cases where an explicit parent tab must be set
+    // TODO=P4: Use sourceTypes for more tab sources
+    this.sourceTypes = [
+        { d: 7, n: "goup_up",               t: "related" },//{ //postInit: if ("goup_up" in window && window.goup_up) self.wrapMethodCode('window.goup_up', 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
+        { d: 6, n: "diggerLoadURL",         t: "related" }, //diggerLoadURL
+        { d: 5, n: "gotoHistoryIndex",      t: "related" }, //gotoHistoryIndex
+        { d: 5, n: "BrowserBack",           t: "related" }, //BrowserBack
+        { d: 5, n: "BrowserForward",        t: "related" }, //BrowserForward
+        { d: 5, n: "BrowserSearch_search",  t: "related" }, //BrowserSearch.loadSearch
+        { d: 5, n: "handleLinkClick",       t: "related" }, //handleLinkClick
+        
+        { d: 7, n: "ondragdrop",            t: "newtab" }, //newTabButtonObserver.onDrop // Could make unrelated if from a different window?
+        { d: 6, n: "middleMousePaste",      t: "newtab" }, //middleMousePaste
+        { d: 6, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL
+        { d: 4, n: "BrowserOpenTab",        t: "newtab" }, //BrowserOpenTab // Covers many cases
+        { d: 4, n: "delayedOpenTab",        t: "newtab" }, //delayedOpenTab
+        { d: 4, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL
+        { d: 4, n: "doSearch",              t: "newtab" }, //BrowserSearch.getSearchBar().doSearch // (note: simple replacement wouldn't work if searchbar was added after opening window
+        { d: 3, n: "removeTab",             t: "newtab" }, //gBrowser.removeTab
+        
+        { d: 6, n: "openReleaseNotes",      t: "unrelated" }, //openReleaseNotes
+        
+        { d: 3, n: "sss_undoCloseTab",      t: "sessionrestore", m: true },
+        { d: 3, n: "sss_restoreWindow",     t: "sessionrestore", m: true }
+    ];//}
+    this.sourceTypes.sort(function __compareSourceDepths(a, b) { return b.d - a.d; }); // Sort by decreasing d(epth)
+    
     /// Event Handlers:
-    this.sortgroup_onTabAdded = function _sortgroup_onTabAdded(event) {
+    this.sortgroup_onTabAdded = function sortgroup_onTabAdded(event) {
         var tab = event.target;
         
+        var tid = self.generateId();
+        tab.setAttribute("tabid", tid);
+        
         // Set keys
-        tab.setAttribute(self.Sorts.created, Date.now());
         tab.setAttribute(self.Sorts.lastViewed, new Date().setYear(2030)); // Set never viewed tabs as viewed in the future!
         tab.setAttribute(self.Sorts.lastLoaded, new Date().setYear(2030)); // Set never loaded tabs as loaded in the future!
-        self.setTabUriKey(tab);
+        self.setTabUriKey(tab, true);
         
         // Sort/group
         if (self.nextType) {
+            self.debug("nextType is " + self.nextType + ", stack was" + self.quickStack());
             self.addedTabs.push(tab);
+            // A quick hack to avoid code duplication: we use addingTabOver to position
+            // the first tab, then we can treat the rest as a loadOneOrMoreURIs
+            if (self.nextType == "loadTabs" && self.addedTabs.length == 1) {
+                self.nextType = self.isBookmarkGroup ? "bookmark" : "unrelated";
+                self.dontMoveNextTab = false;
+                self.addingTabOver();
+                self.addedTabs = [tab];
+                self.nextType = "loadTabs"; // But it can now be treated as "loadOneOrMoreURIs";
+            }
         }
-        else { // Shouldn't happen
+        else if (tab._tPos != 0) { // Shouldn't happen (except the initial xul:tab, with _tPos 0)
+            if (self.sourceTypes.length) {
+                var stack = [ arguments.callee ];
+                var depth = 0;
+                // Note that sourceTypes is sorted in order of decreasing d
+                while (depth < self.sourceTypes[0].d) {
+                    var prev = stack[depth].caller;
+                    if (prev) {
+                        stack.push(prev);
+                        depth++;
+                    }
+                    else {
+                        break;
+                    }
+                }
+                for (var i = 0; i < self.sourceTypes.length; i++) {
+                    var st = self.sourceTypes[i];
+                    if (st.d > depth)
+                        continue;
+                    while (st.d < depth)
+                        depth--;
+                    if (stack[depth].name == st.n) {
+                        self.nextType = st.t;
+                        self.dontMoveNextTab = ("m" in st && st.m);
+                        break;
+                    }
+                }
+                /*!!var func = arguments.callee; // i.e. this function
+                var depth = 0;
+                // Note that sourceTypes is sorted in order of increasing d
+                for (var i = 0; i < self.sourceTypes.length; i++) {
+                    while (func && depth < self.sourceTypes[i].d) {
+                        func = func.caller;
+                        depth++;
+                    }
+                    if (!func)
+                        break;
+                    if (func.name == self.sourceTypes[i].n) {
+                        self.nextType = self.sourceTypes[i].t;
+                        self.dontMoveNextTab = !self.sourceTypes[i].m;
+                        break;
+                    }
+                }*/
+            }
+            
+            if (!self.nextType) {
+                self.dump("No nextType for added tab: " + tid + "\n" + self.quickStack() + "\n\n" + new Error().stack);
+                self.nextType = "unrelated";
+                self.dontMoveNextTab = true;
+            }
+            
+            self.nextParent = gBrowser.selectedTab;
+            self.isBookmarkGroup = false;
+            //!!self.debug("nextType is now " + self.nextType + ", stack is" + self.quickStack());
             self.addedTabs = [tab];
             self.addingTabOver();
         }
+        
+        self._cancelMakeGroup();
     };
 
-    /*this.sortgroup_onAfterTabAdded = function _sortgroup_onAfterTabAdded(event) {
+    /*!!this.sortgroup_onAfterTabAdded = function sortgroup_onAfterTabAdded(event) {
         // We can now detect whether the tab was selected immediately after being opened
         var foreground = _tabContainer.selectedItem == event.target;
         
         //self.positionTab(event.target, foreground); // TODO
     };*/
 
-    this.sortgroup_onTabSelect = function _sortgroup_onTabSelect(event) {
-        event.target.setAttribute(self.Sorts.lastViewed, Date.now());
+    this.sortgroup_onTabSelect = function sortgroup_onTabSelect(event) {
+        var tab = event.target;
+        tab.setAttribute(self.Sorts.lastViewed, Date.now());
         
-        self.recentChildren = 0; // Arguably should only apply if select outside of the last parent's children
+        // Arguably should only apply if select outside of the last parent's children
+        if (self.openRelativePosition == "rightOfRecent")
+            for (var i = 0; i < _tabs.length; i++)
+                _tabs[i].removeAttribute("recentlyadded");
+        
+        // Keep selected tab as the visible tab of collapsed groups
+        if (tab.hasAttribute("groupcollapsed") && tab.getAttribute("hidden") == "true") {
+            var group = self.getGroupFromTab(tab);
+            for each (var t in group)
+                t.setAttribute("hidden", "true");
+            tab.removeAttribute("hidden");
+        }
+        
+        // Color tabs-bottom (see also colorizeTab, and note that tabs-bottom is hidden during multirow mode)
+        if (_tabContainer.getAttribute("colortabnotlabel") == "true" && _tabContainer.getAttribute("multirow") != "true") {
+            var tabsBottom = document.getAnonymousElementByAttribute(tab.parentNode, "class", "tabs-bottom")
+            if (tabsBottom) {
+                var bgColor = document.getAnonymousNodes(tab)[0].style.backgroundColor;
+                tabsBottom.style.setProperty("background-color", bgColor, "important");
+            }
+            else {
+                self.debug("sortgroup_onTabSelect: Couldn't find tabs-bottom");
+            }
+        }
+        
+        self._cancelMakeGroup();
     };
 
-    this.sortgroup_onTabLoading = function _sortgroup_onTabLoading(event) {
+    this.sortgroup_onTabLoading = function sortgroup_onTabLoading(event) {
         try {
             var index = gBrowser.getBrowserIndexForDocument(event.originalTarget);
             var tab = _tabs[index];
@@ -1463,7 +2162,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };
 
-    this.sortgroup_onTabLoaded = function _sortgroup_onTabLoaded(event) {
+    this.sortgroup_onTabLoaded = function sortgroup_onTabLoaded(event) {
         try {
             if (event.originalTarget.nodeName == "#document") { // Ignore image loads (especially favicons!)
                 var index = gBrowser.getBrowserIndexForDocument(event.originalTarget);
@@ -1476,82 +2175,320 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };
 
-    this.sortgroup_onSSTabRestoring = function _sortgroup_onSSTabRestoring(event) {
+    this.sortgroup_onSSTabRestoring = function sortgroup_onSSTabRestoring(event) {
         var tab = event.originalTarget;
-
-        self.insertNewTabBySortOrder(tab);
         
-        if (tab.hasAttribute("groupid"))
-            self.colorizeTab(tab); // Maintain tab color
+        // Prevent restoring the lastViewedKey from overwriting the fact that the tab is currently being viewed
+        if (tab.getAttribute("selected") == "true")
+            tab.setAttribute(self.Sorts.lastViewed, Date.now());
+        
+        // TODO=P4: Check tabs are restored correctly (and test groupcollapsed and hidden)
+        // The timeout is because this might be the first tab of a group to be restored, and we'd rather not waste time marking it as a singleton then turning it back into a group (sss_restoreHistory calls itself with a timeout of 0 between each added tab)
+        tab.groupNotChecked = true;
+        window.setTimeout(function __sortgroup_onTabRestored(tab) {
+            var gid = tab.getAttribute("groupid");
+            if (!gid) {
+                gid = tab.getAttribute("singletonid");
+                if (gid) {
+                    self.setGID(tab, gid);
+                }
+            }
+            if (gid) {
+                var group = self.getGroupById(gid, true); // True to include singletons
+                /*!!var lookedForSingletons = false;
+                if (group.length == 1) {
+                    for (var i = 0; i < _tabs.length; i++) {
+                        var t = _tabs[i];
+                        if (t.getAttribute("singletonid") == gid) {
+                            self.setGID(tab, gid);
+                            var group = self.getGroupById(gid);
+                            break;
+                        }
+                    }
+                    lookedForSingletons = true;
+                }*/
+                
+                if (group.length == 1) {
+                    self.removeGID(tab, true);
+                }
+                else {
+                    // The group might be split up, and it may even be splitting up another group. Fix it!
+                    var last = null;
+                    var before = true;
+                    for each (var t in group) {
+                        if (t == tab) {
+                            if (last)
+                                break;
+                            before = false;
+                        }
+                        else if (!("groupNotChecked" in t)) {
+                            last = t;
+                            if (!before)
+                                break;
+                        }
+                    }
+                    /*!!if (!last && !lookedForSingletons) {
+                        for (var i = 0; i < _tabs.length; i++) {
+                            var t = _tabs[i];
+                            if (t.getAttribute("singletonid") == gid) {
+                                self.setGID(tab, gid);
+                                var group = self.getGroupById(gid);
+                                if (!("groupNotChecked" in t))
+                                    last = t;
+                                break;
+                            }
+                        }
+                    }*/
+                    if (last) {
+                        // Note: It might be better to properly merge it using insertTab (extend insertTab for origin to look for possibleparent and if not move to end, and take advantage of this in groupTabsBy too)
+                        if (last._tPos < tab._tPos)
+                            self.moveAfter(tab, last);
+                        else
+                            self.moveBefore(tab, last);
+                        
+                        if (last.hasAttribute("groupcollapsed")) {
+                            tab.setAttribute("groupcollapsed", "true");
+                            if (tab.getAttribute("selected") == "true") {
+                                for each (var t in group)
+                                    t.setAttribute("hidden", "true");
+                                tab.removeAttribute("hidden");
+                            }
+                            else {
+                                tab.setAttribute("hidden", "true");
+                            }
+                        }
+                        else {
+                            tab.removeAttribute("hidden");
+                        }
+                    }
+                    else {
+                        // This tab is where the group will congregate, so make sure it's not in the middle of a group!
+                        self.keepGroupsTogether();
+                        /*!!var afterPrev = tab;
+                        while (afterPrev.previousSibling && "groupNotChecked" in afterPrev.previousSibling)
+                            afterPrev = afterPrev.previousSibling;
+                        var next = tab.nextSibling;
+                        while (next && "groupNotChecked" in next)
+                            next = next.previousSibling;
+                        if (next) {
+                            var ngid = next.getAttribute("groupid");
+                            if (ngid && ngid != gid) {
+                                while (afterPrev.previousSibling && afterPrev.previousSibling.getAttribute("groupid") == ngid)
+                                    afterPrev = afterPrev.previousSibling;
+                                if (afterPrev != tab)
+                                    self.moveBefore(tab, afterPrev);
+                            }
+                        }*/
+                        
+                        //~ if (tab.hasAttribute("groupcollapsed")) {
+                            // It is the only "done" tab so far. // TODO=P4: If there is already a groupcollapsed but not hidden tab being restored show that instead.
+                            tab.removeAttribute("hidden");
+                        //~ }
+                        //~ else {
+                            //~ tab.removeAttribute("hidden");
+                        //~ }
+                    }
+                }
+            }
+            
+            if (tab.hasAttribute("groupid")) {
+                self.colorizeTab(tab); // Maintain tab color
+            }
+            else if (self.ignoreOvers == 0) {
+                // See if this tab needs grouping (but don't move it!)
+                self.nextType = "unrelated";
+                self.nextParent = null;
+                self.dontMoveNextTab = true;
+                self.addedTabs = [tab];
+                self.addingTabOver();
+            }
+            
+            delete tab.groupNotChecked;
+        }, 250, tab); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
+        
+        self.updateIndents();
     };
     
-    this.sortgroup_onTabMoved = function _sortgroup_onTabMoved(event) {
+    this.sortgroup_onTabMoved = function sortgroup_onTabMoved(event) {
         var tab = event.target;
         
         if (tab.hasAttribute("groupid"))
-            self.colorizeTab(tab); // Maintain/update tab color
+            self.colorizeTab(tab); // Maintain/update tab color, as it gets lost after a move
+        
+        self.keepGroupsTogether(); // TODO=P5: Intelligently adjust groups on move into or out of group? (with timeout of course, so as not to duplicate my existing code for dragged tabs etc.)
+        
+        self.updateIndents();
+        
+        self._cancelMakeGroup();
     };
     
     /* [Close Order]
-     * 0 (auto):    Go right unless that would involve going down a level or leaving the group [right->left depending on tab order settings]
+     * 0 (auto):    Go right unless that would involve going down a level or leaving the group [right->left depending on self.openRelativePosition]
      * 1 (g-left):  Go left unless that would involve leaving the group
      * 2 (g-right): Go right unless that would involve leaving the group
      * 3 (left):    Go left
      * 4 (right):   Go right
      */
-    this.sortgroup_onTabRemoved = function _sortgroup_onTabRemoved(event) {
+    this.sortgroup_onTabRemoved = function sortgroup_onTabRemoved(event) {
         var tab = event.target;
+        var gid = tab.getAttribute("groupid");
+        var tid = tab.getAttribute("tabid");
+        var pid = tab.getAttribute("possibleparent");
         
         // Choose next tab
-        if (tab.selected && tab.previousSibling && tab.nextSibling && _prefs.getBoolPref("tweakCloseOrder")) {
-            var gid = tab.getAttribute("groupid");
-            var nextTab;
-            
+        // Note that this happens before pickNextIndex is called by removeTab
+        self.chosenNextIndex = self.chooseNextIndex(tab);
+        /*!! This approach was too slow, the tab would only change to the correct one after a noticeable pause
+        if (tab.selected
+            && tab.previousSibling && tab.nextSibling
+            && (!"owner" in tab
+                || !tab.owner
+                || !gPrefService.getBoolPref("browser.tabs.selectOwnerOnClose")))
+        {
+            var nextTab = tab.nextSibling;
             switch (_prefs.getIntPref("customCloseOrder")) {
-            case 1: // Auto
-                var subtree = self.groupScheme.origin ? self.getSubtree(tab) : [tab];
-                if (subtree.length > 1) {
-                    var index = subtree.indexOf(tab);
-                    if (index == 0)
-                        nextTab = tab.nextSibling; // Stay within the subtree
-                    else if (index == subtree.length - 1)
-                        nextTab = tab.previousSibling; // Stay within the subtree
-                    else if (Number(tab.nextSibling.getAttribute("subtreelevel")) < Number(tab.getAttribute("subtreelevel")))//TODO:URGENT
-                        nextTab = tab.previousSibling;
-                    else
-                        nextTab = tab.nextSibling;
-                }
-                else if (tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
+            case 1: // G-Left
+                if (!gid || tab.previousSibling.getAttribute("groupid") == gid || tab.nextSibling.getAttribute("groupid") != gid)
                     nextTab = tab.previousSibling;
-                else
-                    nextTab = nextSibling;
+                // else nextTab = tab.nextSibling;
                 break;
-            case 2: // G-Left
-                if (tab.previousSibling.getAttribute("groupid") != gid && tab.nextSibling.getAttribute("groupid") == gid)
-                    nextTab = tab.nextSibling;
-                else
+            case 2: // G-Right
+                if (gid && tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
                     nextTab = tab.previousSibling;
+                // else nextTab = tab.nextSibling;
                 break;
-            case 3: // G-Right
-                if (tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
-                    nextTab = tab.previousSibling;
-                else
-                    nextTab = nextSibling;
-                break;
-            case 4: // Left
+            case 3: // Left
                 nextTab = tab.previousSibling;
                 break;
-            case 5: // Right
-                nextTab = tab.nextSibling;
+            case 4: // Right
+                // nextTab = tab.nextSibling;
                 break;
-            default:
-                return;
+            default: //case 0: // Auto
+                var prevByDefault = (self.openRelativePosition == "left");
+                if (prevByDefault)
+                    nextTab = tab.previousSibling;
+                // else nextTab = tab.nextSibling;
+                if (!gid) {
+                    // Stick with the default
+                    break;
+                }
+                if (tab.nextSibling.getAttribute("groupid") != gid) {
+                    if (tab.previousSibling.getAttribute("groupid") != gid) {
+                        self.dump("Why is there a singleton group at position " + tab._tPos + " ?!");
+                        // Stick with the default
+                    }
+                    else {
+                        nextTab = tab.previousSibling;
+                    }
+                    break;
+                }
+                if (tab.previousSibling.getAttribute("groupid") != gid) {
+                    nextTab = tab.nextSibling;
+                    break;
+                }
+                if (gid.indexOf(":oG-") == -1 && gid.indexOf(":tmpOG-") == -1) {
+                    // Stick with the default
+                    break;
+                }
+                // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
+                var openerGroup = tab.getAttribute(self.Groupings.opener);
+                if (tab.previousSibling.getAttribute(self.Groupings.opener) == openerGroup) {
+                    if (tab.nextSibling.getAttribute(self.Groupings.opener) != openerGroup) {
+                        nextTab = tab.previousSibling;
+                    }
+                    else {
+                        // Both siblings are in the same openerGroup, so choose based on possibleparents
+                        // (i.e. return to parent/sibling unless the default direction takes you to a sibling/child)
+                        if (!prevByDefault) {
+                            if (tab.nextSibling.getAttribute("possibleparent") == pid // sibling
+                                || tab.nextSibling.getAttribute("possibleparent") == tid) // child
+                            {
+                                nextTab = tab.nextSibling;
+                            }
+                            else {
+                                nextTab = tab.previousSibling;
+                            }
+                        }
+                        else {
+                            if (tab.previousSibling.getAttribute("possibleparent") == pid // sibling
+                                || tab.previousSibling.getAttribute("possibleparent") == tid) // child
+                            {
+                                nextTab = tab.previousSibling;
+                            }
+                            else {
+                                nextTab = tab.nextSibling;
+                            }
+                        }
+                    }
+                    break;
+                }
+                if (tab.nextSibling.getAttribute(self.Groupings.opener) == openerGroup) {
+                    var nextTab = tab.nextSibling;
+                    break;
+                }
+                // else stick with the default
+                
+                //~ var subtree = self.groupScheme.origin ? self.getSubtree(tab) : [tab];
+                //~ if (subtree.length > 1) {
+                    //~ var index = subtree.indexOf(tab);
+                    //~ if (index == 0)
+                        //~ var nextTab = tab.nextSibling; // Stay within the subtree
+                    //~ else if (index == subtree.length - 1)
+                        //~ var nextTab = tab.previousSibling; // Stay within the subtree
+                    //~ else if (Number(tab.nextSibling.getAttribute("subtreelevel")) < Number(tab.getAttribute("subtreelevel")))
+                        //~ var nextTab = tab.previousSibling;
+                    //~ else
+                        //~ var nextTab = tab.nextSibling;
+                //~ }
+                //~ else if (gid && tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
+                    //~ var nextTab = tab.previousSibling;
+                //~ else
+                    //~ var nextTab = tab.nextSibling;
             }
             
-            gBrowser.selectedTab = nextTab;
+            window.setTimeout(function __selectNextTab(nextTab) { gBrowser.selectedTab = nextTab; }, 0, nextTab);
+        }
+        */
+        
+        // Update possibleparents
+        for (var i = 0; i < _tabs.length; i++) {
+            var t = _tabs[i];
+            if (t.getAttribute("possibleparent") == tid)
+                t.setAttribute("possibleparent", pid);
+        }
+        self.updateIndents();
+        
+        // Ungroup singleton groups
+        if (gid) {
+            if (!tab.previousSibling || tab.previousSibling.getAttribute("groupid") != gid) {
+                var next = tab.nextSibling;
+                if (!next || next.getAttribute("groupid") != gid)
+                    self.dump("Group was already a singleton?! (no next)");
+                else if (!next.nextSibling || next.nextSibling.getAttribute("groupid") != gid)
+                    self.removeGID(next, true);
+            }
+            else if (!tab.nextSibling || tab.nextSibling.getAttribute("groupid") != gid) {
+                var prev = tab.previousSibling;
+                if (!prev || prev.getAttribute("groupid") != gid)
+                    self.dump("Group was already a singleton?! (no prev)");
+                else if (!prev.previousSibling || prev.previousSibling.getAttribute("groupid") != gid)
+                    self.removeGID(prev, true);
+            }
         }
         
-        // Move tab's children down a level
+        // Make sure collapsed groups don't get totally hidden!
+        if (tab.getAttribute("groupcollapsed") == "true" && tab.getAttribute("hidden") != "true") {
+            window.setTimeout(function __uncollapseTab(gid, next, prev) {
+                if (gBrowser.mCurrentTab.getAttribute("groupid") != gid) {            
+                    if (next && next.getAttribute("groupid") == gid)
+                        next.removeAttribute("hidden");
+                    else
+                        prev.removeAttribute("hidden");
+                }
+            }, 0, gid, tab.nextSibling, tab.previousSibling);
+        }
+        
+        /*!! // Move tab's children down a level
         var stid = tab.getAttribute("subtreeid")
         if (stid) {
             var subtree = self.getSubtree(tab);
@@ -1566,76 +2503,594 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         // Keep recentChildren in sync (for originGroup subTrees)
         if (_tabContainer.selectedIndex < tab._tPos && _tabContainer.selectedIndex + self.recentChildren + 1 > tab._tPos) {
             self.recentChildren--;
-        }
-    }
-
-    this.sortgroup_onDblclickTab = function _sortgroup_onDblclickTab(event) {
-        var tab = event.originalTarget;
-        if (tab.localName == "tab") {
-
-        }
-    };
-
-    /// Methods Called From Menus
-    this.toggleGroupByDomain = function _toggleGroupByDomain() {
-        if (self.groupScheme.uri) {
-            self.groupScheme.uri = false;
-        }
-        else {
-            self.groupScheme.uri = true;
-            self.groupTabsBy("uri");
-            self.sortTabs("uri");
-        }
-    };
-	this.toggleGroupByOrigin = function _toggleGroupByOrigin() {
-        if (self.groupScheme.origin) {
-            self.groupScheme.origin = false;
-        }
-        else {
-            self.groupScheme.uri = true;
-            self.groupTabsBy("origin");
-            // TODO: move (and internally sort?) each origin group to the location of its parent node
-        }
-    };
-    
-	this.ungroupAll() {
-        if (self.groupScheme.uri)
-            self.toggleGroupByDomain();
-        if (self.groupScheme.origin)
-            self.toggleGroupByOrigin();
+        }*/
         
-        for each (var tab in _tabs) {
-            tab.removeAttribute("groupid");
-            // TODO: explicitly remove manual groupings (depending on implementation)?
-            colorizeTab(tab);
+        self._cancelMakeGroup();
+    };
+
+    this.sortgroup_onDblclickTab = function sortgroup_onDblclickTab(event) {
+        var tab = event.target;
+        if (tab.localName == "tab" && _prefs.getBoolPref("doubleClickShortcuts")) {
+            if (!tab.hasAttribute("groupid"))
+                if (_tabContainer.hasAttribute("makinggroup"))
+                    self._cancelMakeGroup();
+                else
+                    self.startMakeGroup(tab);
+            else
+                self.toggleGroupCollapsed(tab);
         }
     };
-    //TODO:URGENT
-	this.sortByUri() {
-        self.sortTabs("uri");
-    };
-	this.sortByLastLoaded() {
-        self.sortTabs("lastLoaded");
-    };
-	this.sortByLastViewed() {
-        self.sortTabs("lastViewed");
-    };
-	this.sortByCreation() {
-        self.sortTabs("created");
-    };
-	this.sortByTitle() {
-        self.sortTabs("title");
+    
+    this.sortgroup_onTabMousedown = function sortgroup_onTabMousedown(event) {
+        if (_tabContainer.getAttribute("makinggroup") != "true")
+            return;
+        
+        self._cancelMakeGroup();
+        
+        var tab = event.target;
+        if (event.button != 0 || tab.localName != "tab" || tab == _makingGroupStart)
+            return;
+        
+        event.stopPropagation();
+        event.preventDefault();
+        
+        if (tab._tPos > _makingGroupStart._tPos) {
+            var ifirst = _makingGroupStart._tPos; var ilast = tab._tPos;
+        }
+        else {
+            var ifirst = tab._tPos; var ilast = _makingGroupStart._tPos;
+        }
+        
+        for (var i = ifirst; i <= ilast; i++) {
+            if (_tabs[i].hasAttribute("groupid")) {
+                // TODO=P4: Checkbox to always allow
+                if (_ps.confirm(window, self.strings.getString("tab_kit"), self.strings.getString("already_grouped_tabs")))
+                    break;
+                else
+                    return;
+            }
+        }
+        
+        // Ungroup singleton groups
+        var first = _tabs[ifirst];
+        var firstGID = first.getAttribute("groupid");
+        if (firstGID
+            && first.previousSibling
+            && first.previousSibling.getAttribute("groupid") == firstGID
+            && (!first.previousSibling.previousSibling
+                || first.previousSibling.previousSibling.getAttribute("groupid") != firstGID))
+        {
+            self.removeGID(first.previousSibling, true);
+        }
+        var last = _tabs[ilast];
+        var lastGID = last.getAttribute("groupid");
+        if (lastGID
+            && last.nextSibling
+            && last.nextSibling.getAttribute("groupid") == lastGID
+            && (!last.nextSibling.nextSibling
+                || last.nextSibling.nextSibling.getAttribute("groupid") != lastGID))
+        {
+            self.removeGID(last.nextSibling, true);
+        }
+        
+        var gid = ":oG-manualGroup-" + self.generateId(); // Pretend this is an opener group!
+        for (var i = ifirst; i <= ilast; i++)
+            self.setGID(_tabs[i], gid);
     };
     
-    // Use gBrowser.mContextTab if the right-clicked tab is relevant
-    
-    /// Private Methods:
-    var _seed = 0; // Used to generate ids
-    this.generateId = function _generateId() {
-        return String(Date.now()) + String(_seed++);
-    }
+    this.updateSortGroupMenu = function updateSortGroupMenu(event, popup) {
+        self._cancelMakeGroup();
+        if (event.target != event.currentTarget) return;
 
+        var contextTab = gBrowser.mContextTab ? gBrowser.mContextTab : gBrowser.mCurrentTab;
+        
+        // Hide duplicateTab if it's not supported
+        if (!("duplicateTab" in gBrowser))
+            document.getElementById("menu_tabkit-sortgroup-tab-duplicateTab").setAttribute("hidden", "true");
+        
+        // Set appropriate text for Mark As Read/Unread
+        document.getElementById("menu_tabkit-tab-toggleUnread").setAttribute("label", self.strings.getString(contextTab.hasAttribute("read") ? "mark_as_unread" : "mark_as_read"));
+        
+        // Show/hide items that only apply to groups
+        var isGroup = contextTab.hasAttribute("groupid");
+        var groupsOnly = popup.getElementsByAttribute("groupsonly", "true");
+        for (var i = groupsOnly.length - 1; i >= 0; i--) {
+            groupsOnly[i].setAttribute("hidden", !isGroup);
+        }
+        
+        //!!~ // Don't show start make group for groups
+        //!!~ document.getElementById("cmd_tabkit-sortgroup-tab-makeGroup").setAttribute("disabled", isGroup);
+        
+        // Show Collapse or Expand as appropriate
+        if (isGroup) {
+            var groupCollapsed = contextTab.hasAttribute("groupcollapsed");
+            document.getElementById("menu_tabkit-sortgroup-group-collapse").setAttribute("collapsed", groupCollapsed);
+            document.getElementById("menu_tabkit-sortgroup-group-expand").setAttribute("collapsed", !groupCollapsed);
+        }
+        
+        // Update radio buttons & checkboxes (esp. for new windows)        
+        switch (self.newTabPosition == 2 ? self.activeSort : "none") {
+            case "uri": document.getElementById("menu_tabkit-sortgroup-sortByUri").setAttribute("checked", "true"); break;
+            case "lastLoaded": document.getElementById("menu_tabkit-sortgroup-sortByLastLoaded").setAttribute("checked", "true"); break;
+            case "lastViewed": document.getElementById("menu_tabkit-sortgroup-sortByLastViewed").setAttribute("checked", "true"); break;
+            case "creation": document.getElementById("menu_tabkit-sortgroup-sortByCreation").setAttribute("checked", "true"); break;
+            case "origin": document.getElementById("menu_tabkit-sortgroup-sortByOrigin").setAttribute("checked", "true"); break;
+            case "title": document.getElementById("menu_tabkit-sortgroup-sortByTitle").setAttribute("checked", "true"); break;
+            default: // Clear all radio buttons
+                document.getElementById("menu_tabkit-sortgroup-sortByUri").removeAttribute("checked");
+                document.getElementById("menu_tabkit-sortgroup-sortByLastLoaded").removeAttribute("checked");
+                document.getElementById("menu_tabkit-sortgroup-sortByLastViewed").removeAttribute("checked");
+                document.getElementById("menu_tabkit-sortgroup-sortByCreation").removeAttribute("checked");
+                document.getElementById("menu_tabkit-sortgroup-sortByOrigin").removeAttribute("checked");
+                document.getElementById("menu_tabkit-sortgroup-sortByTitle").removeAttribute("checked");
+        }
+        switch (self.autoGroupNewTabs ? self.activeGrouping : "none") {
+        case "domain":
+            document.getElementById("menu_tabkit-sortgroup-groupByDomain").setAttribute("checked", "true");
+            document.getElementById("menu_tabkit-sortgroup-groupByOpener").removeAttribute("checked"); break;
+        case "opener":
+            document.getElementById("menu_tabkit-sortgroup-groupByOpener").setAttribute("checked", "true");
+            document.getElementById("menu_tabkit-sortgroup-groupByDomain").removeAttribute("checked"); break;
+        default: //case "none":
+            document.getElementById("menu_tabkit-sortgroup-groupByDomain").removeAttribute("checked");
+            document.getElementById("menu_tabkit-sortgroup-groupByOpener").removeAttribute("checked");
+        }
+        switch (self.newTabPosition) {
+            case 0: document.getElementById("menu_tabkit-sortgroup-newtabs-farRight").setAttribute("checked", "true"); break;
+            case 1: document.getElementById("menu_tabkit-sortgroup-newtabs-nextToCurrent").setAttribute("checked", "true"); break;
+            case 2: document.getElementById("menu_tabkit-sortgroup-newtabs-lastSort").setAttribute("checked", "true");
+        }
+        if (self.autoGroupNewTabs)
+            document.getElementById("menu_tabkit-sortgroup-newtabs-autoGroup").setAttribute("checked", "true");
+        else
+            document.getElementById("menu_tabkit-sortgroup-newtabs-autoGroup").removeAttribute("checked");
+        
+        // TODO=P4: update text of menu_tabkit-sortgroup-newtabs-nextToCurrent depending on openRelativePosition
+    };
+
+
+    /// Helper functions and method hooks:
+    var _keepGroupsTogether_timeoutID = -1;
+    this.keepGroupsTogether = function keepGroupsTogether() {
+        if (_keepGroupsTogether_timeoutID != -1) // Wait until this stops getting called
+            window.clearTimeout(_keepGroupsTogether_timeoutID);
+        _keepGroupsTogether_timeoutID = window.setTimeout(function () {
+            for each (var group in self.getAllGroups())
+                for (var i = group.length - 2; i >= 0; i--)
+                    if (group[i].nextSibling != group[i + 1])
+                        self.moveBefore(group[i], group[i + 1]);
+            _keepGroupsTogether_timeoutID = -1;
+        }, 250); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
+    };
+    
+    
+    // Tab close focus direction
+    this.earlyMethodHooks.push([
+        "gBrowser.removeTab",//{
+        null,
+        
+        /*!!'this.mTabContainer.removeChild(oldTab);',
+        'var gid = oldTab.getAttribute("groupid"); \
+        var tid = oldTab.getAttribute("tabid"); \
+        var pid = oldTab.getAttribute("possibleparent"); \
+        var openerGroup = oldTab.getAttribute(tabkit.Groupings.opener); \
+        $&',*/
+        
+        'newIndex = index == l - 1 ? index - 1 : index;',
+        'newIndex = tabkit.pickNextIndex(index, l - 1);' //!!, gid, tid, pid, openerGroup);'
+    ]);//}
+    
+    this.chosenNextIndex = -1;
+    this.pickNextIndex = function pickNextIndex(index, tabCount) {
+        if (self.chosenNextIndex != -1) {
+            return self.chosenNextIndex;
+        }
+        else {
+            self.dump("Hadn't chosen next index!");
+            return index== tabCount ? index - 1 : index;
+        }
+    };
+    
+    this.chooseNextIndex = function chooseNextIndex(tab) {
+        // Note that the tab still exists at this point (but won't by the time pickNextIndex is called)
+        var index = tab._tPos;
+        var gid = tab.getAttribute("groupid");
+        var prev = tab.previousSibling;
+        var next = tab.nextSibling;
+        
+        if (index == _tabs.length - 1)
+            return index - 1;
+        
+        if (index == 0)
+            return 0;
+        
+        switch (_prefs.getIntPref("customCloseOrder")) {
+        case 1: // G-Left
+            if (!gid || prev.getAttribute("groupid") == gid || next.getAttribute("groupid") != gid)
+                return index - 1;
+            else
+                return index;
+        case 2: // G-Right
+            if (gid && next.getAttribute("groupid") != gid && prev.getAttribute("groupid") == gid)
+                return index - 1;
+            else
+                return index;
+        case 3: // Left
+            return index - 1;
+        case 4: // Right
+            return index;
+        default: //case 0: // Auto // TODO=P4: Can I improve tree level in auto-sorted opener groups?
+            var defaultIndex = (self.openRelativePosition == "left") ? index - 1 : index;
+            if (!gid) {
+                return defaultIndex;
+            }
+            if (next.getAttribute("groupid") != gid) {
+                if (prev.getAttribute("groupid") != gid) {
+                    self.dump("Why was there a singleton group at position " + index + " ?!");
+                    return defaultIndex;
+                }
+                else {
+                    return index - 1;
+                }
+            }
+            if (prev.getAttribute("groupid") != gid) {
+                return index;
+            }
+            if (gid.indexOf(":oG-") == -1 && gid.indexOf(":tmpOG-") == -1) {
+                return defaultIndex;
+            }
+            // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
+            var tid = tab.getAttribute("tabid");
+            var pid = tab.getAttribute("possibleparent");
+            var openerGroup = tab.getAttribute(self.Groupings.opener);
+            if (prev.getAttribute(self.Groupings.opener) == openerGroup) {
+                if (next.getAttribute(self.Groupings.opener) != openerGroup) {
+                    return index - 1;
+                }
+                else {
+                    // Both siblings are in the same openerGroup, so choose based on possibleparents
+                    // (i.e. return to parent/sibling unless the default direction takes you to a sibling/child)
+                    if (defaultIndex == index) {
+                        if (next.getAttribute("possibleparent") == pid // sibling
+                            || next.getAttribute("possibleparent") == tid) // child
+                        {
+                            return index;
+                        }
+                        else {
+                            return index - 1;
+                        }
+                    }
+                    else {
+                        if (prev.getAttribute("possibleparent") == pid // sibling
+                            || prev.getAttribute("possibleparent") == tid) // child
+                        {
+                            return index - 1;
+                        }
+                        else {
+                            return index;
+                        }
+                    }
+                }
+            }
+            if (next.getAttribute(self.Groupings.opener) == openerGroup) {
+                return index;
+            }
+            return defaultIndex;
+        }
+    };
+    
+    
+    // Deal with tab dragging
+    this.lateMethodHooks.push([
+        "gBrowser.onDrop",//{
+        null,
+        /(if \(copyKeyHit\) \{)\s+(var newTab = this.duplicateTab\(oldTab\);\s+this\.moveTabTo\(newTab, newIndex\);)/,
+        '$1 tabkit.addingTab("related", oldTab, true); $2 tabkit.addingTabOver();',
+        
+        'this.moveTabTo(oldTab, newIndex);',
+        'tabkit.moveDraggedTab(oldTab, newIndex, aEvent.shiftKey);', 
+        
+        /(oldTab = aDragSession\.sourceNode;)\s+(newTab = this.duplicateTab\(oldTab\);\s+this\.moveTabTo\(newTab, newIndex\);)/,
+        '$1 tabkit.addingTab("unrelated", null, true); $2 tabkit.addingTabOver();',
+        
+        'newTab = this.loadOneTab(getShortcutOrURI(url), null, null, null, bgLoad, false);',
+        'tabkit.addingTab("unrelated", null, true); $& tabkit.addingTabOver();'
+    ]);//}
+    
+    this.moveDraggedTab = function moveDraggedTab(oldTab, newIndex, shiftKey) { // TODO=P4: test
+        var ogid = oldTab.getAttribute("groupid");
+        if (shiftKey && ogid) { // shiftKey doesn't currently have a meaning for ungrouped tabs, TODO=P4: make it force group single tabs with destination
+            // We're dragging the whole group
+            var group = self.getGroupFromTab(oldTab);
+            if (newIndex >= oldTab._tPos)
+                newIndex++;
+            if (newIndex < _tabs.length) {
+                var target = _tabs[newIndex];
+                var tgid = target.getAttribute("groupid");
+                if (tgid && target.previousSibling && target.previousSibling.getAttribute("groupid") == tgid) {
+                    var newgid = tgid + "|" + ogid;
+                    var tgroup = self.getGroupById(tgid);
+                    for each (var tab in tgroup)
+                        self.setGID(tab, newgid);
+                    for each (var tab in group)
+                        self.setGID(tab, newgid);
+                    // TODO=P3: Merging groups like this means they'll be un[auto]sorted. It might be better to keep enclosing group's sort
+                }
+                for each (var tab in group)
+                    self.moveBefore(tab, target);
+            }
+            else {
+                for each (var tab in group)
+                    gBrowser.moveTabTo(tab, _tabs.length - 1);
+            }
+            
+        }
+        else { // Just dragging the one tab
+            var _previousSibling = oldTab.previousSibling;
+            var _nextSibling = oldTab.nextSibling;
+            
+            var reverse = (newIndex < oldTab._tPos);
+            
+            // Make the actual move
+            gBrowser.moveTabTo(oldTab, newIndex);
+            
+            // Now see if it's been dragged into a group
+            var ngid = oldTab.previousSibling.getAttribute("groupid");
+            if (oldTab.previousSibling && oldTab.nextSibling
+                && ngid
+                && ngid == oldTab.nextSibling.getAttribute("groupid"))
+            {
+                if (oldTab.previousSibling.getAttribute("groupcollapsed")) {
+                    // Prevent accidentally dragging into a collapsed group
+                    if (reverse) {
+                        var last = oldTab.nextSibling;
+                        while (last.nextSibling.getAttribute("groupid") == ngid)
+                            last = last.nextSibling;
+                        self.moveAfter(oldTab, last);
+                    }
+                    else {
+                        var first = oldTab.previousSibling;
+                        while (first.previousSibling.getAttribute("groupid") == ngid)
+                            first = first.previousSibling;
+                        self.moveBefore(oldTab, first);
+                    }
+                }
+                else {
+                    // Join the group
+                    self.setGID(oldTab, oldTab.previousSibling.getAttribute("groupid"));
+                }
+            }
+            else if (ogid
+                     && (!oldTab.previousSibling || oldTab.previousSibling.getAttribute("groupid") != ogid)
+                     && (!oldTab.nextSibling || oldTab.nextSibling.getAttribute("groupid") != ogid))
+            {
+                self.removeGID(oldTab);
+            }
+            
+            // Make sure the old group isn't now a singleton
+            if (ogid) {
+                if (_previousSibling && _previousSibling.getAttribute("groupid") == ogid) {
+                    if ((!_previousSibling.previousSibling || _previousSibling.previousSibling.getAttribute("groupid") != ogid)
+                        && (!_nextSibling || _nextSibling.getAttribute("groupid") != ogid))
+                    {
+                        self.removeGID(_previousSibling, true);
+                    }
+                }
+                else if (_nextSibling && _nextSibling.getAttribute("groupid") == ogid) {
+                    if (!_nextSibling.nextSibling || _nextSibling.nextSibling.getAttribute("groupid") != ogid)
+                        self.removeGID(_nextSibling, true);
+                }
+            }
+        }
+    };
+
+
+    /// Methods Called From Menus:
+    this.sortByUri = function sortByUri() {
+        self.sortTabsBy("uri");
+    };
+    this.sortByLastLoaded = function sortByLastLoaded() {
+        self.sortTabsBy("lastLoaded");
+    };
+    this.sortByLastViewed = function sortByLastViewed() {
+        self.sortTabsBy("lastViewed");
+    };
+    this.sortByCreation = function sortByCreation() {
+        self.sortTabsBy("creation");
+    };
+    this.sortByOrigin = function sortByOrigin() {
+        self.sortTabsBy("origin");
+    };
+    this.sortByTitle = function sortByTitle() {
+        self.sortTabsBy("title");
+    };
+    
+    this.toggleGroupByDomain = function toggleGroupByDomain() {
+        if (self.autoGroupNewTabs && self.activeGrouping == "domain")
+            self.activeGrouping = "none";
+        else
+            self.groupTabsBy("domain");
+    };
+    this.toggleGroupByOpener = function toggleGroupByOpener() {
+        if (self.autoGroupNewTabs && self.activeGrouping == "opener")
+            self.activeGrouping = "none";
+        else
+            self.groupTabsBy("opener");
+    };
+    
+    this.ungroupAll = function ungroupAll() {
+        self.activeGrouping = "none";
+        for (var i = 0; i < _tabs.length; i++)
+            self.removeGID(_tabs[i]);
+    };
+    
+    
+    this.placeNewTabsAtFarRight = function placeNewTabsAtFarRight() {
+        self.newTabPosition = 0;
+    };
+    this.placeNewTabsNextToCurrent = function placeNewTabsNextToCurrent() {
+        self.newTabPosition = 1;
+    };
+    this.placeNewTabsByLastSort = function placeNewTabsByLastSort() {
+        self.newTabPosition = 2;
+    };
+    
+    this.toggleAutoGroupNewTabs = function toggleAutoGroupNewTabs() {
+        self.autoGroupNewTabs = !self.autoGroupNewTabs;
+    };
+    
+    
+    this.openNewTabHere = function openNewTabHere(contextTab) {
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        self.addingTab("related", contextTab);
+        BrowserOpenTab();
+        var newTab = document.getAnonymousElementByAttribute(gBrowser, "linkedpanel", gBrowser.mPanelContainer.lastChild.id);
+        self.addingTabOver();
+        var gid = contextTab.getAttribute("groupid");
+        if (self.openRelativePosition == "left") {
+            if (gid && contextTab.previousSibling && contextTab.previousSibling.getAttribute("groupid") == gid) {
+                self.setGID(newTab, gid);
+                newTab.setAttribute("outoforder", "true");
+            }
+            self.moveBefore(newTab, contextTab);
+        }
+        else {
+            if (gid && contextTab.nextSibling && contextTab.nextSibling.getAttribute("groupid") == gid) {
+                self.setGID(newTab, gid);
+                newTab.setAttribute("outoforder", "true");
+            }
+            self.moveAfter(newTab, contextTab);
+        }
+    };
+    // TODO=P3: Middle-click reload -> duplicate
+    this.duplicateTab = function duplicateTab(contextTab) {
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        self.addingTab("related", contextTab);
+        var newTab = gBrowser.duplicateTab(contextTab);
+        self.addingTabOver();
+        var gid = contextTab.getAttribute("groupid");
+        if (gid && gid != newTab.getAttribute("groupid")) {
+            self.setGID(newTab, gid);
+            newTab.setAttribute("outoforder", "true");
+        }
+        if (self.openRelativePosition == "left")
+            self.moveBefore(newTab, contextTab);
+        else
+            self.moveAfter(newTab, contextTab);
+        gBrowser.selectedTab = newTab;
+    };
+    this.startMakeGroup = function startMakeGroup(contextTab) {
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        
+        //!!~ if (contextTab.hasAttribute("groupid"))
+            //!!~ return;
+        
+        _makingGroupStart = contextTab;
+        _tabContainer.setAttribute("makinggroup", "true");
+    };
+    // TODO=P4: merge left/right & split group features?
+    this._cancelMakeGroup = function _cancelMakeGroup() {
+        if (_tabContainer.hasAttribute("makinggroup")) {
+            self.debug(stacktrace());
+            _tabContainer.removeAttribute("makinggroup");
+        }
+    };
+    
+    this.toggleUnread = function toggleUnread(contextTab) {
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        
+        if (contextTab.hasAttribute("read"))
+            contextTab.removeAttribute("read");
+        else
+            contextTab.setAttribute("read", "true");
+    };
+    
+    
+    // TODO=P3: One tab group at a time: collapse inactive ones
+    // TODO=P4: Left click on already selected collapsed tab shows group as menu (with expand option obviously) - or maybe on right-click? (see auto-collapse/expanding)
+    this.toggleGroupCollapsed = function toggleGroupCollapsed(contextTab) {
+        // TODO=P4: collapsed tabs should have a plus symbol
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        var group = self.getGroupFromTab(contextTab);
+        if (group.length < 2) {
+            self.dump("toggleGroupCollapsed: Group too small (only \""+ group.length +"\" tabs)");
+        }
+        else if (contextTab.hasAttribute("groupcollapsed")) {
+            for each (var tab in group) {
+                tab.removeAttribute("groupcollapsed");
+                tab.removeAttribute("hidden");
+            }
+        }
+        else {
+            for each (var tab in group) {
+                tab.setAttribute("groupcollapsed", "true");
+                if (tab != contextTab) tab.setAttribute("hidden", "true");
+            }
+        }
+        if (gBrowser.selectedTab.getAttribute("hidden") == "true")
+            gBrowser.selectedTab = contextTab;
+    };
+    this.bookmarkGroup = function bookmarkGroup(contextTab) {
+        // TODO=P4: Shift-drag onto bookmarks toolbar to create bookmark folder
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        var group = self.getGroupFromTab(contextTab);
+        if (group.length < 1) {
+            self.dump("bookmarkGroup: Group is empty!");
+            return;
+        }
+        if ("addBookmarkForTabBrowser" in window) {
+            // Based on addBookmarkForTabBrowser
+            var tabsInfo = [];
+            const browsers = gBrowser.browsers;
+            for (var i = 0; i < group.length; i++) {
+                var webNav = group[i].linkedBrowser.webNavigation;
+                var url = webNav.currentURI.spec;
+                var name = "";
+                var charSet, description;
+                try {
+                    var doc = webNav.document;
+                    name = doc.title || url;
+                    charSet = doc.characterSet;
+                    description = BookmarksUtils.getDescriptionFromDocument(doc);
+                }
+                catch (ex) {
+                    name = url;
+                }
+                tabsInfo[i] = { name: name, url: url, charset: charSet, description: description };
+            }
+            var dialogArgs = { name: gNavigatorBundle.getString("bookmarkAllTabsDefault") };
+            dialogArgs.bBookmarkAllTabs = true;
+            dialogArgs.objGroup = tabsInfo;
+            openDialog("chrome://browser/content/bookmarks/addBookmark2.xul", "", BROWSER_ADD_BM_FEATURES, dialogArgs);
+        }
+        else {
+            self.dump("TODO=P4: Is bookmarkGroup compatible with MOZ_PLACES?");
+        }
+    };
+    this.closeGroup = function closeGroup(contextTab) {
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        var group = self.getGroupFromTab(contextTab);
+        for each (var tab in group)
+            gBrowser.removeTab(tab);
+    };
+    this.ungroupGroup = function ungroupGroup(contextTab) {
+        if (!contextTab) contextTab = gBrowser.selectedTab;
+        var group = self.getGroupFromTab(contextTab);
+        for each (var tab in group)
+            self.removeGID(tab);
+    };
+    
+    
     /// Utility Methods:
+    this.compareTabCreated = function compareTabCreated(a, b) {
+        if (a.getAttribute(self.Sorts.creation) < b.getAttribute(self.Sorts.creation))
+            return -1;
+        if (a.getAttribute(self.Sorts.creation) > b.getAttribute(self.Sorts.creation))
+            return 1;
+        return 0;
+    }
+    
     /* To sort domains:
      *
      * A simplistic approach is to sort by
@@ -1664,9 +3119,15 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
      * .sy, because although forms like .gov.sy and .org.sy are common,
      * many domains also just end in .sy
      */
-    this.setTabUriKey = function _setTabUriKey(aTab) {
+    this.setTabUriKey = function setTabUriKey(aTab) { // TODO=P3 Listen for back/forwards
         var uri = aTab.linkedBrowser.currentURI;
-        if (!uri) return;
+        if (aTab.initialURI) {
+            if (!uri || uri.asciiSpec == "about:blank")
+                uri = _ios.newURI(aTab.initialURI, null, null);
+            delete aTab.initialURI;
+        }
+        if (!uri)
+            uri = _ios.newURI("about:blank", null, null);
         var parts = /^(.*\.)?(([^.]+)\.[^.]{2,8}\.(?:a[ru]|c[kory]|do|eg|fj|gu|i[dl]|k[hr]|lb|m[moty]|n[ipz]|p[aey]|sv|t[hr]|u[gky]|ve|yu|za))$|^(.*\.)?(([^.]+)\.[^.0-9]{2,})$|^(.*)$/i.exec(uri.asciiHost);
         /* // Explanation of parts:
         parts.index => The 0-based index of the match in the string, e.g. 0
@@ -1711,19 +3172,76 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
         */
 
-        // TODO: make "about:blank" go to the end
-        var uriKey = key + "/" + uri.scheme + uri.path;
-        var uriGroup = parts[3] ? parts [3]
-                                : parts[6] ? parts[6]
-                                           : parts[7] ? parts[7]
-                                                      : uri.asciiSpec.replace(/^[^:]*\:(?:\/\/)?([^\/]+).*$/, "$1");
+        var uriKey = key + "/" + uri.scheme + "/" + uri.path;
+        /*!!var uriGroup = parts[3] ? parts[3]
+                                  : parts[6] ? parts[6]
+                                             : parts[7] ? parts[7]
+                                                        : uri.asciiSpec.replace(/^[^:]*\:(?:\/\/)?([^\/]+).*$/, "$1");*/
+        var uriGroup = parts[3] || parts[6] || parts[7] || uri.asciiSpec.replace(/^[^:]*\:(?:\/\/)?([^\/]+).*$/, "$1");
+        if (uriKey == "/about/blank") // Sort blank tabs to end
+            uriKey = "zzzzzzzzzzzzzzz/about/blank";
         aTab.setAttribute(self.Sorts.uri, uriKey);
-        aTab.setAttribute(self.Groupings.uri, uriGroup);
+        if (uriKey != "zzzzzzzzzzzzzzz/about/blank") // Blank tabs should not get grouped together
+            aTab.setAttribute(self.Groupings.domain, ":dG-" + uriGroup + ":"); // Just to prevent domains that are substrings of each other matching
+    };
+    // Allow easy access to the initial uri a tab is loading
+    this.earlyMethodHooks.push([
+        "gBrowser.addTab",//{
+        null,
+        'b.loadURIWithFlags(aURI',
+        't.initialURI = aURI; $&'
+    ]);//}
+    
+    var _seed = 0; // Used to generate ids; TODO-P6: sync across windows to completely avoid duplicates
+    this.generateId = function generateId() {
+        return String(Date.now()) + "-" + String(++_seed);
+    }
+
+    this.getTabById = function getTabById(tid) {
+        for (var i = 0; i < _tabs.length; i++) {
+            var t = _tabs[i];
+            if (t.getAttribute("tabid") == tid)
+                return t;
+        }
+        throw new Error("Tab id not found: " + tid);
     };
 
-    this.getGroup = function _getGroup(tab) {
-        var gid = tab.getAttribute("groupid");
+    this.countGroups = function countGroups(gid) {
+        var match = gid.match(/\|/g);
+        return match ? match.length + 1 : 1;
+    };
+
+    this.getUngroupedTabsByAttr = function getUngroupedTabsByAttr(attr, value) {
+        var tabs = [];
+        for (var i = 0; i < _tabs.length; i++) {
+            var t = _tabs[i];
+            if (!t.hasAttribute("groupid") && (value ? t.getAttribute(attr) == value : t.hasAttribute(attr)))
+                tabs.push(t);
+        }
+        return tabs;
+    };
+    
+    this.getGroupById = function getGroupById(gid, lookForSingletons) {
+        // To find the group for a new tab
         var group = [];
+        for (var i = 0; i < _tabs.length; i++) {
+            var t = _tabs[i];
+            if (t.getAttribute("groupid").indexOf(gid) != -1) {
+                group.push(t);
+            }
+            else if (lookForSingletons && t.getAttribute("singletonid").indexOf(gid) != -1) {
+                self.setGID(t, gid);
+                group.push(t);
+                //lookForSingletons = false; // Possible optimisation
+            }
+        }
+        return group;
+    };
+    
+    this.getGroupFromTab = function getGroupFromTab(tab) {
+        // To get an existing grouped tab's group // TODO=P4: optimize using previous/nextSibling
+        var group = [];
+        var gid = tab.getAttribute("groupid");
         for (var i = 0; i < _tabs.length; i++) {
             var t = _tabs[i];
             if (t.getAttribute("groupid") == gid)
@@ -1732,7 +3250,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         return group;
     };
 
-    this.getAllGroups = function _getAllGroups() {
+    this.getAllGroups = function getAllGroups() {
         var groups = {};
         for (var i = 0; i < _tabs.length; i++) {
             var t = _tabs[i];
@@ -1744,46 +3262,284 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             else
                 groups[gid] = [t];
         }
+        return groups;
     };
 
-    this.colorizeTab = function _colorizeTab(tab) {
-        // TODO: remember to set groupid based on domain names where applicable
-        if (tab.hasAttribute("groupid")) {
-            var hue = self.hash(tab.getAttribute("groupid")) % 360;
-            var bgColor = "hsl(" + hue + ", 100%, 75%)"; // TODO: allow customizeable sat and lum
+    this.setGID = function setGID(tab, gid) {
+        if (!gid) {
+            self.dump("setGID: Bad groupid \"" + gid + "\"");
+            return;
         }
-        else {
-            bgColor = "";
+        for (var i = 0; i < _tabs.length; i++) {
+            var t = _tabs[i];
+            if (t.getAttribute("groupid") == gid) {
+                if (t.getAttribute("groupcollapsed") == "true") {
+                    tab.setAttribute("groupcollapsed", "true");
+                    for each (var st in self.getGroupById(gid)) {
+                        if (st.getAttribute("hidden") != "true") {
+                            if (st.getAttribute("selected") == "true") {
+                                tab.setAttribute("hidden", "true");
+                            }
+                            else {
+                                st.setAttribute("hidden", "true");
+                            }
+                            break;
+                        }
+                    }
+                    // Note that if no tab is currently visible(!), then the tab we're adding will be correctly kept visible
+                }
+                break;
+            }
         }
-        
-        // TODO: Could color Mac tabs (amongst others) using canvas, see ChromaTabs
-        // Background colors are reset on tab move (and close then restore), hence the listeners
-        if (_tabContainer.hasAttribute("colortabnotlabel")) // This is set at the start of initSortingAndGrouping
-            var nodes = tab.ownerDocument.getAnonymousNodes(tab);
+        tab.removeAttribute("singletonid");
+        tab.setAttribute("groupid", gid);
+        self.colorizeTab(tab);
+        self.updateIndents();
+    };
+    
+    this.removeGID = function removeGID(tab, becauseSingleton) {
+        var gid = tab.getAttribute("groupid");
+        if (becauseSingleton)
+            tab.setAttribute("singletonid", gid);
         else
-            var nodes = [ tab.ownerDocument.getAnonymousElementByAttribute(tab, "class", "tab-text") ];
+            tab.removeAttribute("singletonid");
+        tab.removeAttribute("groupid");
+        tab.removeAttribute("groupcollapsed");
+        tab.removeAttribute("hidden");
+        self.colorizeTab(tab);
+        self.updateIndents();
+    };
+
+    var _lastUpdateIndents = 0;
+    var _updateIndentsRequested = false;
+    this.updateIndents = function updateIndents(group) {
+        if (!gBrowser.hasAttribute("vertitabbar") || !_prefs.getBoolPref("indentedTree"))
+            return;
         
-        for each (var node in nodes) {
-            node.style.backgroundColor = bgColor;
+        if (!group) {
+            if (!_updateIndentsRequested) {
+                // Limit this to once every 150ms
+                var timeSinceLastUpdate = Date.now() - _lastUpdateIndents;
+                if (timeSinceLastUpdate >= 150) {
+                    for (var i = 0; i < _tabs.length; i++)
+                        _tabs[i].style.marginLeft = null;
+                    for each (var g in self.getAllGroups())
+                        updateIndents(g);
+                    _lastUpdateIndents = Date.now();
+                }
+                else {
+                    _updateIndentsRequested = true;
+                    window.setTimeout(function __updateAllIndents() {
+                        _updateIndentsRequested = false;
+                        self.updateIndents();
+                    }, 150 - timeSinceLastUpdate);
+                }
+            }
+            return;
+        }
+        /*!!else if (typeof group == "string") {
+            group = self.getGroupById(group);
+        }
+        else if ("nodeType" in group) {
+            if (group.getAttribute("groupid")) {
+                group = self.getGroupFromTab(group);
+            }
+            else {
+                group.style.marginLeft = null;
+                return;
+            }
+        }
+        
+        if (!group.length)
+            return;*/
+        
+        var stack = [];
+        var maxlevel = _prefs.getIntPref("maxTreeLevel");
+        var indent = _prefs.getIntPref("indentAmount");
+        for each (var t in group) {
+            var pp = t.getAttribute("possibleparent");
+            if (pp) {
+                for (var i = stack.length - 1; i >= 0; i--) {
+                    if (stack[i] == pp) {
+                        stack.push(t.getAttribute("tabid"));
+                        t.style.setProperty("margin-left", (indent * Math.min(i + 1, maxlevel)) + "px", "important")
+                        break;
+                    }
+                    stack.pop();
+                }
+                if (i >= 0)
+                    continue;
+            }
+            t.style.marginLeft = null;
+            stack = [ t.getAttribute("tabid") ];
+        }
+    };
+    this.toggleIndentedTree = function toggleIndentedTree() {
+        if (gBrowser.hasAttribute("vertitabbar") && _prefs.getBoolPref("indentedTree"))
+            self.updateIndents();
+        else
+            for (var i = 0; i < _tabs.length; i++)
+                _tabs[i].style.marginLeft = null;
+    };
+
+    this.updateColorTabNotLabel = function updateColorTabNotLabel() {
+        var colorTabNotLabel = _prefs.getIntPref("colorTabNotLabel");
+        if (colorTabNotLabel != 0 && colorTabNotLabel != 1) {
+            // Note: we deliberately recalculate this, in case the user switches theme
+            var currentTheme = gPrefService.getCharPref("general.skins.selectedSkin");
+            /*!!if (currentTheme == "classic/1.0") {
+                // Unnecessary: Tabkit itself requires Firefox to be 2.0 or later! (plus didn't work)
+                var minAppVersion = Cc["@mozilla.org/extensions/manager;1"].
+                                    getService(Ci.nsIExtensionManager).
+                                    getItemForID("{972ce4c6-7e08-4474-a285-3208198ce6fd}").
+                                    minAppVersion;
+                var compatibleTheme = minAppVersion == "2.0" || minAppVersion == "3.0a1" // See https://addons.mozilla.org/faq.php for valid version strings
+            }
+            else {
+                ...
+            }
+            colorTabNotLabel = compatibleTheme ? 1 : 0;*/
+            // TODO=P4: test and add other themes, see list at http://en.design-noir.de/mozilla/aging-tabs
+            colorTabNotLabel = (currentTheme == "classic/1.0" || currentTheme == "BlueIce");
+        }
+        if (colorTabNotLabel) {
+            if (_tabContainer.getAttribute("colortabnotlabel") != "true") {
+                _tabContainer.setAttribute("colortabnotlabel", "true");
+                for (var i = 0; i < _tabs.length; i++) {
+                    var t = _tabs[i];
+                    t.ownerDocument.getAnonymousElementByAttribute(t, "class", "tab-text").style.backgroundColor = null;
+                    self.colorizeTab(t);
+                }
+            }
+        }
+        else if (_tabContainer.hasAttribute("colortabnotlabel")) {
+            _tabContainer.removeAttribute("colortabnotlabel");
+            for (var i = 0; i < _tabs.length; i++) {
+                var t = _tabs[i];
+                var nodes = t.ownerDocument.getAnonymousNodes(t);
+                for (var i = 0; i < nodes.length; i++)
+                    nodes[i].style.backgroundColor = null;
+                self.colorizeTab(t);
+            }
         }
     };
 
-    // Sets colors and attributes but doesn't move tabs
-    this.addToGroupOf = function _addToGroupOf(tab, grouptab, grouping,  newid) { // grouping is required, newid isn't
+    this.colorizeTab = function colorizeTab(tab) {
+        try {
+            var gid = tab.getAttribute("groupid");
+            if (gid) {
+                var md5 = tabkit.rawMD5(gid); // TODO=P4: Use different colours if this would be too similar to a neighbouring group (except for domain groups)
+                var hue = 0;
+                for (var i = 0; i < md5.length; i++)
+                    hue += md5.charCodeAt(i);
+                hue %= 360;
+                //!!var hue = self.hash(self.rawMD5(gid)) % 360; // We get much better colour variation with the MD5
+                var bgColor = "hsl(" + hue + ", 100%, 75%)"; // TODO=P4: add prefs for sat and lum
+            }
+            else {
+                bgColor = "";
+            }
+            
+            var tabText = tab.ownerDocument.getAnonymousElementByAttribute(tab, "class", "tab-text");
+            tabText.style.color = "black";
+            
+            // TODO=P4: Could color Mac tabs (amongst others) using canvas, see ChromaTabs
+            // Background colors are reset on tab move (and close then restore), hence the listeners
+            if (_tabContainer.getAttribute("colortabnotlabel") == "true") // This is set at the start of initSortingAndGrouping
+                var nodes = tab.ownerDocument.getAnonymousNodes(tab);
+            else
+                var nodes = [ tabText ];
+            
+            for (var i = 0; i < nodes.length; i++)
+                nodes[i].style.backgroundColor = bgColor;
+            
+            // Color tabs-bottom (see also sortgroup_onTabSelect, and note that tabs-bottom is hidden during multirow mode)
+            if (tab.getAttribute("selected") == "true" && _tabContainer.getAttribute("colortabnotlabel") == "true") {
+                var tabsBottom = document.getAnonymousElementByAttribute(tab.parentNode, "class", "tabs-bottom")
+                if (tabsBottom)
+                    tabsBottom.style.setProperty("background-color", bgColor, "important");
+                else
+                    self.debug("colorizeTab: Couldn't find tabs-bottom");
+            }
+        }
+        catch (ex) {
+            self.dump(ex);
+        }
+    };
+
+    const COLOR_MENUITEMS =//{
+        'try { \
+            if (gBrowser.mTabContainer.getAttribute("colortabnotlabel") == "true") { \
+                menuItem.style.backgroundColor = document.getAnonymousNodes(curTab)[0].style.backgroundColor; \
+            } \
+            else if ((gBrowser.mTabContainer.hasAttribute("highlightunread") && !curTab.hasAttribute("read")) \
+                     || (gBrowser.mTabContainer.hasAttribute("emphasizecurrent") && curTab.getAttribute("selected") == "true")) \
+            { \
+                var bgStyle = window.getComputedStyle(document.getAnonymousNodes(curTab)[0], null); \
+                menuItem.style.backgroundColor = bgStyle.backgroundColor; \
+            } \
+            window.setTimeout(function _colorMenuText(menuItem, curTab) { \
+                try { \
+                    var menuText = document.getAnonymousElementByAttribute(menuItem, "class", "menu-iconic-text"); \
+                    if (!curTab.hasAttribute("read")) \
+                        menuText.style.fontStyle = "italic"; \
+                    var fgStyle = window.getComputedStyle(document.getAnonymousElementByAttribute(curTab, "class", "tab-text"), null); \
+                    menuText.style.setProperty("background-color", fgStyle.backgroundColor, "important"); \
+                    menuText.style.setProperty("color", fgStyle.color, "important"); \
+                } \
+                catch (ex) { \
+                    tabkit.dump(ex); \
+                } \
+            }, 0, menuItem, curTab); \
+        } \
+        catch (ex) { \
+            tabkit.dump(ex); \
+        }';
+        /*!!
+            if (_tabContainer.getAttribute("colortabnotlabel") == "true" ? curTab.hasAttribute("groupid") : (_tabContainer.hasAttribute("highlightunread") && !curTab.hasAttribute("read"))) { \
+                var bgStyle = window.getComputedStyle(document.getAnonymousNodes(curTab)[0], null); \
+                menuItem.style.backgroundColor = bgStyle.backgroundColor; \
+            } \
+        */
+        //}
+    
+    this.postInitAllTabsMenuColors = function postInitAllTabsMenuColors(event) {
+        self.addMethodHook([ // All tabs popup inherits tab colors (this also works for unread tabs)
+            '_tabContainer.mAllTabsPopup._onShowingAllTabsPopup',//{
+            null,
+            'menuItem.setAttribute("image", curTab.getAttribute("image"));',
+            '$& ' + COLOR_MENUITEMS
+        ]);//}
+        
+        if ("LastTab" in window && window.LastTab && LastTab.Browser && LastTab.Browser.OnTabMenuShowing) {
+            self.appendMethodCode('LastTab.Browser.OnTabMenuShowing',//{
+                'for (var i = 0; i < menu.childNodes.length; i++) { \
+                    var menuItem = menu.childNodes[i]; \
+                    if (LastTab.Preference.TabMenuSortMethod == LastTab.TabMenuSortMethod.MostRecent) \
+                            var curTab = LastTab.Browser.TabHistory[menuItem.value]; \
+                    else \
+                        var curTab = gBrowser.mTabs[menuItem.value]; \
+                    ' + COLOR_MENUITEMS +
+                '}'
+            );//}
+        }
+    };
+    this.postInitListeners.push(this.postInitAllTabsMenuColors);
+
+    //!! Sets colors and attributes but doesn't move tabs
+    /*!!this.addToGroupOf = function addToGroupOf(tab, grouptab, grouping,  newid) { // grouping is required, newid isn't
         if (grouptab.hasAttribute(self.Groupings[grouping])) {
             newid = grouptab.getAttribute(self.Groupings[grouping])
             tab.setAttribute(self.Groupings[grouping], newid);
             
             if (self.groupScheme[grouping]) {
                 if (grouptab.hasAttribute("groupid")) {
-                    tab.setAttribute("groupid", grouptab.getAttribute("groupid"));
+                    self.setGID(tab, grouptab.getAttribute("groupid"));
                 }
                 else {
-                    grouptab.setAttribute("groupid", newid);
-                    tab.setAttribute("groupid", newid);
-                    colorizeTab(grouptab);
+                    self.setGID(grouptab, newid);
+                    self.setGID(tab, newid);
                 }
-                colorizeTab(tab);
             }
         }
         else {
@@ -1794,31 +3550,26 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             
             if (self.groupScheme[grouping]) {
                 if (grouptab.hasAttribute("groupid")) { // It might be grouped by a different grouping - in which case add it to that group...
-                    tab.setAttribute("groupid", grouptab.getAttribute("groupid"));
+                    self.setGID(tab, grouptab.getAttribute("groupid"));
                 }
                 else {
-                    grouptab.setAttribute("groupid", newid);
-                    tab.setAttribute("groupid", newid);
-                    colorizeTab(grouptab);
+                    self.setGID(grouptab, newid);
+                    self.setGID(tab, newid);
                 }
-                colorizeTab(tab);
             }
         }
-    };
+    };*/
     
-    this.groupTogether = function _groupTogether(tabs,  grouping, id) { // grouping defaults to "manual", id is optional
+    /*!!this.groupTogether = function groupTogether(tabs,  grouping, id) { // id is optional
         if (tabs.length < 2)
             return;
-        
-        if (!grouping)
-            grouping = "manual"; // TODO: is this a good idea?
         
         for (i = 1; i < tabs.length; i++) {
             self.addToGroupOf(tabs[i], tabs[i - 1], grouping, id);
         }
-    };
+    };*/
     
-    this.getSubtree = function _getSubtree(tab) {
+    /*!!this.getSubtree = function getSubtree(tab) {
         var stid = tab.getAttribute("subtreeid");
         if (!stid)
             return [tab];
@@ -1837,18 +3588,18 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         return subtree;
     };
 
-    this.setSubtree = function _setSubtree(subtree, stid) {
+    this.setSubtree = function setSubtree(subtree, stid) {
         if (!stid)
             stid = self.generateId();
 
         for (var i = 0; i < subtree.length; i++) {
             var t = subtree[i];
             t.setAttribute("subtreeid", stid);
-            t.setAttribute("subtreeindex", i); // TODO: preserve indices where possible to aid undo close tab - but first tab must always be 0
+            t.setAttribute("subtreeindex", i); // T O D O: preserve indices where possible to aid undo close tab - but first tab must always be 0
         }
     };
     
-    this.subTreeInsertBefore = function _subTreeInsertBefore(tab, parent) {
+    this.subTreeInsertBefore = function subTreeInsertBefore(tab, parent) {
         var stid = parent.getAttribute("subtreeid");
         
         var level = stid ? parent.getAttribute("subtreelevel") : "";
@@ -1869,7 +3620,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };
     
-    this.subTreeInsertAfter = function _subTreeInsertAfter(tab, parent) {
+    this.subTreeInsertAfter = function subTreeInsertAfter(tab, parent) {
         var stid = parent.getAttribute("subtreeid");
         
         var level = stid ? parent.getAttribute("subtreelevel") : "";
@@ -1892,7 +3643,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     
     this.recentChildren = 0;
     
-    this.subTreeInsertAfterRecent = function _subTreeInsertAfterRecent(tab, parent) {
+    this.subTreeInsertAfterRecent = function subTreeInsertAfterRecent(tab, parent) {
         var stid = parent.getAttribute("subtreeid");
         
         var level = stid ? parent.getAttribute("subtreelevel") : "";
@@ -1921,7 +3672,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };
     
-    this.subTreeInsertAfterChildren = function _subTreeInsertAfterChildren(tab, parent) {
+    this.subTreeInsertAfterChildren = function subTreeInsertAfterChildren(tab, parent) {
         var stid = parent.getAttribute("subtreeid");
         
         var level = stid ? parent.getAttribute("subtreelevel") : "";
@@ -1947,117 +3698,285 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         if (self.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
             self.moveAfter(tab, subtree[index - 1]);
         }
-    };
+    };*/
 
     /// Public Methods:
-    this.clearGroups = function _clearGroups(andSubtrees) {
+    this.groupTabsBy = function groupTabsBy(groupingName) {
+        var groupingAttr = self.Groupings[groupingName];
+        var newGroups = {};
         for (var i = 0; i < _tabs.length; i++) {
-            if (_tabs[i].hasAttribute("groupid") && (andSubtrees || !_tabs[i].hasAttribute("subtreeid"))) {
-                _tabs[i].removeAttribute("groupid");
-                _tabs[i].removeAttribute("subtreeid");
+            var t = _tabs[i];
+            if (!t.hasAttribute("groupid")) {
+                var gid = t.getAttribute(groupingAttr);
+                if (gid != "") {
+                    var group = self.getGroupById(gid);
+                    if (group.length > 0) {
+                        // TODO=P4: move next to parent if it's in the group
+                        if (self.newTabPosition == 2 && self.activeSort != "origin"
+                            && (groupingName != "domain" || !_prefs.getBoolPref("autoSortDomainGroups")) // We're going to sort all the groups anyway
+                            && (groupingName != "opener" || !_prefs.getBoolPref("autoSortOpenerGroups"))) // We're going to sort all the groups anyway
+                        {
+                            self.insertTab(t, gid)
+                        }
+                        else {
+                            self.moveAfter(t, group[group.length - 1]);
+                        }
+                        self.setGID(t, group[0].getAttribute("groupid"));
+                    }
+                    else {
+                        if (gid in newGroups)
+                            newGroups[gid].push(t);
+                        else
+                            newGroups[gid] = [t];
+                    }
+                }
             }
         }
+        
+        for (var gid in newGroups) {
+            var group = newGroups[gid];
+            if (group.length > 1) {
+                for each (var tab in group) {
+                    self.setGID(tab, gid);
+                }
+                
+                // Move all tabs to where the median positioned tab currently is // TODO=P4: if self.newTabPosition == 2 && self.activeSort in self.DateSorts move to most recent tab instead?
+                var mi = group.length >> 1;
+                var median = group[mi];
+                for (var i = 0; i < mi; i++)
+                    self.moveBefore(group[i], median);
+                for (var i = group.length - 1; i > mi; i--)
+                    self.moveAfter(group[i], median);
+            }
+        }
+        
+        // Sort all groupingName groups
+        if (groupingName == "domain") {
+            if (_prefs.getBoolPref("autoSortDomainGroups")) {
+                var groups = self.getAllGroups();
+                for each (var gid in groups)
+                    if (gid.indexOf(":dG-") != -1)
+                        self.sortTabsBy("uri", gid);
+            }
+        }
+        else if (groupingName == "opener") {
+            if (_prefs.getBoolPref("autoSortOpenerGroups")) {
+                var groups = self.getAllGroups();
+                for (var gid in groups)
+                    if (gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) // TODO-P6: Would it make more sense for manual groups not to get autosorted, i.e. if ((gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) && !self.startsWith(gid, ":oG-manualGroup-"))
+                        self.sortTabsBy("origin", gid);
+            }
+        }
+        
+        if (groupingName != self.activeGrouping)
+            self.activeGrouping = groupingName;
     };
 
-    this.sortTabs = function _sortTabs(keyname) {//TODO:URGENT
-        if (keyname === undefined) {
-            keyname = self.lastSort; // TODO: careful!
-        }
-        else if (keyname != self.lastSort) {
-            self.lastSort = keyname;
-            if (keyname != self.groupScheme)
-                self.groupScheme = "NONE";
-        }
-
-        if (keyname == "NONE")
+    // If gid is specified, assumes the group is already together (else it will be arbitrarily positioned)
+    this.sortTabsBy = function sortTabsBy(sortName, gid) { // gid is optional
+        if (!sortName in self.Sorts) {
+            self.dump("sortTabsBy: Bad sortName: \"" + sortName + "\"");
             return;
+        }
 
-        var isNumeric = (keyname in self.NumericKeys);
-        var isReverse = (keyname in self.ReverseKeys);
-
-        var attr = self.Sorts[keyname];
+        var isReverse = (sortName in self.ReverseSorts);
+        var isNumeric = (sortName in self.NumericSorts);
+        //~ var isDate = (sortName in self.DateSorts);
+        var isOrigin = (sortName == "origin");
+        
+        if (isOrigin) {
+            // We need to calculate a set of keys we can sort by
+            if (gid) {
+                var tabset = self.getGroupById(gid);
+            }
+            else {
+                var tabset = [];
+                for (var i = 0; i < _tabs.length; i++)
+                    tabset.push(_tabs[i]);
+            }
+            tabset.sort(self.compareTabCreated);
+            var lastParent = null;
+            var recentChildren = 0;
+            for (var i = 1; i < tabset.length; i++) {
+                var pp = tabset[i].getAttribute("possibleparent");
+                if (pp) {
+                    for (var j = i - 1; j >= 0; j--) {
+                        if (tabset[j].getAttribute("tabid") == pp) {
+                            if (self.openRelativePosition == "left") {
+                                tabset.splice(j, 0, tabset.splice(i, 1)[0]); // Move i before j
+                            }
+                            else {
+                                if (self.openRelativePosition != "right") { // rightOfRecent is treated as rightOfConsecutive, since we don't know about tab selections
+                                    if (lastParent === pp) {
+                                        j += recentChildren++;
+                                    }
+                                    else {
+                                        lastParent = pp;
+                                        recentChildren = 1;
+                                    }
+                                }
+                                tabset.splice(j + 1, 0, tabset.splice(i, 1)[0]); // Move i after j & recentChildren
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            for (var i = 0; i < tabset.length; i++) {
+                tabset[i].key = i;
+            }
+        }
+        else {
+            var attr = self.Sorts[sortName];
+        }
 
         // Presort groups and calculate medians
-        var groups = self.getAllGroups();
-        for (var gid in groups) {
-            var g = groups[gid];
+        if (gid) {
+            var groups = {};
+            groups[gid] = self.getGroupById(gid);
+        }
+        else {
+            var groups = self.getAllGroups();
+        }
+        for (var groupid in groups) {
+            var g = groups[groupid];
+            
+            // We need grouped tabs to have keys whether or not we intend to internally sort them, so we can set the medians
+            if (!gid && !isOrigin)
+                for (var i = 0; i < g.length; i++)
+                    g[i].key = isNumeric ? Number(g[i].getAttribute(attr)) : g[i].getAttribute(attr).toLowerCase();
+            
+            if (gid
+                || self.countGroups(groupid) != 1
+                || ((groupid.indexOf(":dG-") == -1 || !_prefs.getBoolPref("autoSortDomainGroups"))
+                    && ((groupid.indexOf(":oG-") == -1 && groupid.indexOf(":tmpOG-") == -1) || !_prefs.getBoolPref("autoSortOpenerGroups"))))
+            {
+                // Sort group (by insertion sort)
+                for (var i = 1; i < g.length; i++) {
+                    var gi = g[i];
+                    
+                    var j;
+                    for (j = i - 1; j >= 0; j--) {
+                        if (isReverse ? g[j].key >= gi.key : g[j].key <= gi.key)
+                            break;
+                        g[j + 1] = g[j];
+                    }
+                    g[j + 1] = gi;
+                    
+                    gi.removeAttribute("outoforder");
+                }
+            }
+            
+            if (!gid) {
+                // TODO=P4: ignore outoforder tabs?
+                if (sortName == "origin")
+                    var representative = (self.openRelativePosition == "left") ? g.concat().sort(self.compareTabCreated)[0].key : g[0].key;
+                //~ else if (isDate) // TODO=P4: Should I?
+                    //~ var representative = g[ g.length - 1 ].key
+                else // Median
+                    var representative = g[ g.length >> 1 ].key;
+                for (var k = 0; k < g.length; k++)
+                    g[k].key = representative;
+            }
+        }
 
-            // Sort group (by insertion sort)
-            for (var i = 0; i < g.length; i++) { // i = 0 is just to set g[0].key
-                var gi = g[i];
-                gi.key = isNumeric ? Number(gi.getAttribute(attr)) : gi.getAttribute(attr);
+        if (gid) {
+            // Just rearrange the group tabs
+            var group = groups[gid];
+            var firstTab = group[0];
+            for (var i = 1; i < group.length; i++)
+                self.moveAfter(group[i], firstTab);
+        }
+        else {
+            // Sort all tabs/groups (by insertion sort)
+            for (var i = 0; i < _tabs.length; i++) {
+                var ti = _tabs[i];
+                var tig = ti.getAttribute("groupid");
+                if (!tig && !isOrigin)
+                    ti.key = isNumeric ? Number(ti.getAttribute(attr)) : ti.getAttribute(attr).toLowerCase();
 
                 var j;
                 for (j = i - 1; j >= 0; j--) {
-                    if (isReverse ? g[j].key >= gi.key : g[j].key <= gi.key)
+                    if (isReverse ? _tabs[j].key >= ti.key : _tabs[j].key <= ti.key)
                         break;
-                    g[j + 1] = g[j];
                 }
-                g[j + 1] = gi;
+
+                if (!tig) {
+                    gBrowser.moveTabTo(ti, j + 1);
+                    ti.removeAttribute("outoforder");
+                }
+                else {
+                    var g = groups[tig];
+                    for (var k = 0; k < g.length; k++) {
+                        gBrowser.moveTabTo(g[k], j + k + 1);
+                        g[k].removeAttribute("outoforder");
+                    }
+                    i += g.length - 1;
+                }
             }
-
-            // Set keys to median
-            var median = g[ Math.ceil(g.length / 2) - 1 ].key;
-            for (var k = 0; k < g.length; k++)
-                g[k].key = median;
+            
+            if (self.activeSort != sortName)
+                self.activeSort = sortName;
         }
+    };
 
-        // Now sort all tabs/groups (by insertion sort)
-        for (var i = 0; i < _tabs.length; i++) {
-            var ti = _tabs[i];
-            var tig = ti.getAttribute("groupid");
-            if (!tig)
+    /* Usage:
+        - self.insertTab(tab); inserts a tab into _tabs by self.activeSort (ASSUMES self.newTabPosition == 2 && self.activeSort != "origin")
+        - self.insertTab(tab, gid); inserts a tab into self.getGroupById(gid) by self.activeSort (ASSUMES self.newTabPosition == 2 && self.activeSort != "origin")
+        - self.insertTab(tab, gid, sortName); inserts a tab into self.getGroupById(gid) using sortName (ASSUMES sortName != "origin") */
+    this.insertTab = function insertTab(tab, gid, sortName) { // gid and grouping are optional
+        if (gid) {
+            var tabset = self.getGroupById(gid);
+        }
+        else {
+            var tabset = [];
+            for (var i = 0; i < _tabs.length; i++)
+                tabset.push(_tabs[i]);
+        }
+        var tabIndex = tabset.indexOf(tab);
+        if (tabIndex != -1)
+            tabset.splice(tabIndex, 1);
+        if (tabset.length == 0) {
+            self.dump("insertTab: tabset is empty!");
+            return;
+        }
+        
+        if (!sortName)
+            sortName = self.activeSort;
+        if (!sortName in self.Sorts || sortName == "origin") {
+            self.dump("Cannot insert by \"" + sortName + "\"");
+            return;
+        }
+        
+        var isReverse = (sortName in self.ReverseSorts);
+        var isNumeric = (sortName in self.NumericSorts);
+        
+        var attr = self.Sorts[sortName];
+        tab.key = isNumeric ? Number(tab.getAttribute(attr)) : tab.getAttribute(attr);
+        
+        var i = 0;
+        while (i < tabset.length) {
+            var ti = tabset[i];
+            if (!ti.hasAttribute("outoforder") && (gid || !ti.hasAttribute("groupid"))) {
                 ti.key = isNumeric ? Number(ti.getAttribute(attr)) : ti.getAttribute(attr);
-
-            var j;
-            for (j = i - 1; j >= 0; j--) {
-                if (isReverse ? _tabs[j].key >= ti.key : _tabs[j].key <= ti.key)
+                if (isReverse ? ti.key < tab.key : ti.key > tab.key)
                     break;
             }
-
-            if (!tig) {
-                gBrowser.moveTabTo(ti, j + 1);
-            }
-            else {
-                var g = groups[tig];
-                for (var k = 0; k < g.length; k++)
-                    gBrowser.moveTabTo(g[k], j + k + 1);
-                i += g.length - 1;
-            }
+            i++;
         }
+        if (i < tabset.length)
+            self.moveBefore(tab, tabset[i]);
+        else
+            self.moveAfter(tab, tabset[tabset.length - 1]);
+        tab.removeAttribute("outoforder"); // In case it was set
     };
 
-    this.groupTabs = function _groupTabs(keyname) {//TODO:URGENT
-        if (keyname === undefined) {
-            keyname = self.groupScheme;
-        }
-        else if (keyname != self.groupScheme) {
-            self.groupScheme = keyname;
-            if (keyname != "NONE" && keyname != self.lastSort)
-                self.lastSort = keyname;
-        }
-
-        if (keyname == "NONE")
-            return;
-
-        // Set groupid attributes
-        var attr = self.Groupings[keyname];
-        for (var i = 0; i < _tabs.length; i++)
-            if (_tabs[i].hasAttribute(attr))
-                _tabs[i].setAttribute("groupid", _tabs[i].getAttribute(attr));
-
-        // Sort tabs into groups
-        if (self.lastSort != keyname)
-            self.lastSort = keyname;
-        self.sortTabs();
-    };
-
-    /* Binary insertion sort:
+    /*!! Binary insertion sort:
      * Probably the easiest way to do a stable sort given how moveTabTo works,
      * and reasonably efficient even for a couple of hundred tabs...
      */
-    /*this.sortTabsBy = function _sortTabsBy(keyname) {
-        self.lastSort = keyname;
+    /*!!this.sortTabsBy = function sortTabsBy(keyname) {
+        self.activeSort = keyname;
         if (keyname == self.SortOrders.NONE) return;
 
         var numericSort = (keyname in self.NumericKeys);
@@ -2099,58 +4018,103 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };*/
 
-    // Assumes that the tab was added at the far right // TODO: remove assumption!
-    this.insertNewTabBySortOrder = function _insertNewTabBySortOrder(aTab) {//TODO:URGENT
-        self.dump("FIXME!");return;//TODO: FIX!
-        var keyname = self.lastSort;
-        if (keyname == self.SortOrders.NONE)
-            return;
+    /// Method Hooks
+    
+    // Fix strict warning when moving tab to end of tab bar - https://bugzilla.mozilla.org/show_bug.cgi?id=347683#c9
+    this.earlyMethodHooks.push([
+        "gBrowser.moveTabTo",//{
+        null,
+        'this.mTabContainer.insertBefore(aTab, this.mTabContainer.childNodes[aIndex]);',
+        'this.mTabContainer.insertBefore(aTab, this.mTabContainer.childNodes.item(aIndex));'
+    ]);//}
+    
+    // Allow selecting hidden tabs of a collapsed group (which will then be automatically raised to the top)
+    this.earlyMethodHooks.push([
+        "_tabContainer.selectNewTab",//{
+        null,
+        '(aNewTab.getAttribute("hidden"))',
+        '(aNewTab.getAttribute("hidden") && !aNewTab.hasAttribute("groupcollapsed"))'
+    ]);//}
 
-        var left = 0;
-        var right = aTab._tPos;
-        while (left < right) {
-            var middle = Math.floor((left + right) / 2);
-            if (tab[keyname] >= _tabs[middle][keyname]) {
-                left = middle + 1;
-            }
-            else {
-                right = middle;
-            }
-        }
+    //}##########################
+    //{=== Tab Min Width
+    //|##########################
 
-        gBrowser.moveTabTo(tab, left);
+    /// Initialisation:
+    this.initTabMinWidth = function initTabMinWidth(event) {
+        self.addGlobalPrefListener("browser.tabs.tabMinWidth", self.resetTabMinWidth);
     };
+    this.initListeners.push(this.initTabMinWidth);
+
+    /// Pref Listener/method:
+    // Note: this is also used by multi-row tabs
+    this.resetTabMinWidth = function resetTabMinWidth(pref) {
+        self.setTabMinWidth(gPrefService.getIntPref("browser.tabs.tabMinWidth"));
+    };
+
+    /// Methods:
+    // Note: this is also used by multi-row tabs
+    this.setTabMinWidth = function setTabMinWidth(minWidth) {
+        _tabContainer.mTabMinWidth = minWidth;
+        for (var i = 0; i < _tabs.length; i++) {
+            _tabs[i].minWidth = minWidth;
+        }
+        _tabContainer.adjustTabstrip();
+    }
 
     //}##########################
     //{>>> Tab Bar position
     //|##########################
 
+    // NOTE: Vertical tab dragging (inc. indicator position) is fixed by Multi-row tabs
+
     /// Enums:
     this.Positions = {
         TOP: 0,
-        LEFT: 1, // TODO: Fix tab dragging (including jitter when dragging to edges!)
+        LEFT: 1,
         RIGHT: 2,
         BOTTOM: 3
     };
 
     /// Initialisation:
-    this.initTabbarPosition = function _initTabbarPosition(event) {
-        self.moveSidebar();
+    this.initTabbarPosition = function initTabbarPosition(event) {
+        // Persist tab bar splitter width
+        var persist = gBrowser.mStrip.getAttribute("persist");
+        if (persist.indexOf("width") == -1) {
+            if (persist != "")
+                gBrowser.mStrip.setAttribute("persist", persist + " width");
+            else
+                gBrowser.mStrip.setAttribute("persist", "width");
+        }
+        
+        var sidebarPosition = _prefs.getIntPref("sidebarPosition");
+        if (sidebarPosition == self.Positions.TOP || sidebarPosition == self.Positions.BOTTOM)
+            self.moveSidebar();
         self.addPrefListener("sidebarPosition", self.moveSidebar);
-        self.moveTabbar();
+        var tabbarPosition = _prefs.getIntPref("tabbarPosition");
+        if (tabbarPosition == self.Positions.LEFT || tabbarPosition == self.Positions.RIGHT)
+            self.moveTabbar();
         self.addPrefListener("tabbarPosition", self.moveTabbar);
 
+        _tabContainer.addEventListener("TabOpen", self.positionedTabbar_onTabOpen, false);
         _tabContainer.addEventListener("TabSelect", self.positionedTabbar_onTabSelect, false);
         _tabContainer.addEventListener("TabMove", self.positionedTabbar_onTabSelect, false); // In case a tab is moved out of sight
     };
     this.initListeners.push(this.initTabbarPosition);
 
-    /// Event listener:
-    this.positionedTabbar_onTabSelect = function _positionedTabbar_onTabSelect(event) {
+    /// Event listeners:
+    this.positionedTabbar_onTabOpen = function positionedTabbar_onTabOpen(event) {
+        if (document.getElementById("tabkit-splitter")) {
+            var tab = event.target;
+            tab.maxWidth = 1000;
+            tab.minWidth = 0;
+        }
+    }
+    this.positionedTabbar_onTabSelect = function positionedTabbar_onTabSelect(event) {
         if (gBrowser.hasAttribute("vertitabbar")) {
             var tab = gBrowser.selectedTab;
 
-            self.scrollToElement(_tabInnerBox, tab); // TODO: fix scrolling (e.g. try selecting bottom tab then selecting the tab two above...)
+            self.scrollToElement(_tabInnerBox, tab);
 
             // Tabs on different rows shouldn't get before/afterselected attributes
             if (tab.previousSibling != null) {
@@ -2161,9 +4125,14 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             }
         }
     };
+    this.positionedTabbar_onResize = function positionedTabbar_onResize(event) {
+        var width = parseInt(gBrowser.mStrip.width);
+        if (width < 1000)
+            _prefs.setIntPref("tabSidebarWidth", width);
+    };
 
     /// Methods:
-    this.moveSidebar = function _moveSidebar(pos) {
+    this.moveSidebar = function moveSidebar(pos) {
         if (typeof pos != "number") pos = _prefs.getIntPref("sidebarPosition");
 
         // Calculate new orient attributes
@@ -2194,12 +4163,15 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         ];
 
         // Set new attributes
-        for each (var node in normallyNormal) node.setAttribute("dir", fromNormal);
+        for each (var node in normallyNormal) 
+            ode.setAttribute("dir", fromNormal);
         sidebarHeader.setAttribute("pack", flipOrient ? "end" : "start");
 
         // Set orient attributes last or stuff messes up
-        for each (var node in normallyHorizontal) node.setAttribute("orient", fromHorizontal);
-        for each (var node in normallyVertical) node.setAttribute("orient", fromVertical);
+        for each (var node in normallyHorizontal)
+            node.setAttribute("orient", fromHorizontal);
+        for each (var node in normallyVertical)
+            node.setAttribute("orient", fromVertical);
 
         // Now activate our css
         gBrowser.removeAttribute("horizsidebar");
@@ -2207,7 +4179,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         browser.setAttribute(fromVertical.substring(0, 5) + "sidebar", fromNormal);
     }
 
-    this.moveTabbar = function _moveTabbarTo(pos) {
+    this.moveTabbar = function moveTabbar(pos) {
         if (typeof pos != "number") pos = _prefs.getIntPref("tabbarPosition");
 
         // Calculate new orient attributes
@@ -2223,12 +4195,13 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         var tabBox = gBrowser.mTabBox;
         var tabsStack = document.getAnonymousElementByAttribute(_tabContainer, "class", "tabs-stack");
         var tabVbox = tabsStack.getElementsByTagName("vbox")[1];
+        var tabHbox = tabVbox.getElementsByTagName("hbox")[0];
         var normallyHorizontal = [
             gBrowser,
             gBrowser.mStrip,
             _tabContainer,
             tabsStack,
-            tabVbox.getElementsByTagName("hbox")[0],
+            tabHbox,
             _tabstrip,
             _tabstrip._scrollbox,
             _tabInnerBox,
@@ -2241,59 +4214,164 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         var normallyNormal = [
             tabBox
         ];
-
+        
         // Set new attributes
-        for each (var node in normallyNormal) node.setAttribute("dir", fromNormal);
-        //_tabInnerBox.setAttribute("pack", flipOrient ? "start" : "end");//mine
-        //_tabContainer.setAttribute("align", flipOrient ? "start" : "stretch");
-        //_tabInnerBox.setAttribute("align", flipOrient ? "stretch" : "start");
-        _tabContainer.mAllTabsButton.parentNode.setAttribute("pack", flipOrient ? "end" : "start"); // TODO: Make All Tabs Button prettier!
+        for each (var node in normallyNormal)
+            node.setAttribute("dir", fromNormal);
+        //!!_tabInnerBox.setAttribute("pack", flipOrient ? "start" : "end");//mine
+        //!!_tabContainer.setAttribute("align", flipOrient ? "start" : "stretch");
+        //!!_tabInnerBox.setAttribute("align", flipOrient ? "stretch" : "start");
+        //!!_tabContainer.mAllTabsButton.parentNode.setAttribute("pack", flipOrient ? "end" : "start"); // redundant as we hide this anyway (see css)
 
         // Set orient attributes last or stuff messes up
-        for each (var node in normallyHorizontal) node.setAttribute("orient", fromHorizontal);
-        for each (var node in normallyVertical) node.setAttribute("orient", fromVertical);
+        for each (var node in normallyHorizontal)
+            node.setAttribute("orient", fromHorizontal);
+        for each (var node in normallyVertical)
+            node.setAttribute("orient", fromVertical);
 
         // Now activate our css
         gBrowser.removeAttribute("horiztabbar");
         gBrowser.removeAttribute("vertitabbar");
         gBrowser.setAttribute(fromHorizontal.substring(0, 5) + "tabbar", fromNormal);
+        
+        // Toggle the splitter as appropriate
+        var splitter = document.getElementById("tabkit-splitter");
+        if (flipOrient) {
+            if (!splitter) {
+                if (!tabHbox.hasAttribute("flex"))
+                    tabHbox.setAttribute("flex", "1");
+                if (_tabs[0].maxWidth != 1000) {
+                    for (var i = 0; i < _tabs.length; i++) {
+                        var t = _tabs[i];
+                        t.maxWidth = 1000;
+                        t.minWidth = 0;
+                    }
+                }
+                splitter = document.createElementNS(XUL_NS, "splitter");
+                splitter.setAttribute("id", "tabkit-splitter");
+                splitter.appendChild(document.createElementNS(XUL_NS, "grippy"));
+                gBrowser.mTabBox.insertBefore(splitter, gBrowser.mPanelContainer);
+                gBrowser.mStrip.width = _prefs.getIntPref("tabSidebarWidth");
+                gBrowser.mTabBox.addEventListener("resize", self.positionedTabbar_onResize, false);
+            }
+            if ("toggleIndentedTree" in self)
+                self.toggleIndentedTree()
+        }
+        else {
+            if ("toggleIndentedTree" in self)
+                self.toggleIndentedTree()
+            if (splitter) {
+                gBrowser.mTabBox.removeEventListener("resize", self.positionedTabbar_onResize, false);
+                if (_tabs[0].maxWidth == 1000) {
+                    for (var i = 0; i < _tabs.length; i++) {
+                        var t = _tabs[i];
+                        t.maxWidth = 250;
+                        t.minWidth = _tabContainer.mTabMinWidth;
+                    }
+                }
+                gBrowser.mTabBox.removeChild(splitter);
+            }
+        }
+        
+        self.positionedTabbar_onTabSelect();
     }
 
     //}##########################
     //{>>> Multi-row tabs
     //|##########################
 
+    // TODO=P3: TMT scrollbar would be nice (though with centered tabs)
+    // TODO=P4: Multi-row on hover
+    // TODO=P4: Vertical splitter to adjust [max] no. of rows?
+
     /// Initialisation:
-    this.initMultiRowTabs = function _initMultiRowTabs(event) {
-        self.updateMultiRowTabs("tabRows");
+    this.initMultiRowTabs = function initMultiRowTabs(event) {
+        //!! Prevent infinite recursions!
+        _tabstrip.addEventListener("overflow", _preventMultiRowFlowEvent, true);
+        _tabstrip.addEventListener("underflow", _preventMultiRowFlowEvent, true);
+        
         self.addPrefListener("tabRows", self.updateMultiRowTabs);
         self.addPrefListener("tabbarPosition", self.updateMultiRowTabs);
+        self.addGlobalPrefListener("browser.tabs.tabMinWidth", self.updateMultiRowTabs);
+        self.addGlobalPrefListener("browser.tabs.closeButtons", self.updateMultiRowTabs);
         _tabContainer.addEventListener("TabOpen", self.updateMultiRowTabs, false);
-        _tabContainer.addEventListener("TabClose", self.updateMultiRowTabs, false);
+        self.addDelayedEventListener(_tabContainer, "TabClose", self.updateMultiRowTabs);
+        document.addEventListener("SSTabRestoring", self.updateMultiRowTabs, false); // "hidden" attributes might be restored!
         window.addEventListener("resize", self.updateMultiRowTabs, false);
+        self.appendMethodCode("self.toggleGroupCollapsed", 'self.updateMultiRowTabs();');
 
         _tabContainer.addEventListener("TabSelect", self.multiRow_onTabSelect, false);
         _tabContainer.addEventListener("TabMove", self.multiRow_onTabSelect, false); // In case a tab is moved out of sight
+        
+        self.updateMultiRowTabs();
+        
+        // Setup new drop indicator (this way it can be moved up and down as well as left and right)
+        var oldIndicatorBar = gBrowser.mTabBox.firstChild;
+        var oldIndicator = oldIndicatorBar.firstChild;
+        var oldBarStyle = window.getComputedStyle(oldIndicatorBar, null);
+        var oldStyle = window.getComputedStyle(oldIndicator, null);
+        var newDropIndicatorBar = document.createElementNS(XUL_NS, "hbox");
+        var newDropIndicator = document.createElementNS(XUL_NS, "hbox");
+        newDropIndicatorBar.setAttribute("id", "tabkit-tab-drop-indicator-bar");
+        //newDropIndicatorBar.setAttribute("dragging", oldIndicatorBar.getAttribute("dragging")); // This shouldn't be the case
+        newDropIndicator.setAttribute("mousethrough", "always");
+        newDropIndicatorBar.style.height = oldBarStyle.height;
+        newDropIndicatorBar.style.marginTop = oldBarStyle.marginTop;
+        newDropIndicatorBar.style.position = "relative";
+        newDropIndicatorBar.style.top = newDropIndicatorBar.style.left = "0";
+        newDropIndicator.style.height = oldStyle.height;
+        newDropIndicator.style.width = oldStyle.width;
+        newDropIndicator.style.marginBottom = oldStyle.marginBottom;
+        newDropIndicator.style.position = "relative";
+        newDropIndicator.style.backgroundColor = oldStyle.backgroundColor; // Probably unnecessary
+        newDropIndicator.style.backgroundImage = oldStyle.backgroundImage;
+        newDropIndicator.style.backgroundRepeat = oldStyle.backgroundRepeat;
+        newDropIndicator.style.backgroundAttachment = oldStyle.backgroundAttachment; // Probably unnecessary
+        newDropIndicator.style.backgroundPosition = "50% 50%"; // This cannot be gotten from oldStyle, see https://bugzilla.mozilla.org/show_bug.cgi?id=316981
+        newDropIndicatorBar.appendChild(newDropIndicator);
+        document.getElementById("browser-stack").appendChild(newDropIndicatorBar);
+        gBrowser.__defineGetter__("mTabDropIndicatorBar", function __get_mTabDropIndicatorBar() {
+            return document.getElementById("tabkit-tab-drop-indicator-bar");
+        });
+        oldIndicatorBar.removeAttribute("dragging");
     };
     this.initListeners.push(this.initMultiRowTabs);
 
     /// Event Listeners:
-    this.updateMultiRowTabs = function _updateMultiRowTabs(arg) {
+    //!!~ // We use this timer arrangement so _doUpdateMultiRowTabs doesn't get called more than necessary, when e.g. restoring a group of tabs // Disabled because actually it just makes things look slower if the tabbar doesn't update properly
+    //!!~ var _updateMultiRowTabsTimer = false;
+    this.updateMultiRowTabs = function updateMultiRowTabs() {
+        //!!~ if (!_updateMultiRowTabsTimer) {
+            //!!~ window.setTimeout(_doUpdateMultiRowTabs, 0);
+            //!!~ _updateMultiRowTabsTimer = true;
+        //!!~ }
+    //!!~ };
+    //!!~ function _doUpdateMultiRowTabs() {
+        //!!~ _updateMultiRowTabsTimer = false;
         var tabbarPosition = _prefs.getIntPref("tabbarPosition");
         if ((tabbarPosition == self.Positions.TOP || tabbarPosition == self.Positions.BOTTOM) && _prefs.getIntPref("tabRows") > 1) {
             if (!gBrowser.getStripVisibility()) {
                 var rows = 0;
             }
             else {
+                var visibleTabs = _tabs.length;
+                //!!if (typeof arg == "object" && "type" in arg && arg.type == "TabClose" && arg.target.getAttribute("hidden") != "true")
+                //!!    visibleTabs--;
+                for (var i = 0; i < _tabs.length; i++)
+                    if (_tabs[i].getAttribute("hidden") == "true")
+                        visibleTabs--;
                 var availWidth = _tabstrip._scrollbox.boxObject.width;
                 var tabsPerRow = Math.floor(availWidth / gPrefService.getIntPref("browser.tabs.tabMinWidth"));
-                var rows = Math.ceil(_tabs.length / tabsPerRow);
+                var rows = Math.ceil(visibleTabs / tabsPerRow);
             }
             if (rows > 1) {
                 // Enable multi-row tabs
                 if (_tabContainer.getAttribute("multirow") != "true") {
                     _tabContainer.setAttribute("multirow", "true");
-                    _tabstrip._scrollBoxObject.scrollTo(0,0);
+                    try {
+                        _tabstrip._scrollBoxObject.scrollTo(0,0);
+                    }
+                    catch (ex) {}
                 }
 
                 var maxRows = _prefs.getIntPref("tabRows");
@@ -2303,19 +4381,23 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                     _tabstrip.style.setProperty("min-height", 24 * maxRows + "px", "important");
                     _tabstrip.style.setProperty("max-height", 24 * maxRows + "px", "important");
 
-                    self.multiRow_onTabSelect(null); // Check if we need to scroll already
-
                     try {
                         _tabInnerBox.mVerticalScrollbar.removeEventListener("DOMAttrModified", self.preventChangeOfAttributes, true);
                     }
                     catch (ex) {
                         // It wasn't set...
                     }
-                    _tabInnerBox.mVerticalScrollbar.setAttribute("increment", 24);
-                    _tabInnerBox.mVerticalScrollbar.setAttribute("pageincrement", 48);
-                    _tabInnerBox.mVerticalScrollbar.addEventListener("DOMAttrModified", self.preventChangeOfAttributes, true);
-
-                    availWidth -= _tabInnerBox.mVerticalScrollbar.boxObject.width;
+                    try {
+                        _tabInnerBox.mVerticalScrollbar.setAttribute("increment", 24);
+                        _tabInnerBox.mVerticalScrollbar.setAttribute("pageincrement", 48);
+                        _tabInnerBox.mVerticalScrollbar.addEventListener("DOMAttrModified", self.preventChangeOfAttributes, true);
+                        
+                        availWidth -= _tabInnerBox.mVerticalScrollbar.boxObject.width;
+                    }
+                    catch (ex) {
+                        // Oops, the scrollbar hasn't been created yet... TODO-P6: use a timeout
+                        availWidth -= 22;
+                    }
                 }
                 else {
                     _tabContainer.removeAttribute("multirowscroll");
@@ -2325,6 +4407,9 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                 }
 
                 self.setTabMinWidth(availWidth / tabsPerRow);
+                
+                if (rows > maxRows)
+                    self.multiRow_onTabSelect(); // Check if we need to scroll
             }
             else {
                 // Disable multi-row tabs
@@ -2334,10 +4419,13 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                 _tabContainer.setAttribute("multirow", "false");
 
                 if (needsScrolling) {
-                    if (gBrowser.mCurrentTab.nextSibling && _prefs.getBoolPref("scrollOneExtra")) {
-                        _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab.nextSibling);
+                    try {
+                        if (gBrowser.mCurrentTab.nextSibling && _prefs.getBoolPref("scrollOneExtra")) {
+                            _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab.nextSibling);
+                        }
+                        _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab);
                     }
-                    _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab);
+                    catch (ex) {}
                 }
 
                 _tabstrip.style.removeProperty("min-height");
@@ -2361,9 +4449,9 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             _tabstrip.style.removeProperty("min-height");
             _tabstrip.style.removeProperty("max-height");
         }
-    };
+    }
 
-    this.preventChangeOfAttributes = function _preventChangeOfIncrement(event) {
+    this.preventChangeOfAttributes = function preventChangeOfAttributes(event) {
         if (event.attrName == "increment") {
             //event.preventDefault(); // does not work for this event...
             _tabInnerBox.mVerticalScrollbar.setAttribute("increment", 24);
@@ -2375,7 +4463,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     }
 
-    this.multiRow_onTabSelect = function _multiRow_onTabSelect(event) {
+    this.multiRow_onTabSelect = function multiRow_onTabSelect() {
         if (_tabContainer.getAttribute("multirow") == "true") {
             var tab = gBrowser.selectedTab;
 
@@ -2392,87 +4480,156 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     };
 
     /// Method hooks:
-    // Prevent infinite recursion in _tabContainer.handleEvent
-    // Note: this might still happen in _tabstrip's underflow and/or overflow event handlers
-    self.earlyMethodHooks.push([
+    this.earlyMethodHooks.push([
+        "gBrowser.getNewIndex",//{
+        null,
+        '{',
+        '{ \
+        var verticalTabs = this.hasAttribute("vertitabbar"); \
+        var multiRow = this.mTabContainer.getAttribute("multirow") == "true";',
+        
+        'aEvent.screenX < this.mTabs[i].boxObject.screenX + this.mTabs[i].boxObject.width / 2', // ltr
+        'verticalTabs ? aEvent.screenY < this.mTabs[i].boxObject.screenY + this.mTabs[i].boxObject.height / 2 \
+                      : (multiRow && aEvent.screenY < this.mTabs[i].boxObject.screenY) \
+                        || (aEvent.screenX < this.mTabs[i].boxObject.screenX + this.mTabs[i].boxObject.width / 2 \
+                            && (aEvent.screenY < this.mTabs[i].boxObject.screenY + this.mTabs[i].boxObject.height \
+                                || !multiRow))',
+        
+        'aEvent.screenX > this.mTabs[i].boxObject.screenX + this.mTabs[i].boxObject.width / 2', // rtl
+        'verticalTabs ? aEvent.screenY < this.mTabs[i].boxObject.screenY + this.mTabs[i].boxObject.height / 2 \
+                      : (multiRow && aEvent.screenY < this.mTabs[i].boxObject.screenY) \
+                        || (aEvent.screenX > this.mTabs[i].boxObject.screenX + this.mTabs[i].boxObject.width / 2 \
+                            && (aEvent.screenY < this.mTabs[i].boxObject.screenY + this.mTabs[i].boxObject.height \
+                                || !multiRow))'
+    ]);//}
+    
+    // TODO=P4: Prevent inappropriate indicator wrap around when dragging to end of row
+    this.lateMethodHooks.push([
+        "gBrowser.onDragOver",//{
+        null,
+        'ib.boxObject.x + ib.boxObject.width',
+        'gBrowser.boxObject.width',
+        
+        'ind.style.marginLeft = newMarginLeft + "px";',
+        'if (gBrowser.hasAttribute("vertitabbar")) { \
+            var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+            newMarginLeft = Math.floor(this.mStrip.width / 2); \
+            if (gBrowser.getAttribute("vertitabbar") == "reverse") \
+                newMarginLeft += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
+        } \
+        $&',
+        
+        'ind.style.marginRight = newMarginRight + "px";',
+        'if (gBrowser.hasAttribute("vertitabbar")) { \
+            var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+            newMarginRight = Math.floor(this.mStrip.width / 2); \
+            if (gBrowser.getAttribute("vertitabbar") == "reverse") \
+                newMarginRight += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
+        } \
+        $&',
+        
+        /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
+        '$& \
+        if (newIndex == this.mTabs.length) \
+            ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+        else \
+            ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";'
+    ]);//}
+    
+    // canDrop override breaks multirow, but is only relevant for single row anyway (as multirow hides tabs-bottom), see https://bugzilla.mozilla.org/show_bug.cgi?id=333791#c38
+    this.lateMethodHooks.push([
+        "gBrowser.canDrop",//{
+        null,
+        '{',
+        '{ if (this.mTabContainer.getAttribute("multirow") == "true" || gBrowser.hasAttribute("vertitabbar")) return true;'
+    ]);//}
+    /*!!
+    // Prevent infinite recursion in _tabContainer.handleEvent and _tabstrip's underflow handler
+    //~ this.earlyMethodHooks.push([
+        //~ '_tabContainer.handleEvent',
+        //~ null,
+        //~ /this\.setAttribute\("overflow", "true"\);\s*this\.mTabstrip\.scrollBoxObject\.ensureElementIsVisible\(this\.selectedItem\);/,
+        //~ 'if (this.getAttribute("multirow") != "true") { \
+            //~ this.setAttribute("overflow", "true"); \
+            //~ this.mTabstrip.scrollBoxObject.ensureElementIsVisible(this.selectedItem); \
+        //~ }'
+    //~ ]);
+    //~ this.earlyMethodHooks.push([
+        //~ '_tabContainer.handleEvent',
+        //~ null,
+        //~ 'this.removeAttribute("overflow");',
+        //~ 'if (this.getAttribute("multirow") != "true") { \
+            //~ this.removeAttribute("overflow"); \
+        //~ }'
+    //~ ]);
+    this.earlyMethodHooks.push([
         '_tabContainer.handleEvent',
         null,
-        /this\.setAttribute\("overflow", "true"\);\s*this\.mTabstrip\.scrollBoxObject\.ensureElementIsVisible\(this\.selectedItem\);/,
-        'if (this.getAttribute("multirow") != "true") { \
-            this.setAttribute("overflow", "true"); \
-            this.mTabstrip.scrollBoxObject.ensureElementIsVisible(this.selectedItem); \
-        }'
+        '{',
+        '{ if (gBrowser.mTabContainer.getAttribute("multirow") == "true") return;'
     ]);
-    self.earlyMethodHooks.push([
-        '_tabContainer.handleEvent',
+    //~ eval("_tabContainer.handleEvent = " + _tabContainer.handleEvent.toString().replace(
+        //~ /this\.setAttribute\("overflow", "true"\);\s*this\.mTabstrip\.scrollBoxObject\.ensureElementIsVisible\(this\.selectedItem\);/,
+        //~ 'if (this.getAttribute("multirow") != "true") { \
+            //~ this.setAttribute("overflow", "true"); \
+            //~ this.mTabstrip.scrollBoxObject.ensureElementIsVisible(this.selectedItem); \
+        //~ }'
+    //~ ).replace(
+        //~ 'this.removeAttribute("overflow");',
+        //~ 'if (this.getAttribute("multirow") != "true") { \
+            //~ this.removeAttribute("overflow"); \
+        //~ }'
+    //~ ));
+    this.lateMethodHooks.push([
+        '_tabstrip.onxbloverflow',
         null,
-        'this.removeAttribute("overflow");',
-        'if (this.getAttribute("multirow") != "true") { \
-            this.removeAttribute("overflow"); \
-        }'
+        '{',
+        '{ if (gBrowser.mTabContainer.getAttribute("multirow") == "true") return;'
     ]);
-    /*eval("_tabContainer.handleEvent = " + _tabContainer.handleEvent.toString().replace(
-        /this\.setAttribute\("overflow", "true"\);\s*this\.mTabstrip\.scrollBoxObject\.ensureElementIsVisible\(this\.selectedItem\);/,
-        'if (this.getAttribute("multirow") != "true") { \
-            this.setAttribute("overflow", "true"); \
-            this.mTabstrip.scrollBoxObject.ensureElementIsVisible(this.selectedItem); \
-        }'
-    ).replace(
-        'this.removeAttribute("overflow");',
-        'if (this.getAttribute("multirow") != "true") { \
-            this.removeAttribute("overflow"); \
-        }'
-    ));*/
+    this.lateMethodHooks.push([
+        '_tabstrip.onxblunderflow',
+        null,
+        '{',
+        '{ if (gBrowser.mTabContainer.getAttribute("multirow") == "true") return;'
+    ]);*/
+
+    /// Private Methods
+    function _preventMultiRowFlowEvent(event) {
+        if (_tabContainer.hasAttribute("multirow")) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }
 
     //}##########################
     //{=== Highlight unread tabs
     //|##########################
 
+    // TODO=P4: Tab progress bar/rotating+filling pie
+
+    // Note: sorting and grouping hooks into _onShowingAllTabsPopup to highlight all tabs menu entries
+
     /// Initialisation:
-    this.initHighlightUnreadTabs = function _initHighlightUnreadTabs(event) {
+    this.initHighlightUnreadTabs = function initHighlightUnreadTabs(event) {
         self.mapBoolPrefToAttribute("highlightUnreadTabs", _tabContainer, "highlightunread");
+        self.mapBoolPrefToAttribute("emphasizeCurrentTab", _tabContainer, "emphasizecurrent");
 
         _tabContainer.addEventListener("TabSelect", self.tabRead, false);
 
-        _ss.persistTabAttribute("read"); // So restored sessions remember which tabs have been read
+        if (_ss)
+            _ss.persistTabAttribute("read"); // So restored sessions remember which tabs have been read
     };
     this.initListeners.push(this.initHighlightUnreadTabs);
 
-    this.postInitHighlightUnreadTabs = function _postInitHighlightUnreadTabs(event) {
+    this.postInitHighlightUnreadTabs = function postInitHighlightUnreadTabs(event) {
         gBrowser.selectedTab.setAttribute("read", "true");
     };
     this.postInitListeners.push(this.postInitHighlightUnreadTabs);
 
     /// Event Listener
-    this.tabRead = function _tabRead(event) {
-        var tab = event.target; // Or gBrowser.selectedTab ?
+    this.tabRead = function tabRead(event) {
+        var tab = event.target; //!! Or gBrowser.selectedTab ?
         tab.setAttribute("read", "true");
-    }
-
-    //}##########################
-    //{=== Tab Min Width
-    //|##########################
-
-    /// Initialisation:
-    this.initTabMinWidth = function _initTabMinWidth(event) {
-        self.addGlobalPrefListener("browser.tabs.tabMinWidth", self.resetTabMinWidth);
-    };
-    this.initListeners.push(this.initTabMinWidth);
-
-    /// Pref Listener/method:
-    // Note: this is also used by multi-row tabs
-    this.resetTabMinWidth = function _resetTabMinWidth(pref) {
-        self.setTabMinWidth(gPrefService.getIntPref("browser.tabs.tabMinWidth"));
-    };
-
-    /// Methods:
-    // Note: this is also used by multi-row tabs
-    this.setTabMinWidth = function _setTabMinWidth(minWidth) {
-        _tabContainer.mTabMinWidth = minWidth;
-        for (var i = 0; i < _tabs.length; i++) {
-            _tabs[i].minWidth = minWidth;
-        }
-        _tabContainer.adjustTabstrip();
     }
 
     //}##########################
@@ -2485,7 +4642,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     var _mouseScrollWrapCounter = 0;
 
     /// Initialisation:
-    this.initMouseGestures = function _initMouseGestures(event) {
+    this.initMouseGestures = function initMouseGestures(event) {
         gBrowser.addEventListener("mouseup", self.onMouseUpGesture, true);
         gBrowser.addEventListener("mousedown", self.onMouseDownGesture, true);
         gBrowser.addEventListener("contextmenu", self.onContextMenuGesture, true);
@@ -2493,12 +4650,13 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         gBrowser.addEventListener("mouseout", self.onMouseOutGesture, false);
         gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", self.onRMBWheelGesture, true);
         _tabInnerBox.addEventListener("DOMMouseScroll", self.onTabWheelGesture, true);
+        _tabContainer.mTabstripClosebutton.addEventListener("DOMMouseScroll", self.onTabWheelGesture, true);
         _tabContainer.addEventListener("TabSelect", function(event) { _mouseScrollWrapCounter = 0; }, false);
     };
     this.initListeners.push(this.initMouseGestures);
 
     /// Event Listeners:
-    this.onMouseUpGesture = function _onMouseUpGesture(event) {
+    this.onMouseUpGesture = function onMouseUpGesture(event) {
         if (!event.isTrusted)
             return;
 
@@ -2509,7 +4667,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             event.preventDefault(); // We've probably just done a rocker gesture
     };
 
-    this.onMouseDownGesture = function _onMouseDownGesture(event) {
+    this.onMouseDownGesture = function onMouseDownGesture(event) {
         if (!event.isTrusted)
             return;
 
@@ -2536,7 +4694,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         }
     };
 
-    this.onContextMenuGesture = function _onContextMenuGesture(event) {
+    this.onContextMenuGesture = function onContextMenuGesture(event) {
         if (!event.isTrusted || !_preventContext)
             return;
 
@@ -2545,21 +4703,21 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
         event.stopPropagation();
     };
 
-    this.onMouseDragGesture = function _onMouseCancelGesture(event) {
+    this.onMouseDragGesture = function onMouseDragGesture(event) {
         if (!event.isTrusted)
             return;
 
         _mousedown[0] = _mousedown[2] = false;
     };
 
-    this.onMouseOutGesture = function _onMouseCancelGesture(event) {
+    this.onMouseOutGesture = function onMouseOutGesture(event) {
         if (!event.isTrusted || event.target != event.currentTarget) // n.b. this refers to gBrowser, not tabkit!
             return;
 
         _mousedown[0] = _mousedown[2] = false;
     };
 
-    this.onRMBWheelGesture = function _onRMBWheelGesture(event) {
+    this.onRMBWheelGesture = function onRMBWheelGesture(event) {
         if (!event.isTrusted || !_mousedown[2] || !_prefs.getBoolPref("gestures.rmbWheelTabSwitch"))
             return;
 
@@ -2568,13 +4726,13 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
             _preventContext = true;
     };
 
-    this.onTabWheelGesture = function _onTabWheelGesture(event) {
+    this.onTabWheelGesture = function onTabWheelGesture(event) {
         if (!event.isTrusted)
             return;
 
         var name = event.originalTarget.localName;
         if (name == "scrollbar" || name == "scrollbarbutton" || name == "slider" || name == "thumb") {
-            // Scrollwheeling above an overflow scrollbar should still scroll 3 lines (whether vertical or multi-row tab bar)
+            // Scrollwheeling above an overflow scrollbar should still scroll 3 lines if vertical or 2 lines if multi-row tab bar
             var scrollbar = _tabInnerBox.mVerticalScrollbar;
             if (!scrollbar)
                 return;
@@ -2601,7 +4759,7 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     };
 
     /// Methods:
-    this.scrollwheelTabSwitch = function _scrollwheelTabSwitch(event) {
+    this.scrollwheelTabSwitch = function scrollwheelTabSwitch(event) {
         var change = event.detail;
         if (change > 0) {
             // Switch to next tab, but requiring 3 wheelscrolls to wrap around
@@ -2628,18 +4786,25 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     //{=== Scrollbars not arrows
     //|##########################
 
+    // TODO=P3: Make All Tabs scroll to current tab (preferably vertically centered)
+    // TODO=P4: Bug 345378 – tab preview from all tabs menupopup
+    // TODO=P4: Middle/right-click All Tabs menu, drag & drop
+    // TODO=P5: Double-click scroll buttons -> scroll to start/end
+
     /// Private Globals:
     var _allTabsInnerBox;
 
     /// Initialisation:
-    this.initScrollbarsNotArrows = function _initScrollbarsNotArrows(event) {
-        self.mapBoolPrefToAttribute("scrollbarsNotArrows", document.getElementById("main-window"), "scrollbarsnotarrows"); // TODO: not sure disabling this disables overflow auto
+    this.initScrollbarsNotArrows = function initScrollbarsNotArrows(event) {
+        //self.mapBoolPrefToAttribute("scrollbarsNotArrows", document.getElementById("main-window"), "scrollbarsnotarrows"); // disabling the attribute didn't disable the overflow auto, so it's best to only apply changes to new windows
+        if (_prefs.getBoolPref("scrollbarsNotArrows"))
+            document.getElementById("main-window").setAttribute("scrollbarsnotarrows", "true");
         self.addDelayedEventListener(_tabContainer.mAllTabsPopup, "popupshowing", self.scrollAllTabsMenu);
     };
     this.initListeners.push(this.initScrollbarsNotArrows);
 
     /// Event Listeners:
-    this.scrollAllTabsMenu = function _scrollAllTabsMenu(event) {
+    this.scrollAllTabsMenu = function scrollAllTabsMenu(event) {
         if (!_allTabsInnerBox) {
             var arrowScrollBox = _tabContainer.mAllTabsPopup.popupBoxObject.firstChild
             if (!arrowScrollBox) {
@@ -2652,23 +4817,87 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
     }
 
     //}##########################
-    //{=== zeniko: CopyDraggedTab
+    //{=== Bug 298571: Tab DnD+
     //|##########################
+    
+    // Implement Bug 298571 – support tab duplication (using ctrl) on tab drag and drop
+    // Based on Simon Bünzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
 
-    // TODO: Get permission from zeniko!! (from http://forums.mozillazine.org/viewtopic.php?t=372494)
-
-    /// Initialisation, event handlers, methods...
-    this.postInitCopyDraggedTab = function _postInitCopyDraggedTab(event) {
+    this.initCopyDraggedTab = function initCopyDraggedTab(event) { // TODO=P3: Test
         if ("duplicateTab" in gBrowser)
-            return;
+            return; // Don't duplicate existing implementations of this
 
-        gBrowser.duplicateTab = function(aTab) { // TODO: Add menuitem
+        gBrowser.duplicateTab = function duplicateTab(aTab) {
+            if (_ss) {
+                // try to have SessionStore serialize the given tab
+                try {
+                    var tabState = _ss.getWindowState(aTab.ownerDocument.defaultView);
+                    tabState = eval("(" + tabState + ")");
+
+                    // get the information for just the one tab and append it to this tabbrowser
+                    tabState.windows[0].tabs = tabState.windows[0].tabs.splice(aTab._tPos, 1);
+                    _ss.setWindowState(window, tabState.toSource(), false);
+
+                    // return the tab belonging to the most recently added browser
+                    return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);
+                }
+                catch (ex) { /* fall back to basic URL copying */ }
+            }
+
+            return this.loadOneTab(this.getBrowserForTab(aTab).currentURI.spec);
+        };
+        
+        self.addMethodHook([
+            'gBrowser.onDragOver',
+            null,
+            'var isTabDrag = aDragSession.sourceNode.parentNode == this.mTabContainer;',
+            'var isTabDrag = aDragSession.sourceNode.localName == "tab";'
+        ]);
+        
+        self.addMethodHook([
+            'gBrowser.onDrop',
+            null,
+            /if \(aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer\) {/,
+            'var copyKeyHit = (navigator.platform.indexOf("Mac") == -1) ? aEvent.ctrlKey : aEvent.metaKey; \
+            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab" && \
+                (aDragSession.sourceNode.parentNode == this.mTabContainer || copyKeyHit)) {',
+            /var oldIndex = aDragSession.sourceNode\._tPos;\s+if \(newIndex > oldIndex\) {\s+newIndex--;\s+}\s+if \(newIndex != oldIndex\) {\s+this\.moveTabTo\(this\.mTabs\[oldIndex\], newIndex\);\s+}/,
+            '    var oldTab = aDragSession.sourceNode; \
+                if (copyKeyHit) { \
+                    var newTab = this.duplicateTab(oldTab); \
+                    this.moveTabTo(newTab, newIndex); \
+                    if (oldTab.parentNode != this.mTabContainer || aEvent.shiftKey) \
+                        this.selectedTab = newTab; \
+                } \
+                else { \
+                    if (newIndex > oldTab._tPos) \
+                        newIndex--; \
+                    if (newIndex != oldTab._tPos) \
+                        this.moveTabTo(oldTab, newIndex); \
+                } \
+            } \
+            else if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab") { \
+                newIndex = this.getNewIndex(aEvent); \
+                oldTab = aDragSession.sourceNode; \
+                newTab = this.duplicateTab(oldTab); \
+                this.moveTabTo(newTab, newIndex); \
+                this.selectedTab = newTab; \
+                oldTab.ownerDocument.defaultView.getBrowser().removeTab(oldTab); \
+                window.focus();',
+            /if \(document\.getBindingParent\(aEvent\.originalTarget\)\.localName != "tab"\) {\s+this\.loadOneTab\(getShortcutOrURI\(url\), null, null, null, bgLoad, false\);/,
+            'if (document.getBindingParent(aEvent.originalTarget).localName != "tab" || copyKeyHit) { \
+            newIndex = this.getNewIndex(aEvent); \
+            newTab = this.loadOneTab(getShortcutOrURI(url), null, null, null, bgLoad, false); \
+            this.moveTabTo(newTab, newIndex);'
+        ]);
+    
+        /*!!gBrowser.duplicateTab = function(aTab) {
+            tabkit.addingTab("unrelated", null, "true"); // Don't let it be moved // Depends on Sorting and Grouping
             var state = _ss.getWindowState(aTab.ownerDocument.defaultView);
             state = eval("(" + state + ")");
             state.windows[0].tabs = state.windows[0].tabs.splice(aTab._tPos, 1);
             _ss.setWindowState(window, state.toSource(), false);
-
-            // TODO: move tab next to original tab (but don't break onDrop!)
+            tabkit.addingTabOver(); // Depends on Sorting and Grouping
 
             return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);
         };
@@ -2680,7 +4909,9 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                 var oldTab = aDragSession.sourceNode;
                 if (aEvent.ctrlKey)
                 {
+                    tabkit.addingTab("related", oldTab, "true"); // Depends on Sorting and Grouping
                     var tab = this.duplicateTab(oldTab);
+                    tabkit.addingTabOver(); // Depends on Sorting and Grouping
                     if (oldTab.parentNode != this.mTabContainer)
                     {
                         this.selectedTab = tab;
@@ -2707,38 +4938,60 @@ var tabkit = new function _tabkit() { // Just a 'namespace' to hide our stuff in
                 aDragSession = { canDrop: aDragSession.canDrop, sourceNode: this.selectedTab };
             }
             this.__preCDT_onDragOver(aEvent, aFlavour, aDragSession);
-        };
+        };*/
     };
-    this.postInitListeners.push(this.postInitCopyDraggedTab);
+    this.initListeners.push(this.initCopyDraggedTab);
 
     //}##########################
-    //{### Debugging
+    //{### Debug Aids
     //|##########################
 
-    // For debugging use, ignore this!
-    this._eval = function __eval(exp) {
+    // Allows external access to private members of tabkit to aid debugging
+    this._eval = function _eval(exp) {
         return eval(exp);
     };
-
-    window.tk = function _tk() {
-        quickprompt(self._eval, "Tab Kit QuickPrompt", help(), "");
+    
+    /*!!**/
+    this.preInitDebugAids = function preInitDebugAids(event) {
+        if ("quickprompt" in window) {
+            window.tkprompt = function tkprompt() {
+                quickprompt(tabkit._eval, "Tab Kit QuickPrompt", help(), "");
+            };
+            document.getElementById("cmd_quickPrompt").setAttribute("oncommand", "tkprompt()");
+        }
     };
+    this.preInitListeners.push(this.preInitDebugAids);
+    /**!!*/
 
     //}##########################
     //|##########################
 
-}; // End of 'namespace' tt
+}; // End of tabkit object
 
-/*** Notes ***
+/*!!** Notes ***
 
 Variables (var x = y OR this.x = y) can only be accessed by other
 variables/arrays/objects after their definition but can be refered to by
 functions at any time.
-*/
+
 
 /*** Snippets ***
 
+if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpoint requires QuickPrompt extension
+
+
+
 loadscript("file:///C:/Coding/Code/Firefox/Extensions/tabkit/xpi/chrome/content/tabkit.js");
+
+
+
+tabkit._eval('for (var i = 0; i < _tabs.length; i++) { var t=_tabs[i]; self.setGID(t, tabkit.generateId()); }');
+
+
+
+// I still don't understand why this fails later but works when I log it! Adding "return aTab" works :s
+tabkit.addMethodHook(["gBrowser.moveTabTo", null, "{", "{ tabkit.log(aIndex+\" \"+gBrowser.mTabContainer.childNodes.length+\" \"+gBrowser.mTabContainer.childNodes[aIndex]);", /this/g, "gBrowser"]);
+
 
 
 var appInfo = Components.classes["@mozilla.org/xre/app-info;1"].
@@ -2752,6 +5005,7 @@ else
     var isFx2plus = false;
 
 
+
 // Could use progress listeners instead of sortgroup_onTabLoading
 
 for each (var tab in _tabs) {
@@ -2763,11 +5017,11 @@ var progressListener = {
         var doc = aProgress.DOMWindow.document;
         var tab = gBrowser.mTabs[gBrowser.getBrowserIndexForDocument(doc)];
         
-        self.colorizeTab(tab);
+        self.setTabUriKey(tab);
     },
-    onProgressChange: function() { },
-    onSecurityChange: function() { }
-    onStateChange: function() { },
-    onStatusChange: function() { },
+    onProgressChange: function() {},
+    onSecurityChange: function() {},
+    onStateChange: function() {},
+    onStatusChange: function() {}
 };
 */

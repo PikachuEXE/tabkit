@@ -1,225 +1,294 @@
 <?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
 
-<?xml-stylesheet href="chrome://browser/skin/"?>
-<?xml-stylesheet href="chrome://mozapps/skin/pref/pref.css" type="text/css"?>
+<!DOCTYPE prefwindow SYSTEM "chrome://tabkit/locale/settings.dtd">
 
-<!DOCTYPE prefwindow SYSTEM "chrome://tabtree/locale/overlay.dtd">
-
-<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-	id="tabtree-preferences" windowtype="mozilla:tabtreeoptions" title="&options.title;">
+<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" id="tabkit-settings"
+		windowtype="mozilla:tabkitsettings" title="&options.title;" onload="onLoad();">
 	
-	<script type="application/x-javascript" src="chrome://tabtree/content/settings.js"/>
+	<prefpane id="tabbar-pane" label="&tabbar.title;" image="chrome://tabkit/skin/prefs-tabbar.png">
+		<preferences>
+			<preference id="tabbarposition-pref" name="extensions.tabkit.tabbarPosition" type="int"/>
+			<preference id="sidebarposition-pref" name="extensions.tabkit.sidebarPosition" type="int"/>
+			
+			<preference id="tabrows-pref" name="extensions.tabkit.tabRows" type="int"/>
+			
+			<preference id="indentedtree-pref" name="extensions.tabkit.indentedTree" type="bool"/>
+			<preference id="maxtreelevel-pref" name="extensions.tabkit.maxTreeLevel" type="int"/>
+			<preference id="indentamount-pref" name="extensions.tabkit.indentAmount" type="int"/>
+		</preferences>
+		
+		<groupbox><caption label="&panels.caption;"/>
+			<grid>
+			<rows>
+			<row align="center">
+				<label control="tabbarposition" value="&tabbarPosition.label1;" accesskey="&tabbarPosition.accesskey;"/>
+				<menulist id="tabbarposition" preference="tabbarposition-pref">
+				<menupopup>
+					<menuitem value="0" label="&tabbarPosition.top.label;"/>
+					<menuitem value="1" label="&tabbarPosition.left.label;"/>
+					<menuitem value="2" label="&tabbarPosition.right.label;"/>
+					<menuitem value="3" label="&tabbarPosition.bottom.label;"/>
+				</menupopup>
+				</menulist>
+				<label control="tabbarposition" value="&tabbarPosition.label2;"/>
+			</row>
+			
+			<row align="center">
+				<label control="sidebarposition" value="&sidebarPosition.label1;" accesskey="&sidebarPosition.accesskey;"/>
+				<menulist id="sidebarposition" preference="sidebarposition-pref">
+				<menupopup>
+					<menuitem value="0" label="&sidebarPosition.top.label;"/>
+					<menuitem value="1" label="&sidebarPosition.left.label;"/>
+					<menuitem value="2" label="&sidebarPosition.right.label;"/>
+					<menuitem value="3" label="&sidebarPosition.bottom.label;"/>
+				</menupopup>
+				</menulist>
+				<label control="sidebarposition" value="&sidebarPosition.label2;"/>
+			</row>
+			</rows>
+			</grid>
+		</groupbox>
+		
+		<groupbox id="horizontaltabbar"><caption label="&horizontalTabbar.caption;"/>
+			<checkbox id="multiplerows" label="&multipleRows.label;"
+					accesskey="&multipleRows.accesskey;"/>
+			<hbox class="indent" align="center">
+				<label control="tabrows" value="&tabRows.label1;"/>
+				<textbox id="tabrows" type="number" min="1" max="25" preference="tabrows-pref"/>
+				<label control="tabrows" value="&tabRows.label2;" accesskey="&tabRows.accesskey;"/>
+			</hbox>
+		</groupbox>
+		
+		<groupbox id="verticaltabbar"><caption label="&verticalTabbar.caption;"/>
+			<checkbox id="indentedtree" label="&indentedTree.label;"
+					accesskey="&indentedTree.accesskey;" preference="indentedtree-pref"/>
+			<hbox class="indent" align="center">
+				<label control="maxtreelevel" value="&maxTreeLevel.label;" accesskey="&maxTreeLevel.accesskey;"/>
+				<textbox id="maxtreelevel" type="number" min="1" max="40" preference="maxtreelevel-pref"/>
+			</hbox>
+			<hbox class="indent" align="center">
+				<label control="indentamount" value="&indentAmount.label1;"/>
+				<textbox id="indentamount" type="number" min="1" max="150" preference="indentamount-pref"/>
+				<label control="indentamount" value="&indentAmount.label2;" accesskey="&indentAmount.accesskey;"/>
+			</hbox>
+		</groupbox>
+	</prefpane>
+
+	<prefpane id="tabs-pane" label="&tabs.title;" image="chrome://tabkit/skin/prefs-tabs.png">
+		<preferences>
+			<preference id="tabminwidth-pref" name="browser.tabs.tabMinWidth" type="int"/>
+			<preference id="closebuttons-pref" name="browser.tabs.closeButtons" type="int"/>
+			
+			<preference id="highlightunreadtabs-pref" name="extensions.tabkit.highlightUnreadTabs" type="bool"/>
+			<preference id="emphasizecurrenttab-pref" name="extensions.tabkit.emphasizeCurrentTab" type="bool"/>
+			
+			<preference id="colortabnotlabel-pref" name="extensions.tabkit.colorTabNotLabel" type="int"/>
+		</preferences>
+		
+		<groupbox><caption label="&tabs.caption;"/>
+			<hbox align="center">
+				<label control="tabminwidth" value="&tabMinWidth.label1;" accesskey="&tabMinWidth.accesskey;"/>
+				<textbox id="tabminwidth" type="number" min="1" max="250" preference="tabminwidth-pref"/>
+				<label control="tabminwidth" value="&tabMinWidth.label2;"/>
+			</hbox>
+			<hbox align="center">
+				<label control="closebuttons" value="&closeButtons.label;" accesskey="&closeButtons.accesskey;"/>
+				<menulist id="closebuttons" preference="closebuttons-pref">
+				<menupopup>
+					<menuitem value="0" label="&closeButtons.active.label;"/>
+					<menuitem value="1" label="&closeButtons.all.label;"/>
+					<menuitem value="2" label="&closeButtons.none.label;"/>
+					<menuitem value="3" label="&closeButtons.end.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+		</groupbox>
+		
+		<groupbox><caption label="&appearance.caption;"/>
+			<checkbox id="highlightunreadtabs" label="&highlightUnreadTabs.label;"
+					accesskey="&highlightUnreadTabs.accesskey;" preference="highlightunreadtabs-pref"/>
+			<checkbox id="emphasizecurrenttab" label="&emphasizeCurrentTab.label;"
+					accesskey="&emphasizeCurrentTab.accesskey;" preference="emphasizecurrenttab-pref"/>
+		</groupbox>
+		
+		<groupbox><caption label="&advanced.caption;"/>
+			<hbox align="center">
+				<label control="colortabnotlabel" value="&colorTabNotLabel.label;" accesskey="&colorTabNotLabel.accesskey;"/>
+				<menulist id="colortabnotlabel" preference="colortabnotlabel-pref">
+				<menupopup>
+					<menuitem value="-1" label="&colorTabNotLabel.auto.label;"/>
+					<menuitem value="0" label="&colorTabNotLabel.false.label;"/>
+					<menuitem value="1" label="&colorTabNotLabel.true.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+		</groupbox>
+	</prefpane>
+
+	<prefpane id="controls-pane" label="&controls.title;" image="chrome://tabkit/skin/prefs-controls.png">
+		<preferences>
+			<preference id="tabwheeltabswitch-pref" name="extensions.tabkit.gestures.tabWheelTabSwitch" type="bool"/>
+			<preference id="rmbwheeltabswitch-pref" name="extensions.tabkit.gestures.rmbWheelTabSwitch" type="bool"/>
+			<preference id="lmbrmbbackforward-pref" name="extensions.tabkit.gestures.lmbRmbBackForward" type="bool"/>
+			<preference id="doubleclickshortcuts-pref" name="extensions.tabkit.doubleClickShortcuts" type="bool"/>
+			
+			<preference id="scrollbarsnotarrows-pref" name="extensions.tabkit.scrollbarsNotArrows" type="bool"/>
+			<preference id="scrolloneextra-pref" name="extensions.tabkit.scrollOneExtra" type="bool"/>
+		</preferences>
+		
+		<groupbox><caption label="&mouseGestures.caption;"/>
+			<label value="&scrollwheelTabSwitch.label;"/>
+			<vbox class="indent">
+				<checkbox id="tabwheeltabswitch" label="&tabWheelTabSwitch.label;"
+						accesskey="&tabWheelTabSwitch.accesskey;" preference="tabwheeltabswitch-pref"/>
+				<checkbox id="rmbwheeltabswitch" label="&rmbWheelTabSwitch.label;"
+						accesskey="&rmbWheelTabSwitch.accesskey;" preference="rmbwheeltabswitch-pref"/>
+			</vbox>
+			<separator/>
+			<checkbox id="lmbrmbbackforward" label="&lmbRmbBackForward.label;"
+					accesskey="&lmbRmbBackForward.accesskey;" preference="lmbrmbbackforward-pref"/>
+			<separator/>
+			<checkbox id="doubleclickshortcuts" label="&doubleClickShortcuts.label;"
+					accesskey="&doubleClickShortcuts.accesskey;" preference="doubleclickshortcuts-pref"/>
+			<vbox class="indent">
+				<description value="&doubleClickShortcuts.description1;"/>
+				<description value="&doubleClickShortcuts.description2;"/>
+				<description value="&doubleClickShortcuts.description3;"/>
+			</vbox>
+		</groupbox>
+		
+		<groupbox><caption label="&scrolling.caption;"/>
+			<checkbox id="scrollbarsnotarrows" label="&scrollbarsNotArrows.label;"
+					accesskey="&scrollbarsNotArrows.accesskey;" preference="scrollbarsnotarrows-pref"/>
+			<checkbox id="scrolloneextra" label="&scrollOneExtra.label;"
+					accesskey="&scrollOneExtra.accesskey;" preference="scrolloneextra-pref"/>
+		</groupbox>
+		
+		<label value="&onlyAppliesToNewWindows.label1;"/>
+	</prefpane>
+
+	<prefpane id="grouping-pane" label="&grouping.title;" image="chrome://tabkit/skin/prefs-grouping.png">
+		<preferences>
+			<preference id="autogroupnewtabs-pref" name="extensions.tabkit.autoGroupNewTabs" type="bool"/>
+			<preference id="lastactivegrouping-pref" name="extensions.tabkit.lastActiveGrouping" type="char"/>
+			
+			<preference id="newtabposition-pref" name="extensions.tabkit.newTabPosition" type="int"/>
+			<preference id="lastactivesort-pref" name="extensions.tabkit.lastActiveSort" type="char"/>
+			<preference id="openrelativeposition-pref" name="extensions.tabkit.openRelativePosition" type="char"/>
+			
+			<preference id="customcloseorder-pref" name="extensions.tabkit.customCloseOrder" type="int"/>
+			<preference id="selectowneronclose-pref" name="browser.tabs.selectOwnerOnClose" type="bool"/>
+		</preferences>
+		
+		<groupbox><caption label="&groupingTabs.caption;"/>
+			<checkbox id="autogroupnewtabs" label="&autoGroupNewTabs.label;"
+					accesskey="&autoGroupNewTabs.accesskey;" preference="autogroupnewtabs-pref"/>
+			<hbox class="indent" align="center">
+				<label control="lastactivegrouping" value="&lastActiveGrouping.label;" accesskey="&lastActiveGrouping.accesskey;"/>
+				<menulist id="lastactivegrouping" preference="lastactivegrouping-pref">
+				<menupopup>
+					<menuitem value="domain" label="&lastActiveGrouping.domain.label;"/>
+					<menuitem value="opener" label="&lastActiveGrouping.opener.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+		</groupbox>
+		
+		<groupbox><caption label="&positioningTabs.caption;"/>
+			<hbox align="center">
+				<label control="newtabposition" value="&newTabPosition.label;" accesskey="&newTabPosition.accesskey;"/>
+				<menulist id="newtabposition" preference="newtabposition-pref">
+				<menupopup>
+					<menuitem value="2" label="&newTabPosition.lastSort.label;"/>
+					<menuitem value="1" label="&newTabPosition.nextToCurrent.label;"/>
+					<menuitem value="0" label="&newTabPosition.farRight.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+			<hbox class="indent" align="center">
+				<label control="lastactivesort" value="&lastActiveSort.label;" accesskey="&lastActiveSort.accesskey;"/>
+				<menulist id="lastactivesort" preference="lastactivesort-pref">
+				<menupopup>
+					<menuitem value="uri" label="&lastActiveSort.address.label;"/>
+					<menuitem value="lastLoaded" label="&lastActiveSort.lastLoaded.label;"/>
+					<menuitem value="lastViewed" label="&lastActiveSort.lastViewed.label;"/>
+					<menuitem value="creation" label="&lastActiveSort.creation.label;"/>
+					<menuitem value="origin" label="&lastActiveSort.origin.label;"/>
+					<menuitem value="title" label="&lastActiveSort.pageTitle.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+			<hbox class="indent" align="center">
+				<label control="openrelativeposition" value="&openRelativePosition.label;" accesskey="&openRelativePosition.accesskey;"/>
+				<menulist id="openrelativeposition" preference="openrelativeposition-pref">
+				<menupopup>
+					<menuitem value="left" label="&openRelativePosition.left.label;"/>
+					<menuitem value="right" label="&openRelativePosition.right.label;"/>
+					<menuitem value="rightOfRecent" label="&openRelativePosition.rightOfRecent.label;"/>
+					<menuitem value="rightOfConsecutive" label="&openRelativePosition.rightOfConsecutive.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+		</groupbox>
+		
+		<groupbox><caption label="&closingTabs.caption;"/>
+			<hbox align="center">
+				<label control="customcloseorder" value="&customCloseOrder.label;" accesskey="&customCloseOrder.accesskey;"/>
+				<menulist id="customcloseorder" preference="customcloseorder-pref">
+				<menupopup>
+					<menuitem value="0" label="&customCloseOrder.auto.label;"/>
+					<menuitem value="1" label="&customCloseOrder.groupLeft.label;"/>
+					<menuitem value="2" label="&customCloseOrder.groupRight.label;"/>
+					<menuitem value="3" label="&customCloseOrder.left.label;"/>
+					<menuitem value="4" label="&customCloseOrder.right.label;"/>
+				</menupopup>
+				</menulist>
+			</hbox>
+			<checkbox id="selectowneronclose" label="&selectOwnerOnClose.label;"
+					accesskey="&selectOwnerOnClose.accesskey;" preference="selectowneronclose-pref"/>
+		</groupbox>
+		
+		<label value="&onlyAppliesToNewWindows.label2;"/>
+	</prefpane>
+
+	<prefpane id="advanced-pane" label="&advanced.title;" image="chrome://tabkit/skin/prefs-advanced.png">
+		<preferences>
+			<preference id="autosortdomaingroups-pref" name="extensions.tabkit.autoSortDomainGroups" type="bool"/>
+			<preference id="autosortopenergroups-pref" name="extensions.tabkit.autoSortOpenerGroups" type="bool"/>
+			
+			<preference id="bookmarktabsarerelated-pref" name="extensions.tabkit.bookmarkTabsAreRelated" type="bool"/>
+			<preference id="historytabsarerelated-pref" name="extensions.tabkit.historyTabsAreRelated" type="bool"/>
+			<preference id="newtabsarerelated-pref" name="extensions.tabkit.newTabsAreRelated" type="bool"/>
+		</preferences>
+		
+		<groupbox><caption label="&tabOrder.caption;"/>
+			<checkbox id="autosortdomaingroups" label="&autoSortDomainGroups.label;"
+					accesskey="&autoSortDomainGroups.accesskey;" preference="autosortdomaingroups-pref"/>
+			<checkbox id="autosortopenergroups" label="&autoSortOpenerGroups.label;"
+					accesskey="&autoSortOpenerGroups.accesskey;" preference="autosortopenergroups-pref"/>
+		</groupbox>
+		
+		<groupbox><caption label="&typesOfTab.caption;"/>
+			<label value="&whenGroupingByOpener.label;"/>
+			<vbox class="indent">
+				<checkbox id="bookmarktabsarerelated" label="&bookmarkTabsAreRelated.label;"
+						accesskey="&bookmarkTabsAreRelated.accesskey;" preference="bookmarktabsarerelated-pref"/>
+				<checkbox id="historytabsarerelated" label="&historyTabsAreRelated.label;"
+						accesskey="&historyTabsAreRelated.accesskey;" preference="historytabsarerelated-pref"/>
+				<checkbox id="newtabsarerelated" label="&newTabsAreRelated.label;"
+						accesskey="&newTabsAreRelated.accesskey;" preference="newtabsarerelated-pref"/>
+			</vbox>
+		</groupbox>
+		
+		<groupbox><caption label="&reset.caption;"/>
+			<hbox>
+				<button id="resetallbutton" label="&resetAll.label;"
+						accesskey="&resetAll.accesskey;" oncommand="resetAll();"/>
+			</hbox>
+		</groupbox>
+	</prefpane>
 	
-	<prefpane id="general-pane" label="&options.general.title;" image="chrome://tabtree/skin/prefs-general.png">
-		<!--
-		Tabs open
-		 @ To right of current tab {[A] a1 a2 a3 B C} {D E}
-		 O To right of current tab but with inverse opening order {[A] a3 a2 a1 B C} {D E}
-		 O At end of current tab group {[A] B C a1 a2 a3} {D E}
-		 O At end of tabbar {[A] B C} {D E} a1 a2 a3 (not recommended)
-		
-		Tab groups open
-		 @ At end of tabbar {[A] B C} {D E} {a1} {a2} {a3}
-		 O After current tab group {[A] B C} {a1} {a2} {a3} {D E}
-		-->
-		
-		<preferences>
-			<preference id="tabsopen-pref" name="extensions.tabtree.tabsopen" type="int"/>
-			<preference id="unrelatedtabsopen-pref" name="extensions.tabtree.unrelatedtabsopen" type="int"/>
-			<preference id="selectonclose-pref" name="extensions.tabtree.selectonclose" type="int"/>
-		</preferences>
-			
-		<grid>
-		<rows>
-		<row align="baseline">
-			<label control="tabsopen" value="&options.tabsOpen.label;" accesskey="&options.tabsOpen.accesskey;"/>
-			<menulist id="tabsopen" preference="tabsopen-pref">
-			<menupopup>
-				<menuitem id="tabsopen-right" value="1"
-					label="&options.tabsOpen.endOfChildren.label; - A:{1 2:{i ii} 3} B:{1 2}"/>
-				<menuitem id="tabsopen-endofchildren" value="2"
-					label="&options.tabsOpen.startOfChildren.label; - A:{3 2:{ii i} 1} B:{2 1}"/>
-				<menuitem id="tabsopen-startofchildren" value="0"
-					label="&options.tabsOpen.tabbarEnd.label; - A a1 B a2 b1 a2i a3 b2 a2ii"/>
-			</menupopup>
-			</menulist>
-		</row>
-		
-		<row align="baseline">
-			<label control="unrelatedtabsopen" value="&options.unrelatedTabsOpen.label;" accesskey="&options.unrelatedTabsOpen.accesskey;"/>
-			<menulist id="unrelatedtabsopen" preference="unrelatedtabsopen-pref">
-			<menupopup>
-				<menuitem id="unrelatedtabsopen-tabbarend" value="0"
-					label="&options.unrelatedTabsOpen.tabbarEnd.label; - A:{..} [B]:{..} C:{..} 1:{..} 2:{..}"/>
-				<menuitem id="unrelatedtabsopen-next" value="1"
-					label="&options.unrelatedTabsOpen.next.label; - A:{..} [B]:{..} 1:{..} 2:{..} C:{..}"/>
-			</menupopup>
-			</menulist>
-		</row>
-		
-		<row align="baseline">
-			<label control="selectonclose" value="&options.selectOnClose.label;" accesskey="&options.selectOnClose.accesskey;"/>
-			<menulist id="selectonclose" preference="selectonclose-pref">
-			<menupopup>
-				<menuitem id="selectonclose-automatic" value="0"
-					label="&options.selectOnClose.automatic.label;"/>
-				<menuitem id="selectonclose-left" value="-1"
-					label="&options.selectOnClose.left.label;"/>
-				<menuitem id="selectonclose-right" value="1"
-					label="&options.selectOnClose.right.label;"/>
-			</menupopup>
-			</menulist>
-		</row>
-		</rows>
-		</grid>
-		
-	</prefpane>
-
-	<prefpane id="tabbar-pane" label="&options.tabbar.title;" image="chrome://tabtree/skin/prefs-tabbar.png" onpaneload="updateTabBarWidth(event);">
-		<!--
-		{Tab bar}
-		<fill in>
-		-->
-		
-		<preferences>
-			<preference id="tabbarposition-pref" name="extensions.tabtree.tabbar.position" type="int"/>
-			<preference id="sidebarposition-pref" name="extensions.tabtree.tabbar.sidebarposition" type="int"/>
-			<preference id="tabbarwidth-pref" name="extensions.tabtree.tabbar.horizontal.width" type="string"/>
-			<preference id="showtwistys-pref" name="extensions.tabtree.tabbar.showtwistys" type="bool"/>
-		</preferences>
-
-		<grid>
-		<rows>
-		<row align="baseline">
-			<label control="tabbarposition" value="&options.tabBarPosition.label;" accesskey="&options.tabBarPosition.accesskey;"/>
-			<menulist id="tabbarposition" preference="tabbarposition-pref">
-			<menupopup>
-				<menuitem id="tabbarposition-top" value="0"
-					label="&options.tabBarPosition.top.label;"/>
-				<menuitem id="tabbarposition-left" value="3"
-					label="&options.tabBarPosition.left.label;"/>
-				<menuitem id="tabbarposition-right" value="1"
-					label="&options.tabBarPosition.right.label;"/>
-				<menuitem id="tabbarposition-bottom" value="2"
-					label="&options.tabBarPosition.bottom.label;"/>
-			</menupopup>
-			</menulist>
-		</row>
-		
-		<row align="baseline">
-			<label control="sidebarposition" value="&options.sidebarPosition.label;" accesskey="&options.sidebarPosition.accesskey;"/>
-			<menulist id="sidebarposition" preference="sidebarposition-pref">
-			<menupopup>
-				<menuitem id="sidebarposition-top" value="0"
-					label="&options.sidebarPosition.top.label;"/>
-				<menuitem id="sidebarposition-left" value="3"
-					label="&options.sidebarPosition.left.label;"/>
-				<menuitem id="sidebarposition-right" value="1"
-					label="&options.sidebarPosition.right.label;"/>
-				<menuitem id="sidebarposition-bottom" value="2"
-					label="&options.sidebarPosition.bottom.label;"/>
-			</menupopup>
-			</menulist>
-		</row>
-		
-		<row align="baseline">
-			<label control="tabbarwidth" value="&options.tabBarWidth.label;" accesskey="&options.tabBarWidth.accesskey;"/>
-			<textbox id="tabbarwidth" preference="tabbarwidth-pref"/>
-		</row>
-		</rows>
-		</grid>
-		
-		<checkbox id="showtwistys" preference="showtwistys-pref"
-			label="&options.showTwistys.label;" accesskey="&options.showTwistys.accesskey;"/>
-			
-	</prefpane>
-
-	<prefpane id="style-pane" label="&options.style.title;" image="chrome://tabtree/skin/prefs-style.png" onpaneload="updateDarktheme(event);">
-		<!--
-		{Style}
-		[x] Color tabs
-		[x] Emphasize tab group boundaries
-		[ ] Check this if you use a dark theme <disable if the above two are off>
-		-->
-		
-		<preferences>
-			<preference id="color-pref" name="extensions.tabtree.style.color" type="int"/>
-			<preference id="darkenchildren-pref" name="extensions.tabtree.style.darkenchildren" type="bool"/>
-			<preference id="emphasizegroups-pref" name="extensions.tabtree.style.emphasizegroups" type="bool"/>
-			<preference id="darktheme-pref" name="extensions.tabtree.style.darktheme" type="bool"/>
-		</preferences>
-
-		<hbox align="baseline">
-			<label control="color" value="&options.color.label;" accesskey="&options.color.accesskey;"/>
-			<menulist id="color" preference="color-pref" oncommand="updateDarktheme(event);">
-			<menupopup>
-				<menuitem id="color-nothing" value="0"
-					label="&options.color.nothing.label;"/>
-				<menuitem id="color-groups" value="1"
-					label="&options.color.groups.label;"/>
-				<menuitem id="color-eachtab" value="2"
-					label="&options.color.eachTab.label;"/>
-			</menupopup>
-			</menulist>
-		</hbox>
-		<checkbox id="darkenchildren" preference="darkenchildren-pref" label="&options.darkenChildren.label;"
-			accesskey="&options.darkenChildren.accesskey;" oncommand="updateDarktheme(event);"/>
-		<checkbox id="emphasizegroups" preference="emphasizegroups-pref" label="&options.emphasizeGroups.label;"
-			accesskey="&options.emphasizeGroups.accesskey;" oncommand="updateDarktheme(event);"/>
-		<checkbox id="darktheme" preference="darktheme-pref"
-			label="&options.darkTheme.label;" accesskey="&options.darkTheme.accesskey;"/>
-			
-	</prefpane>
-
-	<prefpane id="advanced-pane" label="&options.advanced.title;" image="chrome://tabtree/skin/prefs-advanced.png">
-		<!--
-		{Advanced}
-		Tab double-click modifiers:
-		[ ] Ctrl  [ ] Alt  [ ] Shift  [ ] Meta
-		
-		Tab group drag modifiers (select at least one):
-		[x] Ctrl  [ ] Alt  [ ] Shift  [ ] Meta
-		-->
-		
-		<preferences>
-			<preference id="groupdragmodifiers-ctrl-pref" name="extensions.tabtree.groupdragmodifiers.ctrl" type="bool"/>
-			<preference id="groupdragmodifiers-alt-pref" name="extensions.tabtree.groupdragmodifiers.alt" type="bool"/>
-			<preference id="groupdragmodifiers-shift-pref" name="extensions.tabtree.groupdragmodifiers.shift" type="bool"/>
-			<preference id="groupdragmodifiers-meta-pref" name="extensions.tabtree.groupdragmodifiers.meta" type="bool"/>
-			<preference id="doubleclickmodifiers-ctrl-pref" name="extensions.tabtree.doubleclickmodifiers.ctrl" type="bool"/>
-			<preference id="doubleclickmodifiers-alt-pref" name="extensions.tabtree.doubleclickmodifiers.alt" type="bool"/>
-			<preference id="doubleclickmodifiers-shift-pref" name="extensions.tabtree.doubleclickmodifiers.shift" type="bool"/>
-			<preference id="doubleclickmodifiers-meta-pref" name="extensions.tabtree.doubleclickmodifiers.meta" type="bool"/>
-		</preferences>
-		
-		<hbox><button label="&options.resetAll.label;" accesskey="&options.resetAll.accesskey;" oncommand="resetAll(event);"/></hbox>
-		
-		<label id="doubleclickmodifiers" control="doubleclickmodifiers-alt" value="&options.doubleClickModifiers.caption;"
-			accesskey="&options.doubleClickModifiers.accesskey;"/>
-		<hbox>
-			<checkbox id="doubleclickmodifiers-ctrl" preference="doubleclickmodifiers-ctrl-pref"
-				label="&options.ctrl.label;"/>
-			<checkbox id="doubleclickmodifiers-alt" preference="doubleclickmodifiers-alt-pref"
-				label="&options.alt.label;"/>
-			<checkbox id="doubleclickmodifiers-shift" preference="doubleclickmodifiers-shift-pref"
-				label="&options.shift.label;"/>
-			<checkbox id="doubleclickmodifiers-meta" preference="doubleclickmodifiers-meta-pref"
-				label="&options.meta.label;"/>
-		</hbox>
-		
-		<label id="groupdragmodifiers" control="groupdragmodifiers-alt" value="&options.groupDragModifiers.caption;"
-			accesskey="&options.groupDragModifiers.accesskey;"/>
-		<hbox>
-			<checkbox id="groupdragmodifiers-ctrl" preference="groupdragmodifiers-ctrl-pref"
-				label="&options.ctrl.label;"/>
-			<checkbox id="groupdragmodifiers-alt" preference="groupdragmodifiers-alt-pref"
-				label="&options.alt.label;"/>
-			<checkbox id="groupdragmodifiers-shift" preference="groupdragmodifiers-shift-pref"
-				label="&options.shift.label;"/>
-			<checkbox id="groupdragmodifiers-meta" preference="groupdragmodifiers-meta-pref"
-				label="&options.meta.label;"/>
-		</hbox>
-		
-	</prefpane>
+	<script type="application/x-javascript" src="chrome://tabkit/content/settings.js"/>
 	
 </prefwindow>

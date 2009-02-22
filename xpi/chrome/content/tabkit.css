@@ -9,11 +9,20 @@
  * Emphasize unread tabs *
  *************************/
 
-.tabbrowser-tabs[highlightunread][colortabsnotlabels] .tabbrowser-tab:not([read]) > * {
-	background-color: yellow !important;
+/* If Sorting and Grouping sets "colortabnotlabel" we do the opposite */
+.tabbrowser-tabs[highlightunread]:not([colortabnotlabel]) .tabbrowser-tab:not([read]) > * {
+	background-color: yellow !important; /* = #ffff00; by comparison, colorizeTab would make yellow #ffff80 */
 }
-.tabbrowser-tabs[highlightunread]:not([colortabsnotlabels]) .tabbrowser-tab:not([read]) .tab-text {
-	background-color: yellow !important;
+.tabbrowser-tabs[highlightunread][colortabnotlabel] .tabbrowser-tab:not([read]) .tab-text {
+	color: black !important; /* We can't take the risk of them having a white on black theme */
+	background-color: #ff6 !important;
+}
+
+.tabbrowser-tabs[multirow="true"] .tabbrowser-tab .tab-text {
+	-moz-border-radius: 3px 3px 1px 1px;
+}
+.tabbrowser-tabs[multirow="true"] .tabbrowser-tab[selected="true"] .tab-text {
+	-moz-border-radius: 3px 3px 3px 3px;
 }
 
 .tabbrowser-tabs[highlightunread] .tabbrowser-tab:not([read]) .tab-text {
@@ -21,6 +30,18 @@
 }
 .tabbrowser-tabs[highlightunread] .tabbrowser-tab[read] .tab-text {
 	font-style: normal !important; /* just in case themes use italic by default! */
+}
+
+
+.tabbrowser-tabs[emphasizecurrent]:not([colortabnotlabel]) .tabbrowser-tab[selected="true"] > * {
+	background-color: black;
+}
+.tabbrowser-tabs[emphasizecurrent] .tabbrowser-tab[selected="true"] .tab-text {
+	color: white;
+}
+.tabbrowser-tabs[emphasizecurrent][colortabnotlabel] .tabbrowser-tab[selected="true"] .tab-text {
+	background-color: black !important;
+	color: white !important;
 }
 
 /************************************************************
@@ -62,7 +83,7 @@ stack					H #browser-stack
  * The real work goes on in the JS that sets their corresponding attributes
  */
 
-/* This is set by JS. If you set both they cancel out!! */
+/* This is set by JS. If you set both they cancel out! */
 /*#browser[vertisidebar="reverse"],
 #browser[horizsidebar="reverse"],
 #browser[horizsidebar] > #sidebar-box > sidebarheader {
@@ -108,7 +129,7 @@ stack					H #browser-stack
  * (except .tabbrowser-tab { -moz-box-align })
  */
 
-/* This is set by JS. If you set both they cancel out!! */
+/* This is set by JS. If you set both they cancel out! */
 /*#content[horiztabbar="reverse"] > tabbox,
 #content[vertitabbar="reverse"] > tabbox {
 	-moz-box-direction: reverse !important;
@@ -132,20 +153,21 @@ stack					H #browser-stack
 	max-height: none !important;	
 }
 
-/*#content[vertitabbar] .tabbrowser-tabs {
+/*!!#content[vertitabbar] .tabbrowser-tabs {
 	-moz-box-align: start !important;
 }*/
 #content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
-	/* -moz-box-align: stretch !important; */
+	/*!! -moz-box-align: stretch !important; */
 	overflow-x: hidden !important;
 	overflow-y: auto !important;
 }
+/* Hide scrollbuttons since we're putting in a scrollbar */
 #content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbutton-up,
 #content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbutton-down-stack {
 	display: none !important;
 }
 #content[vertitabbar] .tabbrowser-tab {
-	min-width: 25ex !important; /* TODO: allow customization. splitter? */
+	min-width: 3000px !important; /* This will be cut off of course */
 	min-height: 24px !important;
 	max-height: 24px !important;
 	/*-moz-box-orient: horizontal !important;*/ /* not done by JS */
@@ -176,19 +198,47 @@ stack					H #browser-stack
 	 * Not !important though, allow user to override! */
 	-moz-appearance: tabpanels;
 }
+/* Cosmetic: hide tab side images */
+#content[vertitabbar] .tabbrowser-tab .tab-image-left,
+#content[vertitabbar] .tabbrowser-tab .tab-image-right {
+	display: none !important;
+}
 
 /************************
  * Sorting and Grouping *
  ************************/
 
-.tabbrowser-tab[collapsedgroup] {
+.tabbrowser-tab[groupcollapsed] {
 	text-decoration: underline;
-	/* Also give it a plus symbol... */
+	/* TODO=P4: Also give it a plus symbol... */
+}
+
+/* Override colors inherited from tabs */
+.tabs-alltabs-button > menupopup > menuitem:hover,
+.tabs-alltabs-button > menupopup > menuitem:hover > label {
+	color: HighlightText !important;
+	background-color: Highlight !important;
+}
+
+/*!!.tabs-alltabs-popup > menuitem label {
+	color: black;
+	background-color: yellow !important;
+}*/
+
+.tabbrowser-tabs[makinggroup="true"] .tabbrowser-tab, .tabbrowser-tabs[makinggroup="true"] .tab-text {
+	cursor: alias;
 }
 
 /******************
  * Multi-row tabs *
  ******************/
+
+#tabkit-tab-drop-indicator-bar {
+	display: none;
+}
+#tabkit-tab-drop-indicator-bar[dragging="true"] {
+    display: -moz-box;
+}
 
 .tabbrowser-tabs[multirow="true"] {
 	max-height: none !important;
@@ -211,10 +261,10 @@ stack					H #browser-stack
 .tabbrowser-tabs[multirow] .tabbrowser-tab {
 	min-height: 24px !important;
 	max-height: 24px !important;
-	/*max-height: none !important;
+	/*!!max-height: none !important;
 	min-height: 0 !important;*/
-	/*min-width: 0 !important;*/
-	/*vertical-align: bottom;*/
+	/*!!min-width: 0 !important;*/
+	/*!!vertical-align: bottom;*/
 }
 
 /* Center All Tabs button */
@@ -225,8 +275,9 @@ stack					H #browser-stack
 	max-height: 29px !important;
 }
 
-/* Hide bottom border as it doesn't work graphically with multiple rows of tabs TODO: find a way to replace it? */
-.tabbrowser-tabs[multirow="true"] .tabs-stack > vbox:first-child {
+/* Hide bottom border as it doesn't work graphically with multiple rows of tabs TODO-P6: find a way to replace it? */
+/*.tabbrowser-tabs[multirow="true"] .tabs-stack > vbox:first-child {*/
+.tabbrowser-tabs[multirow="true"] .tabs-bottom {
 	display: none !important;
 }
 
