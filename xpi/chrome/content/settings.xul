@@ -131,7 +131,11 @@
 			<preference id="tabwheeltabswitch-pref" name="extensions.tabkit.gestures.tabWheelTabSwitch" type="bool"/>
 			<preference id="rmbwheeltabswitch-pref" name="extensions.tabkit.gestures.rmbWheelTabSwitch" type="bool"/>
 			<preference id="lmbrmbbackforward-pref" name="extensions.tabkit.gestures.lmbRmbBackForward" type="bool"/>
-			<preference id="doubleclickshortcuts-pref" name="extensions.tabkit.doubleClickShortcuts" type="bool"/>
+			<preference id="doubleclickcollapseexpand-pref" name="extensions.tabkit.doubleClickCollapseExpand" type="bool"/>
+			
+			<preference id="acceldragcopy-pref" name="extensions.tabkit.accelDragCopy" type="bool"/>
+			<preference id="shiftdraggroups-pref" name="extensions.tabkit.shiftDragGroups" type="bool"/>
+			<preference id="shiftdragsubtrees-pref" name="extensions.tabkit.shiftDragSubtrees" type="bool"/>
 			
 			<preference id="scrollbarsnotarrows-pref" name="extensions.tabkit.scrollbarsNotArrows" type="bool"/>
 			<preference id="scrolloneextra-pref" name="extensions.tabkit.scrollOneExtra" type="bool"/>
@@ -145,16 +149,20 @@
 				<checkbox id="rmbwheeltabswitch" label="&rmbWheelTabSwitch.label;"
 						accesskey="&rmbWheelTabSwitch.accesskey;" preference="rmbwheeltabswitch-pref"/>
 			</vbox>
-			<separator/>
 			<checkbox id="lmbrmbbackforward" label="&lmbRmbBackForward.label;"
 					accesskey="&lmbRmbBackForward.accesskey;" preference="lmbrmbbackforward-pref"/>
-			<separator/>
-			<checkbox id="doubleclickshortcuts" label="&doubleClickShortcuts.label;"
-					accesskey="&doubleClickShortcuts.accesskey;" preference="doubleclickshortcuts-pref"/>
+			<checkbox id="doubleclickcollapsecxpand" label="&doubleClickCollapseExpand.label;"
+					accesskey="&doubleClickCollapseExpand.accesskey;" preference="doubleclickcollapseexpand-pref"/>
+		</groupbox>
+		
+		<groupbox><caption label="&dragging.caption;"/>
+			<checkbox id="acceldragcopy" label="&accelDragCopy.label;"
+					accesskey="&accelDragCopy.accesskey;" preference="acceldragcopy-pref"/>
+			<checkbox id="shiftdraggroups" label="&shiftDragGroups.label;"
+					accesskey="&shiftDragGroups.accesskey;" preference="shiftdraggroups-pref"/>
 			<vbox class="indent">
-				<description value="&doubleClickShortcuts.description1;"/>
-				<description value="&doubleClickShortcuts.description2;"/>
-				<description value="&doubleClickShortcuts.description3;"/>
+				<checkbox id="shiftdragsubtrees" label="&shiftDragSubtrees.label;"
+						accesskey="&shiftDragSubtrees.accesskey;" preference="shiftdragsubtrees-pref"/>
 			</vbox>
 		</groupbox>
 		
@@ -171,11 +179,12 @@
 	<prefpane id="grouping-pane" label="&grouping.title;" image="chrome://tabkit/skin/prefs-grouping.png">
 		<preferences>
 			<preference id="autogroupnewtabs-pref" name="extensions.tabkit.autoGroupNewTabs" type="bool"/>
-			<preference id="lastactivegrouping-pref" name="extensions.tabkit.lastActiveGrouping" type="char"/>
+			<preference id="lastactivegrouping-pref" name="extensions.tabkit.lastActiveGrouping" type="string"/>
+			<preference id="autocollapse-pref" name="extensions.tabkit.autoCollapse" type="bool"/>
 			
 			<preference id="newtabposition-pref" name="extensions.tabkit.newTabPosition" type="int"/>
-			<preference id="lastactivesort-pref" name="extensions.tabkit.lastActiveSort" type="char"/>
-			<preference id="openrelativeposition-pref" name="extensions.tabkit.openRelativePosition" type="char"/>
+			<preference id="lastactivesort-pref" name="extensions.tabkit.lastActiveSort" type="string"/>
+			<preference id="openrelativeposition-pref" name="extensions.tabkit.openRelativePosition" type="string"/>
 			
 			<preference id="customcloseorder-pref" name="extensions.tabkit.customCloseOrder" type="int"/>
 			<preference id="selectowneronclose-pref" name="browser.tabs.selectOwnerOnClose" type="bool"/>
@@ -193,6 +202,8 @@
 				</menupopup>
 				</menulist>
 			</hbox>
+			<checkbox id="autocollapse" label="&autoCollapse.label;"
+					accesskey="&autoCollapse.accesskey;" preference="autocollapse-pref"/>
 		</groupbox>
 		
 		<groupbox><caption label="&positioningTabs.caption;"/>
@@ -260,6 +271,11 @@
 			<preference id="bookmarktabsarerelated-pref" name="extensions.tabkit.bookmarkTabsAreRelated" type="bool"/>
 			<preference id="historytabsarerelated-pref" name="extensions.tabkit.historyTabsAreRelated" type="bool"/>
 			<preference id="newtabsarerelated-pref" name="extensions.tabkit.newTabsAreRelated" type="bool"/>
+			
+			<preference id="closebeforeafternotother-pref" name="extensions.tabkit.closeBeforeAfterNotOther" type="bool"/>
+			
+			<!-- Hidden pref for resetAll -->
+			<preference id="tabsidebarwidth-pref" name="extensions.tabkit.tabSidebarWidth" type="int"/>
 		</preferences>
 		
 		<groupbox><caption label="&tabOrder.caption;"/>
@@ -281,10 +297,19 @@
 			</vbox>
 		</groupbox>
 		
+		<groupbox><caption label="&misc.caption;"/>
+			<checkbox id="closebeforeafternotother" label="&closeBeforeAfterNotOther.label;"
+					accesskey="&closeBeforeAfterNotOther.accesskey;" preference="closebeforeafternotother-pref"/>
+		</groupbox>
+		
 		<groupbox><caption label="&reset.caption;"/>
 			<hbox>
-				<button id="resetallbutton" label="&resetAll.label;"
-						accesskey="&resetAll.accesskey;" oncommand="resetAll();"/>
+				<vbox>
+					<button id="resetallbutton" label="&resetAll.label;"
+							accesskey="&resetAll.accesskey;" oncommand="resetAll();"/>
+					<button id="disableallbutton" label="&disableAll.label;"
+							accesskey="&disableAll.accesskey;" oncommand="disableAll();"/>
+				</vbox>
 			</hbox>
 		</groupbox>
 	</prefpane>

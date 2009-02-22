@@ -53,7 +53,7 @@
 	
 	<command id="cmd_tabkit-sortgroup-tab-newTabHere" oncommand="tabkit.openNewTabHere(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-tab-duplicateTab" oncommand="tabkit.duplicateTab(gBrowser.mContextTab);"/>
-	<command id="cmd_tabkit-sortgroup-tab-makeGroup" oncommand="tabkit.startMakeGroup(gBrowser.mContextTab);"/>
+	<command id="cmd_tabkit-sortgroup-tab-makeGroup" oncommand="tabkit.makeGroup(gBrowser.mContextTab);"/>
 	
 	<command id="cmd_tabkit-tab-toggleUnread" oncommand="tabkit.toggleUnread(gBrowser.mContextTab);"/>
 	
@@ -61,7 +61,10 @@
 	<command id="cmd_tabkit-sortgroup-group-collapseExpand" oncommand="tabkit.toggleGroupCollapsed(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-bookmark" oncommand="tabkit.bookmarkGroup(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-close" oncommand="tabkit.closeGroup(gBrowser.mContextTab);"/>
+	<command id="cmd_tabkit-sortgroup-group-closeSubtree" oncommand="tabkit.closeSubtree(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-ungroup" oncommand="tabkit.ungroupGroup(gBrowser.mContextTab);"/>
+	
+	<command id="cmd_tabkit-options" oncommand="tabkit.openOptions();"/>
 	<!--!!
 	
 	<command id="cmd_newNavigatorTab" oncommand="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> <!- -(is the default anyway) - ->
@@ -180,10 +183,18 @@
 								type="checkbox" command="cmd_tabkit-sortgroup-newtabs-autoGroup"/>
 						</menupopup>
 					</menu>
+					
+					<menuseparator/>
+					
+					<menuitem id="menu_tabkit-options" label="&options.label;" accesskey="&options.accesskey;"
+						command="cmd_tabkit-options"/>
 				</menupopup>
 			</menu>
 			
 			<menuseparator/>
+			
+			<menuitem id="menu_tabkit-sortgroup-tab-caption" label="&tab.caption;" disabled="true"
+				style="font-size: 80%; background: inherit !important;"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-tab-newTabHere" label="&newTabHere.label;" accesskey="&newTabHere.accesskey;"
 				command="cmd_tabkit-sortgroup-tab-newTabHere"/>
@@ -196,25 +207,53 @@
 			
 			<menuseparator groupsonly="true"/>
 			
+			<menuitem id="menu_tabkit-sortgroup-group-caption" label="&group.caption;" disabled="true"
+				style="font-size: 80%; background: inherit !important;" groupsonly="true"/>
+			
 			<menuitem id="menu_tabkit-sortgroup-group-collapse" label="&collapse.label;" accesskey="&collapse.accesskey;"
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-expand" label="&expand.label;" accesskey="&expand.accesskey;"
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true" collapsed="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-bookmark" label="&bookmark.label;" accesskey="&bookmark.accesskey;"
 				command="cmd_tabkit-sortgroup-group-bookmark" groupsonly="true"/>
-			<menuitem id="menu_tabkit-sortgroup-group-close" label="&close.label;" accesskey="&close.accesskey;"
-				command="cmd_tabkit-sortgroup-group-close" groupsonly="true"/>
+			<menuitem id="menu_tabkit-sortgroup-group-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
+				command="cmd_tabkit-sortgroup-group-close" acceltext="&closeGroup.acceltext;" groupsonly="true"/>
+			<menuitem id="menu_tabkit-sortgroup-group-closeSubtree" label="&closeSubtree.label;" accesskey="&closeSubtree.accesskey;"
+				command="cmd_tabkit-sortgroup-group-closeSubtree" acceltext="&closeSubtree.acceltext;" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-ungroup" label="&ungroup.label;" accesskey="&ungroup.accesskey;"
 				command="cmd_tabkit-sortgroup-group-ungroup" groupsonly="true"/>
-			<!--!! TODO=P4: sort out all these menuitems -->
-			<!--!!<menuitem id="tabtree-merge-left" oncommand="tabtree_mergeWithPrevious(gBrowser.mContextTab);"
-				key="key_tabTree_mergeLeft" label="&tabTree.mergeLeft.label;" accesskey="&tabTree.mergeLeft.accesskey;"/>
-			<menuitem id="tabtree-merge-right" oncommand="tabtree_mergeWithNext(gBrowser.mContextTab);"
-				key="key_tabTree_mergeRight" label="&tabTree.mergeRight.label;" accesskey="&tabTree.mergeRight.accesskey;"/>
-			<menuitem id="tabtree-split-here" oncommand="tabtree_splitGroup(gBrowser.mContextTab);"
-				key="key_tabTree_splitGroup" label="&tabTree.splitGroup.label;" accesskey="&tabTree.splitGroup.accesskey;"/>-->
+			<!--!!*-->
+			<menuseparator selectiononly="true"/>
+			
+			<menuitem id="menu_tabkit-sortgroup-selection-caption" label="&selection.caption;" disabled="true"
+				style="font-size: 80%; background: inherit !important;" selectiononly="true"/>
+			
+			<menuitem id="menu_tabkit-sortgroup-selection-group" label="&makeGroup.label;" accesskey="&makeGroup.accesskey;"
+				command="cmd_tabkit-sortgroup-selection-group" selectiononly="true"/>
+			<menuitem id="menu_tabkit-sortgroup-selection-bookmark" label="&bookmark.label;" accesskey="&bookmark.accesskey;"
+				command="cmd_tabkit-sortgroup-selection-bookmark" selectiononly="true"/>
+			<menuitem id="menu_tabkit-sortgroup-selection-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
+				command="cmd_tabkit-sortgroup-selection-close" selectiononly="true"/>
+			<!--*!!-->
 		</menupopup>
 	</menu>
+	
+	<menuitem label="&closeTabsToLeft.label;" accesskey="&closeTabsToLeft.accesskey;"
+		id="menu_tabkit-closeTabsToLeft" class="menu_tabkit-closeBeforeAfter-horizontal"
+		tbattr="tabbrowser-multiple"
+		oncommand="tabkit.removeTabsBefore(gBrowser.mContextTab);"/>
+	<menuitem label="&closeTabsToRight.label;" accesskey="&closeTabsToRight.accesskey;"
+		id="menu_tabkit-closeTabsToRight" class="menu_tabkit-closeBeforeAfter-horizontal"
+		tbattr="tabbrowser-multiple"
+		oncommand="tabkit.removeTabsAfter(gBrowser.mContextTab);"/>
+	<menuitem label="&closeTabsAbove.label;" accesskey="&closeTabsAbove.accesskey;"
+		id="menu_tabkit-closeTabsAbove" class="menu_tabkit-closeBeforeAfter-vertical"
+		tbattr="tabbrowser-multiple"
+		oncommand="tabkit.removeTabsBefore(gBrowser.mContextTab);"/>
+	<menuitem label="&closeTabsBelow.label;" accesskey="&closeTabsBelow.accesskey;"
+		id="menu_tabkit-closeTabsBelow" class="menu_tabkit-closeBeforeAfter-vertical"
+		tbattr="tabbrowser-multiple"
+		oncommand="tabkit.removeTabsAfter(gBrowser.mContextTab);"/>
 </menupopup>
 
 </overlay>

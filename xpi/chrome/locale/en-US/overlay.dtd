@@ -1,7 +1,9 @@
 <!ENTITY tabcontextmenu.label "Tab Kit">
 <!ENTITY tabcontextmenu.accesskey "K">
+
 <!ENTITY global.label "Global Actions">
-<!ENTITY global.accesskey "G">
+<!ENTITY global.accesskey "O">
+
 <!ENTITY sortByUri.label "Sort Tabs By Address">
 <!ENTITY sortByUri.accesskey "A">
 <!ENTITY sortByLastLoaded.label "Sort Tabs By Last Loaded">
@@ -11,7 +13,7 @@
 <!ENTITY sortByCreation.label "Sort Tabs In Order Of Creation">
 <!ENTITY sortByCreation.accesskey "C">
 <!ENTITY sortByOrigin.label "Sort Tabs By Origin">
-<!ENTITY sortByOrigin.accesskey "O">
+<!ENTITY sortByOrigin.accesskey "R">
 <!ENTITY sortByTitle.label "Sort Tabs By Page Title">
 <!ENTITY sortByTitle.accesskey "T">
 <!ENTITY groupByDomain.label "Group Tabs By Domain">
@@ -20,6 +22,8 @@
 <!ENTITY groupByOpener.accesskey "P">
 <!ENTITY ungroupAll.label "Ungroup All Tabs">
 <!ENTITY ungroupAll.accesskey "U">
+<!ENTITY options.label "Options">
+<!ENTITY options.accesskey "O">
 <!ENTITY lastSort.label "Are Ordered By Last Sort">
 <!ENTITY lastSort.accesskey "S">
 <!ENTITY nextToCurrent.label "Open Next To Current Tab">
@@ -28,21 +32,40 @@
 <!ENTITY farRight.accesskey "R">
 <!ENTITY autoGroup.label "Are Grouped By Last Grouping">
 <!ENTITY autoGroup.accesskey "G">
+
+<!ENTITY tab.caption "This Tab:">
 <!ENTITY newTabHere.label "New Tab Here">
 <!ENTITY newTabHere.accesskey "N">
 <!ENTITY duplicateTab.label "Duplicate Tab">
 <!ENTITY duplicateTab.accesskey "D">
-<!ENTITY makeGroup.label "Create New Group From Consecutive Tabs">
+<!ENTITY makeGroup.label "Group Tabs From Here To Current">
 <!ENTITY makeGroup.accesskey "T">
 <!ENTITY toggleUnread.label "Mark As Read">
 <!ENTITY toggleUnread.accesskey "R">
+
+<!ENTITY group.caption "This Group:">
 <!ENTITY collapse.label "Collapse Group">
 <!ENTITY collapse.accesskey "C">
 <!ENTITY expand.label "Expand Group">
 <!ENTITY expand.accesskey "E">
 <!ENTITY bookmark.label "Bookmark Group">
 <!ENTITY bookmark.accesskey "B">
-<!ENTITY close.label "Close Group">
-<!ENTITY close.accesskey "X">
+<!ENTITY closeGroup.label "Close Group">
+<!ENTITY closeGroup.accesskey "G">
+<!ENTITY closeGroup.acceltext "Ctrl+Middleclick">
+<!ENTITY closeSubtree.label "Close Subtree">
+<!ENTITY closeSubtree.accesskey "S">
+<!ENTITY closeSubtree.acceltext "Ctrl+Shift+Middleclick">
 <!ENTITY ungroup.label "Ungroup Group">
 <!ENTITY ungroup.accesskey "U">
+
+<!ENTITY selection.caption "Selected Tabs:">
+
+<!ENTITY closeTabsToLeft.label "Close Tabs To Left">
+<!ENTITY closeTabsToLeft.accesskey "F">
+<!ENTITY closeTabsToRight.label "Close Tabs To Right">
+<!ENTITY closeTabsToRight.accesskey "G">
+<!ENTITY closeTabsAbove.label "Close Tabs Above">
+<!ENTITY closeTabsAbove.accesskey "O">
+<!ENTITY closeTabsBelow.label "Close Tabs Below">
+<!ENTITY closeTabsBelow.accesskey "L">

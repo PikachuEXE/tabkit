@@ -167,7 +167,7 @@ stack					H #browser-stack
 	display: none !important;
 }
 #content[vertitabbar] .tabbrowser-tab {
-	min-width: 3000px !important; /* This will be cut off of course */
+	-moz-box-sizing: padding-box !important;
 	min-height: 24px !important;
 	max-height: 24px !important;
 	/*-moz-box-orient: horizontal !important;*/ /* not done by JS */
@@ -195,13 +195,18 @@ stack					H #browser-stack
 	background-image: none !important;
 	/* Pretending that the tab bar is a tabpanel is quite pretty under Windows,
 	 * and while somewhat illogical should never look awful.
-	 * Not !important though, allow user to override! */
-	-moz-appearance: tabpanels;
+	 * Not !important though, allow user to override!
+	-moz-appearance: tabpanels;*/
 }
 /* Cosmetic: hide tab side images */
 #content[vertitabbar] .tabbrowser-tab .tab-image-left,
 #content[vertitabbar] .tabbrowser-tab .tab-image-right {
 	display: none !important;
+}
+
+/* Hide splitter when tab bar is hidden */
+.tabbrowser-strip[collapsed="true"] + #tabkit-splitter {
+	visibility: collapse;
 }
 
 /************************
@@ -210,7 +215,6 @@ stack					H #browser-stack
 
 .tabbrowser-tab[groupcollapsed] {
 	text-decoration: underline;
-	/* TODO=P4: Also give it a plus symbol... */
 }
 
 /* Override colors inherited from tabs */
@@ -225,8 +229,32 @@ stack					H #browser-stack
 	background-color: yellow !important;
 }*/
 
-.tabbrowser-tabs[makinggroup="true"] .tabbrowser-tab, .tabbrowser-tabs[makinggroup="true"] .tab-text {
+/*!!.tabbrowser-tabs[makinggroup="true"] .tabbrowser-tab, .tabbrowser-tabs[makinggroup="true"] .tab-text {
 	cursor: alias;
+}*/
+
+#menu_tabkit-sortgroup label.menu-accel {
+	font-size: 80%;
+}
+
+/******************************************
+ * Close Tabs Before and Close Tabs After *
+ ******************************************/
+
+.menu_tabkit-closeBeforeAfter-horizontal, .menu_tabkit-closeBeforeAfter-vertical {
+	display: none !important;
+}
+#content[closebeforeafternotother] .tabbrowser-strip menuitem[oncommand*="removeAllTabsBut"] {
+	display: none !important;
+}
+#content[closebeforeafternotother] .menu_tabkit-closeBeforeAfter-horizontal {
+	display: -moz-box !important;
+}
+#content[closebeforeafternotother][vertitabbar] .menu_tabkit-closeBeforeAfter-horizontal {
+	display: none !important;
+}
+#content[closebeforeafternotother][vertitabbar] .menu_tabkit-closeBeforeAfter-vertical {
+	display: -moz-box !important;
 }
 
 /******************
@@ -235,9 +263,13 @@ stack					H #browser-stack
 
 #tabkit-tab-drop-indicator-bar {
 	display: none;
+	height: 0 !important; /* Prevent moving mouse over indicator bar causing drop arrow to flash and drops to fail */
 }
 #tabkit-tab-drop-indicator-bar[dragging="true"] {
     display: -moz-box;
+}
+#tabkit-tab-drop-indicator-bar > hbox {
+	margin-bottom: -14px !important; /* Prevent moving mouse over indicator bar causing drop arrow to flash and drops to fail */
 }
 
 .tabbrowser-tabs[multirow="true"] {

@@ -32,9 +32,14 @@ pref("extensions.tabkit.colorTabNotLabel", -1); // -1: Auto, 0: Don't, 1: Do
 pref("extensions.tabkit.gestures.tabWheelTabSwitch", true);
 pref("extensions.tabkit.gestures.rmbWheelTabSwitch", false);
 
-pref("extensions.tabkit.gestures.lmbRmbBackForward", false);
+pref("extensions.tabkit.gestures.lmbRmbBackForward", true);
 
-pref("extensions.tabkit.doubleClickShortcuts", true);
+pref("extensions.tabkit.doubleClickCollapseExpand", true);
+
+//--- Tab Dragging---
+pref("extensions.tabkit.accelDragCopy", true);
+pref("extensions.tabkit.shiftDragGroups", true);
+    pref("extensions.tabkit.shiftDragSubtrees", false);
 
 //--- Scrolling ---
 pref("extensions.tabkit.scrollbarsNotArrows", true);
@@ -46,6 +51,7 @@ pref("extensions.tabkit.scrollOneExtra", true);
 //--- Grouping Tabs ---
 pref("extensions.tabkit.autoGroupNewTabs", true);
     pref("extensions.tabkit.lastActiveGrouping", "opener"); // domain or opener
+pref("extensions.tabkit.autoCollapse", false);
 
 //--- Positioning Tabs ---
 pref("extensions.tabkit.newTabPosition", 2); // 2: By last sort, 1: Next to current, 0: At far right
@@ -58,7 +64,7 @@ pref("extensions.tabkit.customCloseOrder", 2); // 0: Auto, 1: Group left, 2: Gro
 //}
 
 
-//{ ### Advanced Grouping ###
+//{ ### Advanced ###
 //--- Tab Order ---
 pref("extensions.tabkit.autoSortDomainGroups", true);
 pref("extensions.tabkit.autoSortOpenerGroups", true);
@@ -68,11 +74,16 @@ pref("extensions.tabkit.bookmarkTabsAreRelated", false);
 pref("extensions.tabkit.historyTabsAreRelated", false);
 pref("extensions.tabkit.newTabsAreRelated", false);
 
+//--- Misc ---
+pref("extensions.tabkit.closeBeforeAfterNotOther", true);
+
 //--- Reset ---
 //}
 
 
 //{ ### (Hidden) ###
+pref("extensions.tabkit.warnOnRegroup", true); // TODO=P3: Add checkbox
+
 pref("extensions.tabkit.debug", false); // Enables error and warning messages
 pref("extensions.tabkit.debugMinorToo", false); // Enables debugging messages
 

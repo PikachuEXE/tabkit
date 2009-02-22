@@ -1,6 +1,7 @@
 var dependencies = [
-    //<depended on>, <value for enabled>, <dependency1>, [<dependency2>,] ...
+    //<depended upon>, <value for enabled>, <dependency1>, [<dependency2>,] ...
     ["indentedtree", "true", "maxtreelevel", "indentamount"],
+    ["shiftdraggroups", "true", "shiftdragsubtrees"],
     ["autogroupnewtabs", "true", "lastactivegrouping"],
     ["newtabposition", "2", "lastactivesort"]
 ];
@@ -73,9 +74,27 @@ function resetAll() {
     var prefs = document.getElementsByTagName("preference");
     for (var i = 0; i < prefs.length; i++) {
         var pref = prefs[i];
-        if (pref.value != pref.defaultValue)
-            pref.value = pref.defaultValue;
+        // Bug 390616 – <preference>'s defaultValue is wrong for string or unichar prefs – https://bugzilla.mozilla.org/show_bug.cgi?id=390616
+        var def = pref.type == "string" ? pref.preferences.defaultBranch.getCharPref(pref.name) : pref.defaultValue;
+        if (pref.value != def)
+            pref.value = def;
     }
     document.getElementById("multiplerows").checked = true; // N.B. Assumes multiple rows is default
     toggleMultipleRows();
+}
+
+function disableAll() {
+    resetAll();
+    document.getElementById("multiplerows").checked = false;
+    toggleMultipleRows();
+    document.getElementById("highlightunreadtabs-pref").value = false;
+    document.getElementById("emphasizecurrenttab-pref").value = false;
+    document.getElementById("tabwheeltabswitch-pref").value = false;
+    document.getElementById("doubleclickshortcuts-pref").value = false;
+    document.getElementById("scrollbarsnotarrows-pref").value = false;
+    document.getElementById("scrolloneextra-pref").value = false;
+    document.getElementById("autogroupnewtabs-pref").value = false;
+    document.getElementById("newtabposition-pref").value = 0;
+    document.getElementById("lastactivesort-pref").value = "creation";
+    document.getElementById("customcloseorder-pref").value = 4;
 }

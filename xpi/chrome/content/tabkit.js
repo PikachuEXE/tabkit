@@ -18,11 +18,70 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-// TODO=P2: Install.rdf
-// TODO=P2: Website (remember to credit zeniko & pinstripe icon makers)
-// TODO=P3: BabelZilla
-// TODO=P4: en-uk translation
+/* Changelog
+ * ---------
+ * v0.3 (2007-11-06):
+ * - Automatically picks group colors which are different from those of nearby groups
+ * - Option to automatically collapse inactive groups
+ * - Reworked tab dragging.
+ * - o Shift-drag will drag a whole group together, even across windows
+ * - o Ctrl-drag copies dragged tabs, and Ctrl-Shift-drag copies a group (n.b. Cmd instead of Ctrl on Mac)
+ * - o Dragged tabs now gain the appropriate tree indentation (instead of resetting it) when in indented tree mode
+ * - o There is now an option to make Shift-drag move subtrees instead of groups (when in indented tree mode)
+ * - o Fix: Tab drop indicator no longer flashes (and sometimes prevents a drag) in vertical tab bar mode (unless you drag directly over the arrow - this is almost inevitable)
+ * - New "Group Tabs From Here To Current" command will group tabs between the selected tab and the right-clicked tab (this replaces the broken and long-winded "Create New Group From Consecutive Tabs")
+ * - Added "Close Subtree" command to close a tab and its child tabs
+ * - Ctrl-middleclick on a tab group closes it, or alternatively Ctrl-click a tab's close button (n.b. Cmd instead of Ctrl on Mac)
+ * - Similarly Ctrl-Shift-middleclick on a tab closes the subtree it is parent of, or alternatively Ctrl-Shift-click the close button
+ * - Replaced "Close Other Tabs" with "Close Tabs Before" and "Close Tabs After" (optionally)
+ * - Added Options button to Tab Kit tab context submenu for quick access
+ * - Fix: Double-clicking tab close buttons (when closing several tabs in a row) now closes the tab instead of collapsing its group
+ * - Fix: The splitter now hides if the tab bar is hidden (only one tab)
+ * v0.2.1 (2007-08-07):
+ * - Close buttons now show on tabs (if enabled) when the tab bar is vertical, and tab text is cropped appropriately.
+ * - Vertical or multi-row tab bar will now autoscroll to make sure new (background) tabs are onscreen
+ * - Fix: Context menu searches are now correctly grouped
+ * - Fix: Tab bar and sidebar positions are now remembered even if they are on the bottom and right respectively
+ * v0.2 (2007-08-02):
+ * - First public version.
+ */
 
+/* Note on the source code
+ * -----------------------
+ * This code is split into sections, separated by "//|##########################".
+ * 
+ * The earlier sections, whose name is preceded by "//{### " provide services or abstraction
+ * functions for later sections.
+ * 
+ * The later sections, starting with "//{>>> " or "//{=== ", are where the important code is
+ * (especially the >>> ones). These code sections are designed to be largely independent of
+ * each other, and could often be removed without affecting the rest of the code.
+ *
+ * n.b. If you edit this in SciTE the //{ and //} cause the code to fold nicely.
+ */
+
+/* Rough Todo List
+ * ---------------
+ * I keep todo notes in the form TODO=Px where x is a priority betweeen 1 (highest) and 5 (lowest).
+ * Though I normally finish all the P1 and P2 ones before making a release.
+ * There are more todos in the source itself, search for "TODO=P"
+ 
+ * TODO=P3: Investigate http://piro.sakura.ne.jp/xul/_treestyletab.html.en
+ * TODO=P3: Investigate http://paranoid-androids.com/tabgroups/ 
+
+ * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
+ * TODO=P3: BabelZilla
+ * TODO=P3: Make compatible with Firefox 3 alpha
+ * TODO=P3: Implement lite version of LastTab Ctrl-Tab stack switching
+ * TODO=P3: (Re)implement tab scrollbar (though with centered tabs?)
+ * TODO=P3: Collapsed group underline is invisible for the active tab when emphasizecurrent is on
+ * TODO=P3: MTH-like ctrl/shift-click, and corresponding actions
+
+ * TODO=P4: Locking tabs and/or tab groups
+ * TODO=P4: Fix mouse rocker back/forward on linux (where context menu is onmousedown)
+ * TODO=P4: Mark group start/end with /--|---|--\ for colorblind people
+ * TODO=P4: Check that shift-dragging a group and/or subtree into subtree never causes following tabs to reset indent
+*/
 var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide our stuff in
 
     //|##########################
@@ -30,7 +89,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //|##########################
 
     /// Private globals:
-    const self = this; // Functions passed as parameters lose their this, as do nested functions, so store it in 'self'
+    const tk = this; // Functions passed as parameters lose their this, as do nested functions, and tabkit is a bit long(!), so store it in 'tk'
 
     const PREF_BRANCH = "extensions.tabkit.";
 
@@ -72,7 +131,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var _ss = Cc["@mozilla.org/browser/sessionstore;1"].
                   getService(Ci.nsISessionStore);
     else
-        var _winvars = {}; // For self.get/setWindowValue
+        var _winvars = {}; // For tk.get/setWindowValue
 
     var _wm = Cc["@mozilla.org/appshell/window-mediator;1"].
               getService(Ci.nsIWindowMediator);
@@ -113,40 +172,49 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 var flags = haveException ? scriptError.errorFlag : scriptError.warningFlag;
                 var category = "JavaScript error"; // TODO-P6: Check this
                 scriptError.init(message, sourceName, sourceLine, lineNumber, columnNumber, flags, category);
-                self.logs.dump.push(scriptError);
+                tk.logs.dump.push(scriptError);
                 _console.logMessage(scriptError);
+            }
+            else {
+                tk.logs.dump.push(String(error) + "\n" + tk.quickStack());
             }
         }
         catch (ex) {
+            /*!!**/
             if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
+            /**!!*/
         }
     };
 
     // For logging information (no line numbers, call stack, etc.)
     this.log = function log(message) {
         try {
+            tk.logs.log.push(message);
             if (_prefs.getBoolPref("debug")) {
                 var msg = "TK: " + message;
-                self.logs.log.push(msg);
                 _console.logStringMessage(msg);
             }
         }
         catch (ex) {
+            /*!!**/
             if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
+            /**!!*/
         }
     };
     
     // For minor/normal information that could still be interesting
     this.debug = function debug(message) {
         try {
+            tk.logs.debug.push(message);
             if (_prefs.getBoolPref("debug") && _prefs.getBoolPref("debugMinorToo")) {
                 var msg = "TK Debug: " + message;
-                self.logs.debug.push(msg);
                 _console.logStringMessage(msg);
             }
         }
         catch (ex) {
+            /*!!**/
             if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
+            /**!!*/
         }
     };
 
@@ -344,7 +412,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
     this.getPrettyDateTime = function getPrettyDateTime() {
-        return self.getPrettyDate() + " " + self.getPrettyTime();
+        return tk.getPrettyDate() + " " + tk.getPrettyTime();
     };*/
 
 
@@ -363,6 +431,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
 
     // TODO=P4: scrollOneExtra should also apply with a single-row horizontal tab bar
+    // TODO=P4: Could always keep selected tab in centre of tabbar instead
     this.scrollToElement = function scrollToElement(overflowPane, element) { // TODO-P6: cleanup code? [based on toomanytabs]
         var scrollbar = overflowPane.mVerticalScrollbar;
         if (!scrollbar)
@@ -370,18 +439,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
         var container = element.parentNode;
         var firstChild = container.firstChild;
-        while (firstChild.getAttribute("hidden") == "true")
+        while (firstChild.hidden)
             firstChild = firstChild.nextSibling;
         var lastChild = container.lastChild;
-        while (lastChild.getAttribute("hidden") == "true")
+        while (lastChild.hidden)
             lastChild = lastChild.previousSibling;
 
         var curpos = parseInt(scrollbar.getAttribute("curpos"));
         if (isNaN(curpos)) {
-            self.debug("curpos was NaN");
+            tk.debug("curpos was NaN");
             curpos = 0;
         }
-        var firstY = firstChild.boxObject.y
+        var firstY = firstChild.boxObject.y;
         var elemY = element.boxObject.y;
         var lastY = lastChild.boxObject.y;
         var height = element.boxObject.height;
@@ -441,7 +510,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 gBrowser.moveTabTo(tabToMove, newIndex);
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
     };
     
@@ -454,7 +523,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 gBrowser.moveTabTo(tabToMove, newIndex);
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
     };
 
@@ -468,7 +537,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             func = func.caller;
         }
         return stack;
-    }
+    };
 
     //}##########################
     //{### Initialisation
@@ -497,43 +566,43 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
      */
     this.onDOMContentLoaded_global = function onDOMContentLoaded_global(event) {
         try {
-            window.removeEventListener("DOMContentLoaded", self.onDOMContentLoaded_global, false);
+            window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded_global, false);
         }
         catch (ex) {
             // This is a browser window, it wasn't set
         }
 
         // Run module global early initialisation code (before any init* listeners, and before most extensions):
-        for each (var listener in self.globalPreInitListeners) {
+        for each (var listener in tk.globalPreInitListeners) {
             listener(event);
         }
     };
 
     // This gets called for new browser windows, once the DOM tree is loaded
     this.onDOMContentLoaded = function onDOMContentLoaded(event) {
-        window.removeEventListener("DOMContentLoaded", self.onDOMContentLoaded, false);
+        window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded, false);
 
         // Run module early initialisation code (before any init* listeners, and before most extensions):
-        for each (var listener in self.preInitListeners) {
+        for each (var listener in tk.preInitListeners) {
             listener(event);
         }
         
         // Run global init too
-        self.onDOMContentLoaded_global(event);
+        tk.onDOMContentLoaded_global(event);
     };
 
     // This gets called for new browser windows, once they've finished loading
     this.onLoad = function onLoad(event) {
-        window.removeEventListener("load", self.onLoad, false);
+        window.removeEventListener("load", tk.onLoad, false);
 
         // Run module specific initialisation code, such as registering event listeners:
-        for each (var listener in self.initListeners) {
+        for each (var listener in tk.initListeners) {
             listener(event);
         }
 
         window.setTimeout(function __runPostInitListeners() {
             // Run module specific late initialisation code (after all init* listeners, and after most extensions):
-            for each (var listener in self.postInitListeners) {
+            for each (var listener in tk.postInitListeners) {
                 listener(event);
             }
         }, 0);
@@ -554,9 +623,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var _tabstrip;
         var _tabInnerBox;
         var _tabs = gBrowser.mTabs; // Arguably should get this in the listener too, but seems to work...
-        
-        // Public Globals
-        this.strings = document.getElementById("bundle_tabkit");
 
         /// Initialisation:
         this.preInitShortcuts = function preInitShortcuts(event) {
@@ -581,7 +647,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         gPrefService.QueryInterface(Ci.nsIPrefBranch2);
 
         // Do this in preInit just in case something expects their init prefListener to work 'instantly'
-        self.addGlobalPrefListener(PREF_BRANCH, self.localPrefsListener);
+        tk.addGlobalPrefListener(PREF_BRANCH, tk.localPrefsListener);
     };
     this.preInitListeners.push(this.preInitPrefsObservers);
 
@@ -650,17 +716,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             else {
                 node.removeAttribute(attribute);
             }
-        }
+        };
 
         for each (var pref in prefs) {
-            self.addPrefListener(pref, listener);
+            tk.addPrefListener(pref, listener);
         }
 
         listener();
     };
 
     this.mapBoolPrefToAttribute = function mapBoolPrefToAttribute(pref, node, attribute) {
-        self.mapPrefsToAttribute([pref], function() { return _prefs.getBoolPref(pref) ? "true" : undefined; }, node, attribute);
+        tk.mapPrefsToAttribute([pref], function() { return _prefs.getBoolPref(pref) ? "true" : undefined; }, node, attribute);
     };
 
     //}##########################
@@ -678,14 +744,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Initialisation:
     this.preInitMethodHooks = function preInitMethodHooks(event) {
-        for each (var hook in self.earlyMethodHooks)
-            self.addMethodHook(hook);
+        for each (var hook in tk.earlyMethodHooks)
+            tk.addMethodHook(hook);
     };
     this.preInitListeners.push(this.preInitMethodHooks);
 
     this.postInitMethodHooks = function postInitMethodHooks(event) {
-        for each (var hook in self.lateMethodHooks)
-            self.addMethodHook(hook);
+        for each (var hook in tk.lateMethodHooks)
+            tk.addMethodHook(hook);
     };
     this.postInitListeners.push(this.postInitMethodHooks);
 
@@ -700,7 +766,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             for (var i = 2; i < hook.length; ) {
                 var newCode = code.replace(hook[i++], hook[i++]);
                 if (newCode == code)
-                    self.log("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + hook[i - 2] + "\nwith:\n" + hook[i - 1]);
+                    tk.debug("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + hook[i - 2] + "\nwith:\n" + hook[i - 1]);
                 else
                     code = newCode;
             }
@@ -708,22 +774,22 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             eval(hook[0] + "=" + code);
         }
         catch (ex) {
-            self.dump("Method hook of \"" + hook[0] + "\" failed with exception:\n" + ex, ex);
+            tk.dump("Method hook of \"" + hook[0] + "\" failed with exception:\n" + ex, ex);
         }
     };
 
     this.prependMethodCode = function prependMethodCode(methodname, codestring) {
-        self.addMethodHook([methodname, null, '{', '{' + codestring]);
+        tk.addMethodHook([methodname, null, '{', '{' + codestring]);
     };
 
     this.appendMethodCode = function appendMethodCode(methodname, codestring) {
-        self.addMethodHook([methodname, null, /\}$/, codestring + '}']);
+        tk.addMethodHook([methodname, null, /\}$/, codestring + '}']);
     };
 
     this.wrapMethodCode = function wrapMethodCode(methodname, startcode, endcode) {
-        //self.addMethodHook([methodname, null, /\{([^]*)\}$/, '{' + startcode + '$&' + endcode + '}']);
-        self.addMethodHook([methodname, null, '{', '{' + startcode, /\}$/, endcode + '}']);
-    }
+        //tk.addMethodHook([methodname, null, /\{([^]*)\}$/, '{' + startcode + '$&' + endcode + '}']);
+        tk.addMethodHook([methodname, null, '{', '{' + startcode, /\}$/, endcode + '}']);
+    };
 
     //!!}##########################
     //!!{--- Sessions/Closed Windows
@@ -739,15 +805,15 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     /// Globals:
     var _sessionFile; // Don't use this directly
     
-    var _sessionData; // Don't use this directly, use self.get/setSessionData (below) instead
+    var _sessionData; // Don't use this directly, use tk.get/setSessionData (below) instead
     this.getSessionData = function getSessionData() {
         if (!_sessionData)
             _os.notifyObservers(window, "tabkit:init-my-session-data", null);
         
         if (!_sessionData) {
-            _sessionData = eval(self.readFile(_sessionFile));
+            _sessionData = eval(tk.readFile(_sessionFile));
             if (_sessionData === null) {
-                self.log("Note: failed to read tabkitsessions.json (this is *normal* if this is the first time you use Tab Kit)");
+                tk.log("Note: failed to read tabkitsessions.json (this is *normal* if this is the first time you use Tab Kit)");
                 _sessionData = {
                     sessions: {},
                     windows: []
@@ -778,24 +844,24 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Initialisation:
     this.initSessionManager = function initSessionManager(event) {
-        _sessionFile = self.getFile("tabkitsessions.json");
+        _sessionFile = tk.getFile("tabkitsessions.json");
 
         if (!_prefs.getBoolPref("keepClosedWindows")) {
-            var sessions = self.getSessionData();
+            var sessions = tk.getSessionData();
             if (sessions.windows !== []) {
                 sessions.windows = [];
-                self.setSessionData(sessions);
+                tk.setSessionData(sessions);
             }
         }
 
-        self.sessionObserver.register();
-        window.addEventListener("unload", function() { self.sessionObserver.unregister(); }, false);
+        tk.sessionObserver.register();
+        window.addEventListener("unload", function() { tk.sessionObserver.unregister(); }, false);
         
-        //window.addEventListener("beforeunload", function() { self.backupWindowState(); }, false); // Pre closingWindow
+        //window.addEventListener("beforeunload", function() { tk.backupWindowState(); }, false); // Pre closingWindow
         
-        document.getElementById("goPopup").addEventListener("popupshowing", self.sessions_updateGoMenu, false);
+        document.getElementById("goPopup").addEventListener("popupshowing", tk.sessions_updateGoMenu, false);
         
-        self.addPrefListener("maxRecentWindows", _boundRecentWindows);
+        tk.addPrefListener("maxRecentWindows", _boundRecentWindows);
 
         //{ Old testing code
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -807,7 +873,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 //~ var log = aSubject + ":" + winType + "; " + aTopic + "; " + aData;
                 //~ try { log += "\n" + _prefs.getCharPref("log"); } catch(ex) {}
                 //~ _prefs.setCharPref("log", log);
-                //~ self.log(log);
+                //~ tk.log(log);
             //~ }
         //~ };
         //~ 
@@ -872,7 +938,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     /// Method hooks
     // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
     if (_ss)
-        self.earlyMethodHooks.push([
+        tk.earlyMethodHooks.push([
             'closeWindow',
             null,
             'window.close();',
@@ -902,12 +968,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 //~ // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
                 //~ if (!"tkt_lastSaved" in aSubject || aSubject.tkt_lastSaved === undefined) {
                     //~ if (!"tkt_savedState" in aSubject) {
-                        //~ self.dump("No state backup for closed browser window!");
+                        //~ tk.dump("No state backup for closed browser window!");
                     //~ }
                     //~ return;
                 //~ }
                 //~ if (Date.now() - aSubject.tkt_lastSaved > 3000) {
-                    //~ self.log("Whoah, this state backup is ancient: " + (Date.now() - aSubject.tkt_lastSaved) + "ms!");
+                    //~ tk.log("Whoah, this state backup is ancient: " + (Date.now() - aSubject.tkt_lastSaved) + "ms!");
                 //~ }
                 //~ delete aSubject.tkt_lastSaved; // Stop windows' observers from firing
                 //~ var state = aSubject.tkt_savedState;
@@ -926,7 +992,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 //~ else {
                     //~ var title = aSubject.content.document.title;
                 //~ }
-                //~ var name = "[ " + aSubject._tabs.length + " tabs - " + self.getPrettyDateTime() + " ] " + title;
+                //~ var name = "[ " + aSubject._tabs.length + " tabs - " + tk.getPrettyDateTime() + " ] " + title;
 
                 //~ // Now let each window add this to their list of recently closed windows
                 //~ _os.notifyObservers(aSubject, "tabkit:add-recent-window", uneval([name, state]));
@@ -942,16 +1008,16 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 break;
             case "tabkit:init-my-session-data":
                 if (_sessionData)
-                    aSubject.tabkit._initSessionData(self.getSessionData());
+                    aSubject.tabkit._initSessionData(tk.getSessionData());
                 break;
             case "browser:purge-session-history":
-                self.setSessionData({
+                tk.setSessionData({
                     sessions: {},
                     windows: []
                 });
                 break;
             case "quit-application-granted":
-                self.saveAllWindowsSession("[ Closed browser: " + self.getPrettyDateTime() + " ]"); // T O D O : check this always works
+                tk.saveAllWindowsSession("[ Closed browser: " + tk.getPrettyDateTime() + " ]"); // T O D O : check this always works
                 this.unregister();
                 break;
             }
@@ -973,8 +1039,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// 'Event' Handlers:
     this.sessions_updateGoMenu = function sessions_updateGoMenu(event) {
-        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("hidden", _prefs.getIntPref("maxRecentWindows") == 0);
-        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("disabled", self.getSessionData().windows.length == 0);
+        document.getElementById("menu_tabkit-recentwindows-menu").hidden = (_prefs.getIntPref("maxRecentWindows") == 0);
+        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("disabled", tk.getSessionData().windows.length == 0);
     };
     
     this.updateSessionsMenu = function updateSessionsMenu(event, popup) {
@@ -1010,7 +1076,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             popup.removeChild(oldSessions[i]);
         }
 
-        var newSessions = self.getSortedSessionNames();
+        var newSessions = tk.getSortedSessionNames();
 
         var index = 1;
         for each (var sessionName in newSessions) {
@@ -1022,7 +1088,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             else {
                 menuitem.setAttribute("label", sessionName);
             }
-            //menuitem.setAttribute("statustext", url);
+            //menuitem.statusText = url;
             menuitem.setAttribute("isSession", "true");
             menuitem.setAttribute("oncommand", "tabkit.restoreSession(\""+sessionName+"\");");
             
@@ -1031,7 +1097,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             index++;
         }
 
-        endSeparator.setAttribute("hidden", index == 1);
+        endSeparator.hidden = (index == 1);
     };
     this.updateRecentWindowsMenu = function updateRecentWindowsMenu(event, popup) {
         if (event.target != event.currentTarget) return;
@@ -1043,7 +1109,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             popup.removeChild(oldWindows[i]);
         }
         
-        var newWindows = self.getSessionData().windows;
+        var newWindows = tk.getSessionData().windows;
 
         var index = 1;
         for each (var recentWin in newWindows) {
@@ -1056,7 +1122,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             else {
                 menuitem.setAttribute("label", "   " + name);
             }
-            //menuitem.setAttribute("statustext", urls);
+            //menuitem.statusText = urls;
             menuitem.setAttribute("isRecentWindow", "true");
             menuitem.setAttribute("oncommand", "tabkit.restoreRecentWindow(" + uneval(recentWin) + ");");
 
@@ -1074,16 +1140,16 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var title = window.content.document.title ? window.content.document.title : window.content.location.href;
             if (title.length > 40)
                 title = title.substring(0, 37) + "...";
-            var name = "[ " + _tabs.length + " tabs - " + self.getPrettyDateTime() + " ] " + title;
+            var name = "[ " + _tabs.length + " tabs - " + tk.getPrettyDateTime() + " ] " + title;
             
             var state = _ss.getWindowState(window);
             
             // Now let each window add this to their list of recently closed windows
-            self.addWindow([name, state]);
+            tk.addWindow([name, state]);
         }
         catch (ex) {
             // We absolutely mustn't block closeWindow!
-            self.dump("closingWindow failed: \n" + ex, ex);
+            tk.dump("closingWindow failed: \n" + ex, ex);
         }
     };
     
@@ -1104,9 +1170,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var timeSinceLastSave = Date.now() - _lastSessionSave;
         if (timeSinceLastSave > _sessionSaveInterval) {
             // Make sessions file slightly more human readable
-            var sessionStr = uneval(self.getSessionData()).replace(/ ('(\\'|[^'])*':\{state:)/g, "\n\n$1").replace(/ ("(\\"|[^"])*":\{state:)/g, "\n\n$1");
+            var sessionStr = uneval(tk.getSessionData()).replace(/ ('(\\'|[^'])*':\{state:)/g, "\n\n$1").replace(/ ("(\\"|[^"])*":\{state:)/g, "\n\n$1");
             
-            self.writeFile(sessionStr, _sessionFile);
+            tk.writeFile(sessionStr, _sessionFile);
             
             _lastSessionSave = Date.now();
         }
@@ -1118,11 +1184,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     function _boundRecentWindows(arg) {
         // See similar code under addWindow
-        var sessionData = self.getSessionData();
+        var sessionData = tk.getSessionData();
         var maxWindows = _prefs.getIntPref("maxRecentWindows");
         while (sessionData.windows.length > maxWindows && maxWindows >= 0)
             sessionData.windows.pop();
-        self.setSessionData(sessionData);
+        tk.setSessionData(sessionData);
     }
     
     function _compareSessionDates(a, b) {
@@ -1131,7 +1197,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     /// Methods:
     this.addWindow = function addWindow(nameAndState) { //nameAndState = [name, state];
-        var sessionData = self.getSessionData();
+        var sessionData = tk.getSessionData();
 
         sessionData.windows.unshift(nameAndState);
         
@@ -1140,35 +1206,35 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         while (sessionData.windows.length > maxWindows && maxWindows >= 0)
             sessionData.windows.pop();
 
-        self.setSessionData(sessionData);
+        tk.setSessionData(sessionData);
     };
     this.removeWindow = function removeWindow(nameAndState) {
-        var sessionData = self.getSessionData();
+        var sessionData = tk.getSessionData();
 
         var index = sessionData.windows.indexOf(nameAndState);
         if (index != -1) sessionData.windows.splice(index, 1);
-        else self.dump("sessionData.windows didn't contain: " + uneval(nameAndState));
+        else tk.dump("sessionData.windows didn't contain: " + uneval(nameAndState));
 
-        self.setSessionData(sessionData);
+        tk.setSessionData(sessionData);
     };
     
     this.addSession = function addSession(name, value) {
-        var sessionData = self.getSessionData();
+        var sessionData = tk.getSessionData();
 
         sessionData.sessions[name] = { state: value, date: Date.now() };
 
-        self.setSessionData(sessionData);
+        tk.setSessionData(sessionData);
     };
     this.removeSession = function removeSession(name) {
-        var sessions = self.getSessionData();
+        var sessions = tk.getSessionData();
 
         delete sessionData.sessions[name];
 
-        self.setSessionData(sessions);
+        tk.setSessionData(sessions);
     };
 
     this.getSortedSessionNames = function getSortedSessionNames() {
-        var sessions = self.getSessionData().sessions;
+        var sessions = tk.getSessionData().sessions;
 
         var sessionArray = [];
         for (var sessionName in sessions) {
@@ -1192,13 +1258,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var defaultName = aWindow.content.document.title ? aWindow.content.document.title : aWindow.content.location.href;
             if (defaultName.length > 52)
                 defaultName = defaultName.substring(0, 49) + "...";
-            defaultName += " (" + self.getPrettyDate() + ")";
+            defaultName += " (" + tk.getPrettyDate() + ")";
             sessionName = prompt("What do you want to call this (single window) session?", defaultName);
             if (!sessionName)
                 return; // The user must have clicked cancel
         }
 
-        self.addSession(sessionName, _ss.getWindowState(aWindow));
+        tk.addSession(sessionName, _ss.getWindowState(aWindow));
     };
     this.saveAllWindowsSession = function saveAllWindowsSession(sessionName) {
         if (!sessionName) {
@@ -1206,7 +1272,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var defaultName = window.content.document.title ? window.content.document.title : window.content.location.href;
             if (defaultName.length > 52)
                 defaultName = defaultName.substring(0, 49) + "...";
-            defaultName += " (" + self.getPrettyDate() + ")";
+            defaultName += " (" + tk.getPrettyDate() + ")";
             sessionName = prompt("What do you want to call this (multi window) session?", defaultName);
             if (!sessionName)
                 return; // The user must have clicked cancel
@@ -1219,14 +1285,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             state.push(_ss.getWindowState(windows.getNext()));
         }
 
-        self.addSession(sessionName, state);
+        tk.addSession(sessionName, state);
     };
 
     this.restoreSession = function restoreSession(name) {
-        var session = self.getSessionData().sessions[name];
+        var session = tk.getSessionData().sessions[name];
         if (session) {
             if (typeof session.state == "string") {
-                if (self.windowIsHomeOrBlank()) {
+                if (tk.windowIsHomeOrBlank()) {
                     _ss.setWindowState(window, session.state, true);
                 }
                 else {
@@ -1242,7 +1308,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     
     this.restoreRecentWindow = function restoreRecentWindow(recentWin, keepOpen) {
-        if (!keepOpen && self.windowIsHomeOrBlank()) {
+        if (!keepOpen && tk.windowIsHomeOrBlank()) {
             _ss.setWindowState(window, recentWin[1], true);
         }
         else {
@@ -1250,12 +1316,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             window.open("about:blank"); // T O D O: test, apparently using about:blank might not work :-s
         }
         
-        self.removeWindow(recentWin);
+        tk.removeWindow(recentWin);
     };
     this.openAllRecentWindows = function openAllRecentWindows() {
         var notFirst = false;
-        for (var i = self.recentWindows.length - 1; i >= 0; --i) {
-            self.restoreRecentWindow(self.recentWindows[i], notFirst);
+        for (var i = tk.recentWindows.length - 1; i >= 0; --i) {
+            tk.restoreRecentWindow(tk.recentWindows[i], notFirst);
             notFirst = true;
         }
     };
@@ -1267,6 +1333,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //|##########################
 
     // TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
+    // TODO=P3: Allow viewing tabs in sorted order without reordering them OR undoing sorts
     // TODO=P4: Check outoforder is set as appropriate (tabs that have been moved or added contrary to the prevailing sort and should be ignored when placing new tabs by sort order)
     // TODO=P5: Back to the tab the current tab is opened from, by the "Back" button; Forward to tabs opened from the current tab, by the "Forward" button
 
@@ -1315,114 +1382,112 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Globals:
     this.__defineGetter__("activeSort", function __get_activeSort() {
-        var sortName = self.getWindowValue("activeSort");
+        var sortName = tk.getWindowValue("activeSort");
         if (!sortName) {
             sortName = _prefs.getCharPref("lastActiveSort");
-            if (!sortName in self.Sorts)
+            if (!sortName in tk.Sorts)
                 sortName = "creation";
-            self.setWindowValue("activeSort", sortName);
+            tk.setWindowValue("activeSort", sortName);
         }
         return sortName;
     });
     this.__defineSetter__("activeSort", function __set_activeSort(sortName) {
-        if (sortName in self.Sorts) {
-            self.setWindowValue("activeSort", sortName);
+        if (sortName in tk.Sorts) {
+            tk.setWindowValue("activeSort", sortName);
             _prefs.setCharPref("lastActiveSort", sortName);
         }
-        else self.dump("activeSort - invalid sort name: " + sortName);
+        else tk.dump("activeSort - invalid sort name: " + sortName);
         return sortName;
     });
     
     this.__defineGetter__("activeGrouping", function __get_activeGrouping() {
-        var groupingName = self.getWindowValue("activeGrouping");
+        var groupingName = tk.getWindowValue("activeGrouping");
         if (!groupingName) {
             groupingName = _prefs.getCharPref("lastActiveGrouping");
-            if (!groupingName in self.Groupings)
+            if (!groupingName in tk.Groupings)
                 groupingName = "none";
-            self.setWindowValue("activeGrouping", groupingName);
+            tk.setWindowValue("activeGrouping", groupingName);
         }
         return groupingName;
     });
     this.__defineSetter__("activeGrouping", function __set_activeGrouping(groupingName) {
-        if (groupingName in self.Groupings) {
-            self.setWindowValue("activeGrouping", groupingName);
+        if (groupingName in tk.Groupings) {
+            tk.setWindowValue("activeGrouping", groupingName);
             _prefs.setCharPref("lastActiveGrouping", groupingName);
         }
-        else self.dump("activeGrouping - invalid grouping name: " + groupingName);
+        else tk.dump("activeGrouping - invalid grouping name: " + groupingName);
         return groupingName;
     });
     
     this.__defineGetter__("openRelativePosition", function __get_openRelativePosition() {
-        var positionName = /*!!self.getWindowValue("openRelativePosition");
+        var positionName = /*!!tk.getWindowValue("openRelativePosition");
         if (!positionName) {
             positionName = */_prefs.getCharPref("openRelativePosition");
-            if (!positionName in self.RelativePositions)
+            if (!positionName in tk.RelativePositions)
                 positionName = "rightOfRecent";
-            /*!!self.setWindowValue("openRelativePosition", positionName);
+            /*!!tk.setWindowValue("openRelativePosition", positionName);
         }*/
         return positionName;
-        /*!!var position = self.getWindowValue("openRelativePosition");
+        /*!!var position = tk.getWindowValue("openRelativePosition");
         if (position !== "")
             return Number(position);
         position = _prefs.getIntPref("openRelativePosition");
-        self.setWindowValue("openRelativePosition", position);
+        tk.setWindowValue("openRelativePosition", position);
         return position;*/
     });
     this.__defineSetter__("openRelativePosition", function __set_openRelativePosition(positionName) {
-        if (positionName in self.RelativePositions) {
-            //!!self.setWindowValue("openRelativePosition", positionName);
+        if (positionName in tk.RelativePositions) {
+            //!!tk.setWindowValue("openRelativePosition", positionName);
             _prefs.setCharPref("openRelativePosition", positionName);
         }
-        else self.dump("openRelativePosition - invalid position name: " + positionName);
+        else tk.dump("openRelativePosition - invalid position name: " + positionName);
         return positionName;
-        /*!!self.setWindowValue("openRelativePosition", position);
+        /*!!tk.setWindowValue("openRelativePosition", position);
         _prefs.setIntPref("openRelativePosition", position);
         return position;*/
     });
     
     this.__defineGetter__("newTabPosition", function __get_newTabPosition() {
-        var position = self.getWindowValue("newTabPosition");
+        var position = tk.getWindowValue("newTabPosition");
         if (position !== "")
             return Number(position);
         position = _prefs.getIntPref("newTabPosition");
         if (position >= 0 && position <= 2) {
-            self.setWindowValue("newTabPosition", position);
+            tk.setWindowValue("newTabPosition", position);
             return position;
         }
         else {
-            self.log("newTabPosition - invalid pref value: " + position);
+            tk.log("newTabPosition - invalid pref value: " + position);
             return 0;
         }
     });
     this.__defineSetter__("newTabPosition", function __set_newTabPosition(position) {
         if (position >= 0 && position <= 2) {
-            self.setWindowValue("newTabPosition", position);
+            tk.setWindowValue("newTabPosition", position);
             _prefs.setIntPref("newTabPosition", position);
         }
-        else self.dump("newTabPosition - invalid position: " + position);
+        else tk.dump("newTabPosition - invalid position: " + position);
         return position;
     });
     
     this.__defineGetter__("autoGroupNewTabs", function __get_autoGroupNewTabs() {
-        var bool = self.getWindowValue("autoGroupNewTabs");
+        var bool = tk.getWindowValue("autoGroupNewTabs");
         if (bool != "") {
             return bool == "true" ? true : false;
         }
         else {
             bool = _prefs.getBoolPref("autoGroupNewTabs");
-            self.setWindowValue("autoGroupNewTabs", bool);
+            tk.setWindowValue("autoGroupNewTabs", bool);
             return bool;
         }
     });
     this.__defineSetter__("autoGroupNewTabs", function __set_autoGroupNewTabs(bool) {
-        self.setWindowValue("autoGroupNewTabs", bool);
+        tk.setWindowValue("autoGroupNewTabs", bool);
         _prefs.setBoolPref("autoGroupNewTabs", bool);
         return bool;
     });
 
-    var _makingGroupStart;
-    
-    
+
     /// Initialisation:
     this.initSortingAndGrouping = function initSortingAndGrouping(event) {
         // Persist Attributes
@@ -1431,44 +1496,53 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 _ss.persistTabAttribute("possibleparent");
                 // n.b. we deliberately don't persist recentlyadded
                 _ss.persistTabAttribute("outoforder");
-                _ss.persistTabAttribute("hidden");
-            for each (var attr in self.Sorts) {
-                if (self.endsWith(attr, "Key"))
+                //_ss.persistTabAttribute("hidden"); // This will get overwritten anyway
+            for each (var attr in tk.Sorts) {
+                if (tk.endsWith(attr, "Key"))
                     _ss.persistTabAttribute(attr);
             }
             _ss.persistTabAttribute("groupid");
             _ss.persistTabAttribute("singletonid");
             _ss.persistTabAttribute("groupcollapsed");
-            for each (var attr in self.Groupings) {
-                if (self.endsWith(attr, "Group"))
+            for each (var attr in tk.Groupings) {
+                if (tk.endsWith(attr, "Group"))
                     _ss.persistTabAttribute(attr);
             }
         }
         
-        self.updateColorTabNotLabel();
+        tk.updateColorTabNotLabel();
         
         // Add event listeners:
-        _tabContainer.addEventListener("TabOpen", self.sortgroup_onTabAdded, false);
-        //!!self.addDelayedEventListener(_tabContainer, "TabOpen", self.sortgroup_onAfterTabAdded);
-        _tabContainer.addEventListener("TabSelect", self.sortgroup_onTabSelect, true);
-        gBrowser.addEventListener("DOMContentLoaded", self.sortgroup_onTabLoading, true);
-        gBrowser.addEventListener("load", self.sortgroup_onTabLoaded, true);
+        _tabContainer.addEventListener("TabOpen", tk.sortgroup_onTabAdded, false);
+        //!!tk.addDelayedEventListener(_tabContainer, "TabOpen", tk.sortgroup_onAfterTabAdded);
+        _tabContainer.addEventListener("TabSelect", tk.sortgroup_onTabSelect, true);
+        gBrowser.addEventListener("DOMContentLoaded", tk.sortgroup_onTabLoading, true);
+        gBrowser.addEventListener("load", tk.sortgroup_onTabLoaded, true);
         // This is called just before the tab starts loading its content, use SSTabRestored for once that's finished
-        document.addEventListener("SSTabRestoring", self.sortgroup_onSSTabRestoring, false);
-        _tabContainer.addEventListener("TabMove", self.sortgroup_onTabMoved, false);
-        _tabContainer.addEventListener("TabClose", self.sortgroup_onTabRemoved, false);
+        document.addEventListener("SSTabRestoring", tk.sortgroup_onSSTabRestoring, false);
+        _tabContainer.addEventListener("TabMove", tk.sortgroup_onTabMoved, false);
+        _tabContainer.addEventListener("TabClose", tk.sortgroup_onTabRemoved, false);
         
-        gBrowser.mStrip.addEventListener("dblclick", self.sortgroup_onDblclickTab, true);
-        gBrowser.mStrip.addEventListener("mousedown", self.sortgroup_onTabMousedown, true);
+        gBrowser.mStrip.addEventListener("click", tk.sortgroup_onClickTab, true);
+        gBrowser.mStrip.addEventListener("dblclick", tk.sortgroup_onDblclickTab, true);
+        //!!gBrowser.mStrip.addEventListener("mousedown", tk.sortgroup_onTabMousedown, true);
         
-        self.addPrefListener("colorTabNotLabel", self.updateColorTabNotLabel);
-        self.addPrefListener("indentedTree", self.toggleIndentedTree);
-        self.addPrefListener("maxTreeLevel", self.updateIndents);
-        self.addPrefListener("indentAmount", self.updateIndents);
+        tk.addPrefListener("colorTabNotLabel", tk.updateColorTabNotLabel);
+        //!!tk.addPrefListener("ctrlTabStack", tk.updateCtrlTabStack);
+        tk.addPrefListener("indentedTree", tk.toggleIndentedTree);
+        tk.addPrefListener("maxTreeLevel", tk.updateIndents);
+        tk.addPrefListener("indentAmount", tk.updateIndents);
+        tk.addPrefListener("autoCollapse", tk.updateAutoCollapse);
         
         // Set attributes for first tab (as it never fires a TabOpen event, and may never load either if it remains blank)
-        self.sortgroup_onTabAdded({target: _tabs[0]});
-        _tabs[0].setAttribute(self.Sorts.lastLoaded, Date.now());
+        tk.sortgroup_onTabAdded({target: _tabs[0]});
+        _tabs[0].setAttribute(tk.Sorts.lastLoaded, Date.now());
+        // Set attributes for the selected tab (as it never fires a TabSelect event)
+        window.setTimeout(function __selectInitial() {
+            tk.sortgroup_onTabSelect({target: gBrowser.selectedTab});
+            if (!gBrowser.selectedTab.hasAttribute("groupid"))
+                tk.updateAutoCollapse();
+        }, 0);
         
         // Move Sorting and Grouping menu to the tab context menu (from the Tools menu)
         var tabContextMenu = gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0];
@@ -1491,7 +1565,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         'nsContextMenu.prototype.openFrameInTab',
         'nsContextMenu.prototype.viewImage',
         'nsContextMenu.prototype.viewBGImage',
-        'nsContextMenu.prototype.addDictionaries',
+        'nsContextMenu.prototype.addDictionaries'
         // And nsBrowserAccess.prototype.openURI if !isExternal
         // And <menuitem id="menu_HelpPopup_reportPhishingtoolmenu">
         // See also sourceTypes
@@ -1502,19 +1576,41 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     ];
     
     this.unrelatedTabSources = [
-        'BrowserSearch.loadAddEngines',//{
+        'BrowserSearch.loadAddEngines'//{
         // Should add extensions.js->openURL too, but unrelated is the default after all...
         // See also sourceTypes
     ];//}
     
     this.preInitSortingAndGroupingMethodHooks = function preInitSortingAndGroupingMethodHooks(event) {
+        // Calculate a stack in addTab, since event listeners can't get to it anymore due to https://bugzilla.mozilla.org/show_bug.cgi?id=390488
+        tk.addMethodHook([
+            'gBrowser.addTab',
+            null,
+            't.dispatchEvent(evt);',
+            'if (tabkit.sourceTypes.length) { \
+                evt.stack = [ arguments.callee ]; \
+                evt.stackDepth = 0; \
+                while (evt.stackDepth < tabkit.sourceTypes[0].d) { \
+                    var prev = evt.stack[evt.stackDepth].caller; \
+                    if (prev) { \
+                        evt.stack.push(prev); \
+                        evt.stackDepth++; \
+                    } \
+                    else { \
+                        break; \
+                    } \
+                } \
+            } \
+            $&'
+        ]);
+        
         // Process all simple related tab sources:
-        for each (var s in self.relatedTabSources) {
-            self.wrapMethodCode(s, 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
+        for each (var s in tk.relatedTabSources) {
+            tk.wrapMethodCode(s, 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // And a sometimes related, sometimes unrelated tab source:
-        self.wrapMethodCode(
+        tk.wrapMethodCode(
             'nsBrowserAccess.prototype.openURI',
             'tabkit.addingTab(aContext == nsCI.nsIBrowserDOMWindow.OPEN_EXTERNAL ? "unrelated" : "related"); try {',
             '} finally { tabkit.addingTabOver(); }'
@@ -1526,13 +1622,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             reportPhishing.setAttribute("oncommand", 'tabkit.addingTab("related"); try {' + reportPhishing.getAttribute("oncommand") + '} finally { tabkit.addingTabOver(); }');
         
         // Process all simple new tab sources:
-        for each (var s in self.newTabSources) {
-            self.wrapMethodCode(s, 'tabkit.addingTab("newtab"); try {', '} finally { tabkit.addingTabOver(); }');
+        for each (var s in tk.newTabSources) {
+            tk.wrapMethodCode(s, 'tabkit.addingTab("newtab"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // Process all simple unrelated tab sources:
-        for each (var s in self.unrelatedTabSources) {
-            self.wrapMethodCode(s, 'tabkit.addingTab("unrelated"); try {', '} finally { tabkit.addingTabOver(); }');
+        for each (var s in tk.unrelatedTabSources) {
+            tk.wrapMethodCode(s, 'tabkit.addingTab("unrelated"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // And an attribute based history tab source:
@@ -1546,7 +1642,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         // TODO=P5: document.getElementById("sidebar").contentDocument.getElementById("miOpenInNewTab") [set onload and onopensidebar]
         
         // And deal with tab groups
-        self.wrapMethodCode(
+        tk.wrapMethodCode(
             'gBrowser.loadTabs',
             'tabkit.addingTabs(aReplace ? gBrowser.selectedTab : null); try {',
             '} finally { tabkit.addingTabsOver(); }'
@@ -1556,13 +1652,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     this.globalPreInitSortingAndGroupingMethodHooks = function globalPreInitSortingAndGroupingMethodHooks(event) {
         try {
-            self.wrapMethodCode(
+            tk.wrapMethodCode(
                 'BookmarksCommand.openOneBookmark',
                 'var topWin; if (aTargetBrowser.indexOf("tab") != -1) topWin = getTopWin(); if (topWin && topWin.tabkit) topWin.tabkit.addingTab("bookmark"); try {',
                 '} finally { if (topWin && topWin.tabkit) topWin.tabkit.addingTabOver(); }'
             );
             
-            self.addMethodHook([
+            tk.addMethodHook([
                 'BookmarksCommand.openGroupBookmark',
                 null,
                 'if (aTargetBrowser == "current" || aTargetBrowser == "tab") {',
@@ -1587,42 +1683,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             ]);
         }
         catch (ex) {
-            self.dump("Is places on already? - " + ex);
+            tk.dump("Is places on already? - " + ex);
         }
     };
     this.globalPreInitListeners.push(this.globalPreInitSortingAndGroupingMethodHooks);
     
     this.postInitSortingAndGroupingMethodHooks = function postInitSortingAndGroupingMethodHooks(event) {
-        if ("duplicateTab" in gBrowser) {
-            /*!!self.wrapMethodCode(
-                'gBrowser.duplicateTab',
-                'if (aTab.parentNode == this.mTabContainer) \
-                    tabkit.addingTab("related", aTab, "true"); \
-                else \
-                    tabkit.addingTab("unrelated", null, "true"); \
-                try {',
-                '} \
-                finally { \
-                    document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id).setAttribute("tabid", self.generateId()); \
-                    tabkit.addingTabOver(); \
-                }' // Note that we overwrite the restored tabid, as we mustn't allow duplicates
-            );*/
-            self.addMethodHook([
-                "gBrowser.duplicateTab",
-                null,
-                'return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);',
-                'var newTab = document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id); \
-                newTab.setAttribute("tabid", self.generateId()); \
-                tabkit.removeGID(newTab); \
-                return newTab;' // We overwrite the restored tabid to prevent duplicates
-            ]);
-        }
-        else {
-            self.debug("duplicateTab not found");
-        }
-        
         if ("openselectedlinks" in window && window.openselectedlinks && window.openselectedlinks.goCol) {
-            self.wrapMethodCode('window.openselectedlinks.goCol', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
+            tk.wrapMethodCode('window.openselectedlinks.goCol', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
         }
     };
     this.postInitListeners.push(this.postInitSortingAndGroupingMethodHooks);
@@ -1630,38 +1698,38 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     /// Methods dealing with new tabs:
     this.addingTab = function addingTab(type, parent, dontMoveNextTab) {
         try {
-            if (self.nextType) {
-                self.ignoreOvers++;
+            if (tk.nextType) {
+                tk.ignoreOvers++;
                 return;
             }
             
-            self.nextType = type;
-            self.isBookmarkGroup = false;
-            self.nextParent = parent != undefined ? parent : gBrowser.selectedTab;
-            self.dontMoveNextTab = dontMoveNextTab ? true : false;
+            tk.nextType = type;
+            tk.isBookmarkGroup = false;
+            tk.nextParent = parent != undefined ? parent : gBrowser.selectedTab;
+            tk.dontMoveNextTab = dontMoveNextTab ? true : false;
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
     };
     
     this.addingTabOver = function addingTabOver() {
         try {
-            if (self.ignoreOvers > 0) {
-                // self.ignoreOvers will be decremented in the finally clause at the end of this function
+            if (tk.ignoreOvers > 0) {
+                // tk.ignoreOvers will be decremented in the finally clause at the end of this function
                 return;
             }
             
-            if (self.addedTabs.length == 1) {
-                var type = self.nextType;
-                var parent = (type == "unrelated" || type == "sessionrestore") ? null : self.nextParent;
-                var tab = self.addedTabs.pop();
+            if (tk.addedTabs.length == 1) {
+                var type = tk.nextType;
+                var parent = (type == "unrelated" || type == "sessionrestore") ? null : tk.nextParent;
+                var tab = tk.addedTabs.pop();
                 
                 // Keep recentlyadded tags up to date
-                if (!parent || parent != self.lastParent)
+                if (!parent || parent != tk.lastParent)
                     for (var i = 0; i < _tabs.length; i++)
                         _tabs[i].removeAttribute("recentlyadded");
-                self.lastParent = self.nextParent;
+                tk.lastParent = tk.nextParent;
                 
                 // We do *nothing else* for sessionrestore tabs, as they will (hopefully) be dealt with later after a sortgroup_onSSTabRestoring
                 if (type == "sessionrestore")
@@ -1671,10 +1739,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 var pid = parent ? parent.getAttribute("tabid") : null;
                 if (pid) {
                     tab.setAttribute("possibleparent", pid);
-                    self.updateIndents();
+                    tk.updateIndents();
                 }
                 else if (type != "unrelated")
-                    self.dump("addingTabOver: no parent for " + type + " tab");
+                    tk.dump("addingTabOver: no parent for " + type + " tab");
                 
                 // Adjust openerGroup sensitivity
                 if (type == "bookmark" && _prefs.getBoolPref("bookmarkTabsAreRelated"))
@@ -1688,7 +1756,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 
                 // Set openerGroup (reused later if autoGroupNewTabs and activeGrouping == "opener")
                 if (type == "related" && pid) {
-                    var ogAttr = self.Groupings.opener;
+                    var ogAttr = tk.Groupings.opener;
                     var openerGroup = parent.getAttribute(ogAttr);
                     if (openerGroup) {
                         tab.setAttribute(ogAttr, openerGroup);
@@ -1700,24 +1768,25 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     }
                 }
                 
-                var tabNeedsPlacing = !self.dontMoveNextTab;
+                var tabNeedsPlacing = !tk.dontMoveNextTab;
                 
                 if (_prefs.getBoolPref("autoGroupNewTabs")) {
                     if (!tabNeedsPlacing
                         && tab.previousSibling
                         && tab.nextSibling
-                        && tab.previousSibling.hasAttribute("groupid")
+                        && tab.previousSibling.getAttribute("groupid")
                         && tab.previousSibling.getAttribute("groupid") == tab.nextSibling.getAttribute("groupid"))
                     {
                         if (type != "unrelated") {
                             var gid = tab.previousSibling.getAttribute("groupid");
-                            self.setGID(tab, gid);
+                            tk.setGID(tab, gid);
+                            tab.setAttribute("outoforder", "true");
                         }
                         else {
-                            window.setTimeout(self.keepGroupsTogether, 0);
+                            tk.keepGroupsTogether();
                         }
                     }
-                    else if (self.activeGrouping == "opener") {
+                    else if (tk.activeGrouping == "opener") {
                         if (type == "related" && pid) {
                             var pgid = parent.getAttribute("groupid");
                             // If tabNeedsPlacing or is already in place
@@ -1733,16 +1802,16 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                     // TODO=P4: allow forcing all groups to act as openergroups?
                                     //if (pgid.indexOf(openerGroup) != -1 || pgid.indexOf(":tmpOG-") != -1) {
                                     if (pgid.indexOf(":oG-") != -1 || pgid.indexOf(":tmpOG-") != -1) { // So :oG-bookmarkGroup- works as intended
-                                        self.setGID(tab, pgid);
+                                        tk.setGID(tab, pgid);
                                         grouped = true;
                                     }
                                 }
                                 else if (!pgid) {
-                                    if (self.getGroupById(openerGroup).length != 0 || self.getUngroupedTabsByAttr(ogAttr, openerGroup).length != 2) {
+                                    if (tk.getGroupById(openerGroup).length != 0 || tk.getUngroupedTabsByAttr(ogAttr, openerGroup).length != 2) {
                                         openerGroup = ":tmpOG-" + pid;
                                     }
-                                    self.setGID(parent, openerGroup);
-                                    self.setGID(tab, openerGroup);
+                                    tk.setGID(parent, openerGroup);
+                                    tk.setGID(tab, openerGroup);
                                     grouped = true;
                                 }
                                 
@@ -1751,24 +1820,24 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                     // Position tab
                                     var gid = parent.getAttribute("groupid");
                                     
-                                    var newPos = self.newTabPosition;
+                                    var newPos = tk.newTabPosition;
                                     var autoSortOpenerGroups = _prefs.getBoolPref("autoSortOpenerGroups");
-                                    if ((autoSortOpenerGroups && (self.countGroups(gid) == 1 || self.activeSort == "origin")) // We can't really autosort merged groups
+                                    if ((autoSortOpenerGroups && (tk.countGroups(gid) == 1 || tk.activeSort == "origin")) // We can't really autosort merged groups
                                         || newPos == 1
-                                        || (newPos == 2 && self.activeSort == "origin"))
+                                        || (newPos == 2 && tk.activeSort == "origin"))
                                     { // Next to current
-                                        switch (self.openRelativePosition) {
+                                        switch (tk.openRelativePosition) {
                                         case "left":
-                                            self.moveBefore(tab, parent);
+                                            tk.moveBefore(tab, parent);
                                             break;
                                         case "right":
-                                            self.moveAfter(tab, parent);
+                                            tk.moveAfter(tab, parent);
                                             break;
                                         default: //case "rightOfRecent": case "rightOfConsecutive":
                                             var target = parent;
                                             while (target.nextSibling && target.nextSibling.getAttribute("groupid") == gid && target.nextSibling.hasAttribute("recentlyadded"))
                                                 target = target.nextSibling;
-                                            self.moveAfter(tab, target);
+                                            tk.moveAfter(tab, target);
                                             tab.setAttribute("recentlyadded", "true");
                                         }
                                         tab.setAttribute("outoforder", "true");
@@ -1777,11 +1846,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                         var target = parent;
                                         while (target.nextSibling && target.nextSibling.getAttribute("groupid") == gid)
                                             target = target.nextSibling;
-                                        self.moveAfter(tab, target);
+                                        tk.moveAfter(tab, target);
                                         tab.setAttribute("outoforder", "true");
                                     }
                                     else { // By last sort (newPos == 2)
-                                        self.insertTab(tab, gid);
+                                        tk.insertTab(tab, gid);
                                     }
                                     
                                     tabNeedsPlacing = false;
@@ -1789,56 +1858,56 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                             }
                         }
                     }
-                    else if (self.activeGrouping == "domain") {
-                        var domain = tab.getAttribute(self.Groupings.domain);
+                    else if (tk.activeGrouping == "domain") {
+                        var domain = tab.getAttribute(tk.Groupings.domain);
                         if (domain) {
-                            var group = self.getGroupById(domain);
+                            var group = tk.getGroupById(domain);
                             // If tabNeedsPlacing or is already in place
                             if (tabNeedsPlacing
                                 || ((group.length > 0) ? ((tab.previousSibling && tab.previousSibling.getAttribute("groupid").indexOf(domain) != -1)
                                                           || (tab.nextSibling && tab.nextSibling.getAttribute("groupid").indexOf(domain) != -1))
-                                                       : ((tab.previousSibling && tab.previousSibling.getAttribute(self.Groupings.domain) == domain)
-                                                          || (tab.nextSibling && tab.nextSibling.getAttribute(self.Groupings.domain) == domain))))
+                                                       : ((tab.previousSibling && tab.previousSibling.getAttribute(tk.Groupings.domain) == domain)
+                                                          || (tab.nextSibling && tab.nextSibling.getAttribute(tk.Groupings.domain) == domain))))
                             {
                                 // Group tab
                                 if (group.length == 0) {
-                                    group = self.getUngroupedTabsByAttr(self.Groupings.domain, domain);
+                                    group = tk.getUngroupedTabsByAttr(tk.Groupings.domain, domain);
                                     if (group.length == 2)
                                         for (var i = 0; i < group.length; i++)
-                                            self.setGID(group[i], domain);
+                                            tk.setGID(group[i], domain);
                                     else
                                         group = [];
                                 }
                                 else {
                                     domain = group[0].getAttribute("groupid");
-                                    self.setGID(tab, domain);
+                                    tk.setGID(tab, domain);
                                 }
                                 // If we have permission to move the tab
                                 if (tabNeedsPlacing && group.length > 0) {
                                     // Position tab
                                     var autoSortDomainGroups = _prefs.getBoolPref("autoSortDomainGroups");
-                                    if (autoSortDomainGroups && self.countGroups(domain) == 1) { // We can't really autosort merged groups
-                                        self.insertTab(tab, domain, "uri");
+                                    if (autoSortDomainGroups && tk.countGroups(domain) == 1) { // We can't really autosort merged groups
+                                        tk.insertTab(tab, domain, "uri");
                                     }
                                     else {
-                                        var newPos = self.newTabPosition;
+                                        var newPos = tk.newTabPosition;
                                         if (newPos == 2)
-                                            newPos = (self.activeSort == "origin") ? 1 : (autoSortDomainGroups ? 0 : newPos);
+                                            newPos = (tk.activeSort == "origin") ? 1 : (autoSortDomainGroups ? 0 : newPos);
                                         if (newPos == 1 && (!pid || parent.getAttribute("groupid").indexOf(domain) == -1))
                                             newPos = 0;
                                         if (newPos == 1) { // Next to current
-                                            switch (self.openRelativePosition) {
+                                            switch (tk.openRelativePosition) {
                                             case "left":
-                                                self.moveBefore(tab, parent);
+                                                tk.moveBefore(tab, parent);
                                                 break;
                                             case "right":
-                                                self.moveAfter(tab, parent);
+                                                tk.moveAfter(tab, parent);
                                                 break;
                                             default: //case "rightOfRecent": case "rightOfConsecutive":
                                                 var target = parent;
                                                 while (target.nextSibling && target.nextSibling.getAttribute("groupid") == domain && target.nextSibling.hasAttribute("recentlyadded"))
                                                     target = target.nextSibling;
-                                                self.moveAfter(tab, target);
+                                                tk.moveAfter(tab, target);
                                                 tab.setAttribute("recentlyadded", "true");
                                             }
                                             tab.setAttribute("outoforder", "true");
@@ -1847,11 +1916,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                             var target = parent;
                                             while (target.nextSibling && target.nextSibling.getAttribute("groupid") == gid)
                                                 target = target.nextSibling;
-                                            self.moveAfter(tab, target);
+                                            tk.moveAfter(tab, target);
                                             tab.setAttribute("outoforder", "true");
                                         }
                                         else { // By last sort (newPos == 2)
-                                            self.insertTab(tab, domain);
+                                            tk.insertTab(tab, domain);
                                         }
                                     }
                                     
@@ -1863,137 +1932,137 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 }
                 
                 if (tabNeedsPlacing) {
-                    var newPos = self.newTabPosition;
-                    if (newPos == 2 && self.activeSort == "origin")
+                    var newPos = tk.newTabPosition;
+                    if (newPos == 2 && tk.activeSort == "origin")
                         newPos = 1;
                     if (newPos == 1 && !pid)
                         newPos = 0;
                     switch (newPos) {
                     case 1: // Next to current
                         var target = parent;
-                        var pgid = parent.getAttribute("groupid");
+                        var pagid = parent.getAttribute("groupid");
                         // First exit any groups
-                        if (self.openRelativePosition == "left") {
-                            if (pgid)
-                                while (target.previousSibling && target.previousSibling.getAttribute("groupid") == pgid)
+                        if (tk.openRelativePosition == "left") {
+                            if (pagid)
+                                while (target.previousSibling && target.previousSibling.getAttribute("groupid") == pagid)
                                     target = target.previousSibling;
-                            self.moveBefore(tab, target);
+                            tk.moveBefore(tab, target);
                         }
                         else {
-                            if (pgid)
-                                while (target.nextSibling && target.nextSibling.getAttribute("groupid") == pgid)
+                            if (pagid)
+                                while (target.nextSibling && target.nextSibling.getAttribute("groupid") == pagid)
                                     target = target.nextSibling;
-                            while (self.openRelativePosition != "right" && target.nextSibling && !target.nextSibling.hasAttribute("groupid") && target.nextSibling.hasAttribute("recentlyadded"))
+                            while (tk.openRelativePosition != "right" && target.nextSibling && !target.nextSibling.hasAttribute("groupid") && target.nextSibling.hasAttribute("recentlyadded"))
                                 target = target.nextSibling;
-                            self.moveAfter(tab, target);
-                            if (self.openRelativePosition != "right")
+                            tk.moveAfter(tab, target);
+                            if (tk.openRelativePosition != "right")
                                 tab.setAttribute("recentlyadded", "true");
                         }
                         tab.setAttribute("outoforder", "true");
                         break;
-                    case 0: // At far right
+                    case 2: // By last sort
+                        tk.insertTab(tab);
+                        break;
+                    default: //case 0: // At far right
                         // No need to move it, since it is already in the right place
                         tab.setAttribute("outoforder", "true");
-                        break;
-                    case 2: // By last sort
-                        self.insertTab(tab);
                     }
                 }
             }
-            else if (self.addedTabs.length > 1) { // Shouldn't happen
-                self.dump("addingTabsOver: More than one tab was added (" + self.addedTabs.length + " tabs, to be precise)!");
-                self.addingTabsOver();
+            else if (tk.addedTabs.length > 1) { // Shouldn't happen
+                tk.dump("addingTabsOver: More than one tab was added (" + tk.addedTabs.length + " tabs, to be precise)!");
+                tk.addingTabsOver();
                 return;
             }
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
         finally {
-            if (self.ignoreOvers > 0) {
-                self.ignoreOvers--;
+            if (tk.ignoreOvers > 0) {
+                tk.ignoreOvers--;
             }
             else {
-                self.nextType = null;
-                self.isBookmarkGroup = false;
-                self.nextParent = null;
-                self.dontMoveNextTab = false;
+                tk.nextType = null;
+                tk.isBookmarkGroup = false;
+                tk.nextParent = null;
+                tk.dontMoveNextTab = false;
             }
         }
     };
     
     this.addingTabs = function addingTabs(firstTab) {
         try {
-            if (self.nextType) { // Unlikely
-                self.ignoreOvers++;
+            if (tk.nextType) { // Unlikely
+                tk.ignoreOvers++;
                 return;
             }
             
             if (firstTab) {
-                self.addedTabs = [firstTab];
-                self.nextType = "loadOneOrMoreURIs";
+                tk.addedTabs = [firstTab];
+                tk.nextType = "loadOneOrMoreURIs";
             }
             else {
-                self.nextType = "loadTabs";
-                self.nextParent = gBrowser.selectedTab; // To make addingTabOver happy!
+                tk.nextType = "loadTabs";
+                tk.nextParent = gBrowser.selectedTab; // To make addingTabOver happy!
             }
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
     };
     
     this.addingTabsOver = function addingTabsOver() {
         try {
-            if (self.ignoreOvers > 0) {
-                self.ignoreOvers--;
+            if (tk.ignoreOvers > 0) {
+                tk.ignoreOvers--;
                 return;
             }
             
-            if (self.addedTabs.length > 1) {
+            if (tk.addedTabs.length > 1) {
                 // We always do loadOneOrMoreURIs, thanks to sortgroup_onTabAdded
-                var firstTab = self.addedTabs[0];
+                var firstTab = tk.addedTabs[0];
                 var pid = firstTab.getAttribute("possibleparent");
-                var openerGroup = firstTab.getAttribute(self.Groupings.opener);
+                var openerGroup = firstTab.getAttribute(tk.Groupings.opener);
                 var gid = firstTab.getAttribute("groupid");
                 if (!openerGroup) {
                     openerGroup = ":oG-bookmarkGroup-" + firstTab.getAttribute("tabid");
-                    firstTab.setAttribute(self.Groupings.opener, openerGroup);
+                    firstTab.setAttribute(tk.Groupings.opener, openerGroup);
                     if (!gid) {
                         gid = openerGroup;
-                        self.setGID(firstTab, gid);
+                        tk.setGID(firstTab, gid);
                     }
                 }
                 else if (!gid) {
-                    gid = ":oG-bookmarkGroup-" + self.generateId(); // Pretend to be an openerGroup ;)
-                    self.setGID(firstTab, gid);
+                    gid = ":oG-bookmarkGroup-" + tk.generateId(); // Pretend to be an openerGroup ;)
+                    tk.setGID(firstTab, gid);
                 }
-                for (var i = self.addedTabs.length - 1; i >= 1; i--) {
-                    var tab = self.addedTabs[i];
-                    self.moveAfter(tab, firstTab); // n.b. this is sometimes redundant since loadTabs already moves the tabs if loadOneOrMoreURIs (from Fx2)
-                    self.setGID(tab, gid);
+                for (var i = tk.addedTabs.length - 1; i >= 1; i--) {
+                    var tab = tk.addedTabs[i];
+                    tk.moveAfter(tab, firstTab); // n.b. this is sometimes redundant since loadTabs already moves the tabs if loadOneOrMoreURIs (from Fx2)
+                    tk.setGID(tab, gid);
                     if (pid) {
                         tab.setAttribute("possibleparent", pid);
-                        self.updateIndents();
+                        tk.updateIndents();
                     }
-                    tab.setAttribute(self.Groupings.opener, openerGroup);
+                    tab.setAttribute(tk.Groupings.opener, openerGroup);
                     //tab.setAttribute("outoforder", "true"); // Hmm, this will generally be the case...
                 }
             }
             
             for (var i = 0; i < _tabs.length; i++)
                 _tabs[i].removeAttribute("recentlyadded");
-            //self.lastParent = null; // Irrelevant since we've already cleared recentlyadded...
+            //tk.lastParent = null; // Irrelevant since we've already cleared recentlyadded...
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
         finally {
-            self.nextType = null;
-            self.isBookmarkGroup = false;
-            self.nextParent = null; // For good measure
-            self.dontMoveNextTab = false; // For good measure
-            self.addedTabs.length = 0; // Clear added tabs
+            tk.nextType = null;
+            tk.isBookmarkGroup = false;
+            tk.nextParent = null; // For good measure
+            tk.dontMoveNextTab = false; // For good measure
+            tk.addedTabs.length = 0; // Clear added tabs
         }
     };
 
@@ -2001,27 +2070,28 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     // Note: This can't replace cases where an explicit parent tab must be set
     // TODO=P4: Use sourceTypes for more tab sources
     this.sourceTypes = [
-        { d: 7, n: "goup_up",               t: "related" },//{ //postInit: if ("goup_up" in window && window.goup_up) self.wrapMethodCode('window.goup_up', 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
-        { d: 6, n: "diggerLoadURL",         t: "related" }, //diggerLoadURL
-        { d: 5, n: "gotoHistoryIndex",      t: "related" }, //gotoHistoryIndex
-        { d: 5, n: "BrowserBack",           t: "related" }, //BrowserBack
-        { d: 5, n: "BrowserForward",        t: "related" }, //BrowserForward
-        { d: 5, n: "BrowserSearch_search",  t: "related" }, //BrowserSearch.loadSearch
-        { d: 5, n: "handleLinkClick",       t: "related" }, //handleLinkClick
+        { d: 5, n: "goup_up",               t: "related" },//{ //postInit: if ("goup_up" in window && window.goup_up) tk.wrapMethodCode('window.goup_up', 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
+        { d: 4, n: "diggerLoadURL",         t: "related" }, //diggerLoadURL
+        { d: 3, n: "gotoHistoryIndex",      t: "related" }, //gotoHistoryIndex
+        { d: 3, n: "BrowserBack",           t: "related" }, //BrowserBack
+        { d: 3, n: "BrowserForward",        t: "related" }, //BrowserForward
+        { d: 2, n: "BrowserSearch_search",  t: "related" }, //BrowserSearch.loadSearch
+        { d: 3, n: "handleLinkClick",       t: "related" }, //handleLinkClick
+        { d: 1, n: "webdeveloper_generateDocument", t: "related" }, //webdeveloper_generateDocument (WebDeveloper extension)
         
-        { d: 7, n: "ondragdrop",            t: "newtab" }, //newTabButtonObserver.onDrop // Could make unrelated if from a different window?
-        { d: 6, n: "middleMousePaste",      t: "newtab" }, //middleMousePaste
-        { d: 6, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL
-        { d: 4, n: "BrowserOpenTab",        t: "newtab" }, //BrowserOpenTab // Covers many cases
-        { d: 4, n: "delayedOpenTab",        t: "newtab" }, //delayedOpenTab
+        { d: 5, n: "ondragdrop",            t: "newtab" }, //newTabButtonObserver.onDrop // Could make unrelated if from a different window?
+        { d: 4, n: "middleMousePaste",      t: "newtab" }, //middleMousePaste
         { d: 4, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL
-        { d: 4, n: "doSearch",              t: "newtab" }, //BrowserSearch.getSearchBar().doSearch // (note: simple replacement wouldn't work if searchbar was added after opening window
-        { d: 3, n: "removeTab",             t: "newtab" }, //gBrowser.removeTab
+        { d: 2, n: "BrowserOpenTab",        t: "newtab" }, //BrowserOpenTab // Covers many cases
+        { d: 2, n: "delayedOpenTab",        t: "newtab" }, //delayedOpenTab
+        { d: 2, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL
+        { d: 2, n: "doSearch",              t: "newtab" }, //BrowserSearch.getSearchBar().doSearch // (note: simple replacement wouldn't work if searchbar was added after opening window
+        { d: 1, n: "removeTab",             t: "newtab" }, //gBrowser.removeTab
         
-        { d: 6, n: "openReleaseNotes",      t: "unrelated" }, //openReleaseNotes
+        { d: 4, n: "openReleaseNotes",      t: "unrelated" }, //openReleaseNotes
         
-        { d: 3, n: "sss_undoCloseTab",      t: "sessionrestore", m: true },
-        { d: 3, n: "sss_restoreWindow",     t: "sessionrestore", m: true }
+        { d: 1, n: "sss_undoCloseTab",      t: "sessionrestore", m: true },
+        { d: 1, n: "sss_restoreWindow",     t: "sessionrestore", m: true }
     ];//}
     this.sourceTypes.sort(function __compareSourceDepths(a, b) { return b.d - a.d; }); // Sort by decreasing d(epth)
     
@@ -2029,34 +2099,41 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.sortgroup_onTabAdded = function sortgroup_onTabAdded(event) {
         var tab = event.target;
         
-        var tid = self.generateId();
+        var tid = tk.generateId();
         tab.setAttribute("tabid", tid);
         
         // Set keys
-        tab.setAttribute(self.Sorts.lastViewed, new Date().setYear(2030)); // Set never viewed tabs as viewed in the future!
-        tab.setAttribute(self.Sorts.lastLoaded, new Date().setYear(2030)); // Set never loaded tabs as loaded in the future!
-        self.setTabUriKey(tab, true);
+        tab.setAttribute(tk.Sorts.lastViewed, new Date().setYear(2030)); // Set never viewed tabs as viewed in the future!
+        tab.setAttribute(tk.Sorts.lastLoaded, new Date().setYear(2030)); // Set never loaded tabs as loaded in the future!
+        tk.setTabUriKey(tab, true);
         
         // Sort/group
-        if (self.nextType) {
-            self.debug("nextType is " + self.nextType + ", stack was" + self.quickStack());
-            self.addedTabs.push(tab);
+        if (tk.nextType) {
+            /*!!**/
+            var qStack = tk.quickStack();
+            if (qStack)
+                tk.debug("nextType is " + tk.nextType + ", stack was" + qStack);
+            /**!!*/
+            tk.addedTabs.push(tab);
             // A quick hack to avoid code duplication: we use addingTabOver to position
             // the first tab, then we can treat the rest as a loadOneOrMoreURIs
-            if (self.nextType == "loadTabs" && self.addedTabs.length == 1) {
-                self.nextType = self.isBookmarkGroup ? "bookmark" : "unrelated";
-                self.dontMoveNextTab = false;
-                self.addingTabOver();
-                self.addedTabs = [tab];
-                self.nextType = "loadTabs"; // But it can now be treated as "loadOneOrMoreURIs";
+            if (tk.nextType == "loadTabs" && tk.addedTabs.length == 1) {
+                tk.nextType = tk.isBookmarkGroup ? "bookmark" : "unrelated";
+                tk.dontMoveNextTab = false;
+                tk.addingTabOver();
+                tk.addedTabs = [tab];
+                tk.nextType = "loadTabs"; // But it can now be treated as "loadOneOrMoreURIs";
             }
         }
         else if (tab._tPos != 0) { // Shouldn't happen (except the initial xul:tab, with _tPos 0)
-            if (self.sourceTypes.length) {
-                var stack = [ arguments.callee ];
+            if (tk.sourceTypes.length && event.stackDepth) {
+                var stack = event.stack;
+                var depth = event.stackDepth;
+                /*!! // This is now calculated in addTab due to https://bugzilla.mozilla.org/show_bug.cgi?id=390488
+                var stack = [ arguments.callee.caller.caller ];
                 var depth = 0;
                 // Note that sourceTypes is sorted in order of decreasing d
-                while (depth < self.sourceTypes[0].d) {
+                while (depth < tk.sourceTypes[0].d) {
                     var prev = stack[depth].caller;
                     if (prev) {
                         stack.push(prev);
@@ -2065,97 +2142,155 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     else {
                         break;
                     }
-                }
-                for (var i = 0; i < self.sourceTypes.length; i++) {
-                    var st = self.sourceTypes[i];
+                }*/
+                for (var i = 0; i < tk.sourceTypes.length; i++) {
+                    var st = tk.sourceTypes[i];
                     if (st.d > depth)
                         continue;
                     while (st.d < depth)
                         depth--;
                     if (stack[depth].name == st.n) {
-                        self.nextType = st.t;
-                        self.dontMoveNextTab = ("m" in st && st.m);
+                        tk.nextType = st.t;
+                        tk.dontMoveNextTab = ("m" in st && st.m);
+                        /*!!
+                        tk.debug("nextType is now " + tk.nextType + ", stack ="
+                                   + event.stack.map(function __getName(f, i) {
+                                         return " " + i + ": " + f.name;
+                                     }));
+                        */
                         break;
                     }
                 }
                 /*!!var func = arguments.callee; // i.e. this function
                 var depth = 0;
                 // Note that sourceTypes is sorted in order of increasing d
-                for (var i = 0; i < self.sourceTypes.length; i++) {
-                    while (func && depth < self.sourceTypes[i].d) {
+                for (var i = 0; i < tk.sourceTypes.length; i++) {
+                    while (func && depth < tk.sourceTypes[i].d) {
                         func = func.caller;
                         depth++;
                     }
                     if (!func)
                         break;
-                    if (func.name == self.sourceTypes[i].n) {
-                        self.nextType = self.sourceTypes[i].t;
-                        self.dontMoveNextTab = !self.sourceTypes[i].m;
+                    if (func.name == tk.sourceTypes[i].n) {
+                        tk.nextType = tk.sourceTypes[i].t;
+                        tk.dontMoveNextTab = !tk.sourceTypes[i].m;
                         break;
                     }
                 }*/
             }
             
-            if (!self.nextType) {
-                self.dump("No nextType for added tab: " + tid + "\n" + self.quickStack() + "\n\n" + new Error().stack);
-                self.nextType = "unrelated";
-                self.dontMoveNextTab = true;
+            if (!tk.nextType) {
+                tk.dump("No nextType for added tab: " + tid + "\nStack ="
+                          + event.stack.map(function __getName(f, i) {
+                                return " " + i + ": " + f.name;
+                            }));
+                //!!if ("breakpoint" in window)
+                    //!!breakpoint(function(e){return eval(e);}, "No nextType for added tab: " + tid + "\n" + tk.quickStack() + "\n\n" + new Error().stack);
+                tk.nextType = "unrelated";
+                tk.dontMoveNextTab = true;
             }
             
-            self.nextParent = gBrowser.selectedTab;
-            self.isBookmarkGroup = false;
-            //!!self.debug("nextType is now " + self.nextType + ", stack is" + self.quickStack());
-            self.addedTabs = [tab];
-            self.addingTabOver();
+            tk.nextParent = gBrowser.selectedTab;
+            tk.isBookmarkGroup = false;
+            tk.addedTabs = [tab];
+            tk.addingTabOver();
         }
         
-        self._cancelMakeGroup();
+        //!!tk._cancelMakeGroup();
     };
 
     /*!!this.sortgroup_onAfterTabAdded = function sortgroup_onAfterTabAdded(event) {
         // We can now detect whether the tab was selected immediately after being opened
         var foreground = _tabContainer.selectedItem == event.target;
         
-        //self.positionTab(event.target, foreground); // TODO
+        //tk.positionTab(event.target, foreground); // TODO
     };*/
 
     this.sortgroup_onTabSelect = function sortgroup_onTabSelect(event) {
         var tab = event.target;
-        tab.setAttribute(self.Sorts.lastViewed, Date.now());
+        tab.setAttribute(tk.Sorts.lastViewed, Date.now());
         
         // Arguably should only apply if select outside of the last parent's children
-        if (self.openRelativePosition == "rightOfRecent")
+        if (tk.openRelativePosition == "rightOfRecent")
             for (var i = 0; i < _tabs.length; i++)
                 _tabs[i].removeAttribute("recentlyadded");
         
-        // Keep selected tab as the visible tab of collapsed groups
-        if (tab.hasAttribute("groupcollapsed") && tab.getAttribute("hidden") == "true") {
-            var group = self.getGroupFromTab(tab);
+        if (_prefs.getBoolPref("autoCollapse")) {
+            // Autocollapse inactive groups
+            if (tab.hasAttribute("groupid"))
+                tk.updateAutoCollapse();
+            // Else leave the last used group uncollapsed, so you can drag tabs into it, etc.
+        }
+        else if (tab.hasAttribute("groupcollapsed") && tab.hidden) {
+            // Keep selected tab as the visible tab of collapsed groups
+            var group = tk.getGroupFromTab(tab);
             for each (var t in group)
-                t.setAttribute("hidden", "true");
-            tab.removeAttribute("hidden");
+                t.hidden = (t != tab);
         }
         
         // Color tabs-bottom (see also colorizeTab, and note that tabs-bottom is hidden during multirow mode)
         if (_tabContainer.getAttribute("colortabnotlabel") == "true" && _tabContainer.getAttribute("multirow") != "true") {
-            var tabsBottom = document.getAnonymousElementByAttribute(tab.parentNode, "class", "tabs-bottom")
+            var tabsBottom = document.getAnonymousElementByAttribute(tab.parentNode, "class", "tabs-bottom");
             if (tabsBottom) {
                 var bgColor = document.getAnonymousNodes(tab)[0].style.backgroundColor;
                 tabsBottom.style.setProperty("background-color", bgColor, "important");
             }
             else {
-                self.debug("sortgroup_onTabSelect: Couldn't find tabs-bottom");
+                tk.debug("sortgroup_onTabSelect: Couldn't find tabs-bottom");
             }
         }
         
-        self._cancelMakeGroup();
+        //!!tk._cancelMakeGroup();
+    };
+    
+    // TODO=P3: Call updateAutoCollapse on restore if selected before the groupid is restored
+    // TODO=P3: Allow dragging into collapsed groups
+    this.updateAutoCollapse = function updateAutoCollapse(group) {
+        // Autocollapse inactive groups
+        if (!group || !("length" in group)) {
+            for each (var g in tk.getAllGroups())
+                tk.updateAutoCollapse(g);
+            return;
+        }
+        
+        var gid = gBrowser.selectedTab.getAttribute("groupid");
+        var fixIndents = tk.subtreesEnabled();
+        var indent = _prefs.getIntPref("indentAmount");
+        if (group[0].getAttribute("groupid") == gid) {
+            for each (var t in group) {
+                t.removeAttribute("groupcollapsed");
+                t.hidden = false;
+                if (fixIndents && ("treeLevel" in t))
+                    t.style.setProperty("padding-left", (indent * t.treeLevel) + "px", "important");
+            }
+        }
+        else {
+            var visible = [];
+            for each (var t in group) {
+                t.setAttribute("groupcollapsed", true);
+                if (!t.hidden)
+                    visible.push(t);
+                if (fixIndents)
+                    t.style.paddingLeft = "";
+            }
+            if (visible.length == 0) {
+                group.sort(tk.compareTabViewedExceptUnread);
+                group[group.length - 1].hidden = false;
+            }
+            else if (visible.length > 1) {
+                visible.sort(tk.compareTabViewedExceptUnread);
+                visible.pop().hidden = false;
+                for each (var t in visible)
+                    t.hidden = true;
+            }
+        }
     };
 
     this.sortgroup_onTabLoading = function sortgroup_onTabLoading(event) {
         try {
             var index = gBrowser.getBrowserIndexForDocument(event.originalTarget);
             var tab = _tabs[index];
-            self.setTabUriKey(tab);
+            tk.setTabUriKey(tab);
         }
         catch (ex) {
             // Maybe there was a frameset or something, in which case we didn't need to update stuff anyway...
@@ -2167,7 +2302,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (event.originalTarget.nodeName == "#document") { // Ignore image loads (especially favicons!)
                 var index = gBrowser.getBrowserIndexForDocument(event.originalTarget);
                 var tab = _tabs[index];
-                tab.setAttribute(self.Sorts.lastLoaded, Date.now());
+                tab.setAttribute(tk.Sorts.lastLoaded, Date.now());
             }
         }
         catch (ex) {
@@ -2180,7 +2315,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         // Prevent restoring the lastViewedKey from overwriting the fact that the tab is currently being viewed
         if (tab.getAttribute("selected") == "true")
-            tab.setAttribute(self.Sorts.lastViewed, Date.now());
+            tab.setAttribute(tk.Sorts.lastViewed, Date.now());
         
         // TODO=P4: Check tabs are restored correctly (and test groupcollapsed and hidden)
         // The timeout is because this might be the first tab of a group to be restored, and we'd rather not waste time marking it as a singleton then turning it back into a group (sss_restoreHistory calls itself with a timeout of 0 between each added tab)
@@ -2190,18 +2325,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (!gid) {
                 gid = tab.getAttribute("singletonid");
                 if (gid) {
-                    self.setGID(tab, gid);
+                    tk.setGID(tab, gid);
                 }
             }
             if (gid) {
-                var group = self.getGroupById(gid, true); // True to include singletons
+                var group = tk.getGroupById(gid, true); // True to include singletons
                 /*!!var lookedForSingletons = false;
                 if (group.length == 1) {
                     for (var i = 0; i < _tabs.length; i++) {
                         var t = _tabs[i];
                         if (t.getAttribute("singletonid") == gid) {
-                            self.setGID(tab, gid);
-                            var group = self.getGroupById(gid);
+                            tk.setGID(tab, gid);
+                            var group = tk.getGroupById(gid);
                             break;
                         }
                     }
@@ -2209,7 +2344,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 }*/
                 
                 if (group.length == 1) {
-                    self.removeGID(tab, true);
+                    tk.removeGID(tab, true);
                 }
                 else {
                     // The group might be split up, and it may even be splitting up another group. Fix it!
@@ -2231,8 +2366,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         for (var i = 0; i < _tabs.length; i++) {
                             var t = _tabs[i];
                             if (t.getAttribute("singletonid") == gid) {
-                                self.setGID(tab, gid);
-                                var group = self.getGroupById(gid);
+                                tk.setGID(tab, gid);
+                                var group = tk.getGroupById(gid);
                                 if (!("groupNotChecked" in t))
                                     last = t;
                                 break;
@@ -2242,28 +2377,28 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     if (last) {
                         // Note: It might be better to properly merge it using insertTab (extend insertTab for origin to look for possibleparent and if not move to end, and take advantage of this in groupTabsBy too)
                         if (last._tPos < tab._tPos)
-                            self.moveAfter(tab, last);
+                            tk.moveAfter(tab, last);
                         else
-                            self.moveBefore(tab, last);
+                            tk.moveBefore(tab, last);
                         
                         if (last.hasAttribute("groupcollapsed")) {
                             tab.setAttribute("groupcollapsed", "true");
                             if (tab.getAttribute("selected") == "true") {
                                 for each (var t in group)
-                                    t.setAttribute("hidden", "true");
-                                tab.removeAttribute("hidden");
+                                    t.hidden = true;
+                                tab.hidden = false;
                             }
                             else {
-                                tab.setAttribute("hidden", "true");
+                                tab.hidden = true;
                             }
                         }
                         else {
-                            tab.removeAttribute("hidden");
+                            tab.hidden = false;
                         }
                     }
                     else {
                         // This tab is where the group will congregate, so make sure it's not in the middle of a group!
-                        self.keepGroupsTogether();
+                        tk.keepGroupsTogether();
                         /*!!var afterPrev = tab;
                         while (afterPrev.previousSibling && "groupNotChecked" in afterPrev.previousSibling)
                             afterPrev = afterPrev.previousSibling;
@@ -2276,54 +2411,54 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                 while (afterPrev.previousSibling && afterPrev.previousSibling.getAttribute("groupid") == ngid)
                                     afterPrev = afterPrev.previousSibling;
                                 if (afterPrev != tab)
-                                    self.moveBefore(tab, afterPrev);
+                                    tk.moveBefore(tab, afterPrev);
                             }
                         }*/
                         
                         //~ if (tab.hasAttribute("groupcollapsed")) {
                             // It is the only "done" tab so far. // TODO=P4: If there is already a groupcollapsed but not hidden tab being restored show that instead.
-                            tab.removeAttribute("hidden");
+                            tab.hidden = false;
                         //~ }
                         //~ else {
-                            //~ tab.removeAttribute("hidden");
+                            //~ tab.hidden = false;
                         //~ }
                     }
                 }
             }
             
             if (tab.hasAttribute("groupid")) {
-                self.colorizeTab(tab); // Maintain tab color
+                tk.colorizeTab(tab); // Maintain tab color
             }
-            else if (self.ignoreOvers == 0) {
+            else if (tk.ignoreOvers == 0) {
                 // See if this tab needs grouping (but don't move it!)
-                self.nextType = "unrelated";
-                self.nextParent = null;
-                self.dontMoveNextTab = true;
-                self.addedTabs = [tab];
-                self.addingTabOver();
+                tk.nextType = "unrelated";
+                tk.nextParent = null;
+                tk.dontMoveNextTab = true;
+                tk.addedTabs = [tab];
+                tk.addingTabOver();
             }
             
             delete tab.groupNotChecked;
         }, 250, tab); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
         
-        self.updateIndents();
+        tk.updateIndents();
     };
     
     this.sortgroup_onTabMoved = function sortgroup_onTabMoved(event) {
         var tab = event.target;
         
         if (tab.hasAttribute("groupid"))
-            self.colorizeTab(tab); // Maintain/update tab color, as it gets lost after a move
+            tk.colorizeTab(tab); // Maintain/update tab color, as it gets lost after a move
         
-        self.keepGroupsTogether(); // TODO=P5: Intelligently adjust groups on move into or out of group? (with timeout of course, so as not to duplicate my existing code for dragged tabs etc.)
+        tk.keepGroupsTogether(); // TODO=P5: Intelligently adjust groups on move into or out of group? (with timeout of course, so as not to duplicate my existing code for dragged tabs etc.)
         
-        self.updateIndents();
+        tk.updateIndents();
         
-        self._cancelMakeGroup();
+        //!!tk._cancelMakeGroup();
     };
     
     /* [Close Order]
-     * 0 (auto):    Go right unless that would involve going down a level or leaving the group [right->left depending on self.openRelativePosition]
+     * 0 (auto):    Go right unless that would involve going down a level or leaving the group [right->left depending on tk.openRelativePosition]
      * 1 (g-left):  Go left unless that would involve leaving the group
      * 2 (g-right): Go right unless that would involve leaving the group
      * 3 (left):    Go left
@@ -2337,7 +2472,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         // Choose next tab
         // Note that this happens before pickNextIndex is called by removeTab
-        self.chosenNextIndex = self.chooseNextIndex(tab);
+        tk.chosenNextIndex = tk.chooseNextIndex(tab);
         /*!! This approach was too slow, the tab would only change to the correct one after a noticeable pause
         if (tab.selected
             && tab.previousSibling && tab.nextSibling
@@ -2364,7 +2499,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 // nextTab = tab.nextSibling;
                 break;
             default: //case 0: // Auto
-                var prevByDefault = (self.openRelativePosition == "left");
+                var prevByDefault = (tk.openRelativePosition == "left");
                 if (prevByDefault)
                     nextTab = tab.previousSibling;
                 // else nextTab = tab.nextSibling;
@@ -2374,7 +2509,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 }
                 if (tab.nextSibling.getAttribute("groupid") != gid) {
                     if (tab.previousSibling.getAttribute("groupid") != gid) {
-                        self.dump("Why is there a singleton group at position " + tab._tPos + " ?!");
+                        tk.dump("Why is there a singleton group at position " + tab._tPos + " ?!");
                         // Stick with the default
                     }
                     else {
@@ -2391,9 +2526,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     break;
                 }
                 // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
-                var openerGroup = tab.getAttribute(self.Groupings.opener);
-                if (tab.previousSibling.getAttribute(self.Groupings.opener) == openerGroup) {
-                    if (tab.nextSibling.getAttribute(self.Groupings.opener) != openerGroup) {
+                var openerGroup = tab.getAttribute(tk.Groupings.opener);
+                if (tab.previousSibling.getAttribute(tk.Groupings.opener) == openerGroup) {
+                    if (tab.nextSibling.getAttribute(tk.Groupings.opener) != openerGroup) {
                         nextTab = tab.previousSibling;
                     }
                     else {
@@ -2422,13 +2557,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     }
                     break;
                 }
-                if (tab.nextSibling.getAttribute(self.Groupings.opener) == openerGroup) {
+                if (tab.nextSibling.getAttribute(tk.Groupings.opener) == openerGroup) {
                     var nextTab = tab.nextSibling;
                     break;
                 }
                 // else stick with the default
                 
-                //~ var subtree = self.groupScheme.origin ? self.getSubtree(tab) : [tab];
+                //~ var subtree = tk.groupScheme.origin ? tk.getSubtree(tab) : [tab];
                 //~ if (subtree.length > 1) {
                     //~ var index = subtree.indexOf(tab);
                     //~ if (index == 0)
@@ -2456,34 +2591,34 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (t.getAttribute("possibleparent") == tid)
                 t.setAttribute("possibleparent", pid);
         }
-        self.updateIndents();
+        tk.updateIndents();
         
         // Ungroup singleton groups
         if (gid) {
             if (!tab.previousSibling || tab.previousSibling.getAttribute("groupid") != gid) {
                 var next = tab.nextSibling;
                 if (!next || next.getAttribute("groupid") != gid)
-                    self.dump("Group was already a singleton?! (no next)");
+                    tk.dump("Group was already a singleton?! (no next)");
                 else if (!next.nextSibling || next.nextSibling.getAttribute("groupid") != gid)
-                    self.removeGID(next, true);
+                    tk.removeGID(next, true);
             }
             else if (!tab.nextSibling || tab.nextSibling.getAttribute("groupid") != gid) {
                 var prev = tab.previousSibling;
                 if (!prev || prev.getAttribute("groupid") != gid)
-                    self.dump("Group was already a singleton?! (no prev)");
+                    tk.dump("Group was already a singleton?! (no prev)");
                 else if (!prev.previousSibling || prev.previousSibling.getAttribute("groupid") != gid)
-                    self.removeGID(prev, true);
+                    tk.removeGID(prev, true);
             }
         }
         
         // Make sure collapsed groups don't get totally hidden!
-        if (tab.getAttribute("groupcollapsed") == "true" && tab.getAttribute("hidden") != "true") {
+        if (tab.hasAttribute("groupcollapsed") && !tab.hidden) {
             window.setTimeout(function __uncollapseTab(gid, next, prev) {
-                if (gBrowser.mCurrentTab.getAttribute("groupid") != gid) {            
+                if (gBrowser.selectedTab.getAttribute("groupid") != gid) {            
                     if (next && next.getAttribute("groupid") == gid)
-                        next.removeAttribute("hidden");
+                        next.hidden = false;
                     else
-                        prev.removeAttribute("hidden");
+                        prev.hidden = false;
                 }
             }, 0, gid, tab.nextSibling, tab.previousSibling);
         }
@@ -2491,7 +2626,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         /*!! // Move tab's children down a level
         var stid = tab.getAttribute("subtreeid")
         if (stid) {
-            var subtree = self.getSubtree(tab);
+            var subtree = tk.getSubtree(tab);
             var i = subtree.indexOf(tab) + 1;
             var level = Number(tab.getAttribute("subtreelevel"));
             while (i < subtree.length && subtree[i].getAttribute("subtreeid") == stid && Number(subtree[i].getAttribute("subtreelevel")) > level) {
@@ -2501,31 +2636,76 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
         
         // Keep recentChildren in sync (for originGroup subTrees)
-        if (_tabContainer.selectedIndex < tab._tPos && _tabContainer.selectedIndex + self.recentChildren + 1 > tab._tPos) {
-            self.recentChildren--;
+        if (_tabContainer.selectedIndex < tab._tPos && _tabContainer.selectedIndex + tk.recentChildren + 1 > tab._tPos) {
+            tk.recentChildren--;
         }*/
         
-        self._cancelMakeGroup();
+        //!!tk._cancelMakeGroup();
     };
 
-    this.sortgroup_onDblclickTab = function sortgroup_onDblclickTab(event) {
-        var tab = event.target;
-        if (tab.localName == "tab" && _prefs.getBoolPref("doubleClickShortcuts")) {
-            if (!tab.hasAttribute("groupid"))
-                if (_tabContainer.hasAttribute("makinggroup"))
-                    self._cancelMakeGroup();
-                else
-                    self.startMakeGroup(tab);
+    this.sortgroup_onClickTab = function sortgroup_onClickTab(event) {
+        if (event.target.localName != "tab"
+            || !event.target.hasAttribute("groupid")
+            || event.altKey
+            || (event.button != 1
+                && event.originalTarget.getAttribute('anonid') != 'close-button'))
+        {
+            return;
+        }
+        
+        if (navigator.platform.indexOf("Mac") == -1 ? event.ctrlKey : event.metaKey) {
+            if (event.shiftKey)
+                tk.closeSubtree(event.target);
             else
-                self.toggleGroupCollapsed(tab);
+                tk.closeGroup(event.target);
+            
+            event.stopPropagation();
+            event.preventDefault();
         }
     };
-    
-    this.sortgroup_onTabMousedown = function sortgroup_onTabMousedown(event) {
+    this.sortgroup_onDblclickTab = function sortgroup_onDblclickTab(event) {
+        var tab = event.target;
+        if (tab.localName == "tab") {
+            if (gBrowser.hasAttribute("vertitabbar")
+                && event.originalTarget.getAttribute('anonid') == 'close-button')
+            {
+                if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) {
+                    // The user expected to close two tabs by clicking on a close button,
+                    // then clicking on the close button of the tab below it (which will
+                    // by now have risen up by one), so do this.
+                    // Note: to avoid dataloss, we don't allow this when closing a group or subtree at a time
+                    // TODO=P3: Test on Linux (where close tab might happen on mousedown instead of mouseup?)
+                    gBrowser.removeTab(tab);
+                }
+            }
+            else if (tab.hasAttribute("groupid")
+                     && _prefs.getBoolPref("doubleClickCollapseExpand"))
+            {
+                tk.toggleGroupCollapsed(tab);
+            }
+            
+            event.stopPropagation();
+        }
+    };
+    /*!!this.sortgroup_onDblclickTab = function sortgroup_onDblclickTab(event) {
+        var tab = event.target;
+        if (tab.localName == "tab" && _prefs.getBoolPref("doubleClickShortcuts")) {
+            if (!tab.hasAttribute("groupid")) {
+                if (_tabContainer.hasAttribute("makinggroup"))
+                    tk._cancelMakeGroup();
+                else
+                    tk.startMakeGroup(tab);
+            }
+            else {
+                tk.toggleGroupCollapsed(tab);
+            }
+        }
+    };*/
+    /*!!this.sortgroup_onTabMousedown = function sortgroup_onTabMousedown(event) {
         if (_tabContainer.getAttribute("makinggroup") != "true")
             return;
         
-        self._cancelMakeGroup();
+        tk._cancelMakeGroup();
         
         var tab = event.target;
         if (event.button != 0 || tab.localName != "tab" || tab == _makingGroupStart)
@@ -2544,7 +2724,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         for (var i = ifirst; i <= ilast; i++) {
             if (_tabs[i].hasAttribute("groupid")) {
                 // TODO=P4: Checkbox to always allow
-                if (_ps.confirm(window, self.strings.getString("tab_kit"), self.strings.getString("already_grouped_tabs")))
+                var strings = document.getElementById("bundle_tabkit");
+                if (_ps.confirm(window, strings.getString("tab_kit"), strings.getString("already_grouped_tabs")))
                     break;
                 else
                     return;
@@ -2560,7 +2741,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             && (!first.previousSibling.previousSibling
                 || first.previousSibling.previousSibling.getAttribute("groupid") != firstGID))
         {
-            self.removeGID(first.previousSibling, true);
+            tk.removeGID(first.previousSibling, true);
         }
         var last = _tabs[ilast];
         var lastGID = last.getAttribute("groupid");
@@ -2570,46 +2751,59 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             && (!last.nextSibling.nextSibling
                 || last.nextSibling.nextSibling.getAttribute("groupid") != lastGID))
         {
-            self.removeGID(last.nextSibling, true);
+            tk.removeGID(last.nextSibling, true);
         }
         
-        var gid = ":oG-manualGroup-" + self.generateId(); // Pretend this is an opener group!
+        var gid = ":oG-manualGroup-" + tk.generateId(); // Pretend this is an opener group!
         for (var i = ifirst; i <= ilast; i++)
-            self.setGID(_tabs[i], gid);
-    };
-    
+            tk.setGID(_tabs[i], gid);
+    };*/
+
+
     this.updateSortGroupMenu = function updateSortGroupMenu(event, popup) {
-        self._cancelMakeGroup();
+        //!!tk._cancelMakeGroup();
         if (event.target != event.currentTarget) return;
 
-        var contextTab = gBrowser.mContextTab ? gBrowser.mContextTab : gBrowser.mCurrentTab;
-        
-        // Hide duplicateTab if it's not supported
-        if (!("duplicateTab" in gBrowser))
-            document.getElementById("menu_tabkit-sortgroup-tab-duplicateTab").setAttribute("hidden", "true");
+        var contextTab = gBrowser.mContextTab ? gBrowser.mContextTab : gBrowser.selectedTab;
         
         // Set appropriate text for Mark As Read/Unread
-        document.getElementById("menu_tabkit-tab-toggleUnread").setAttribute("label", self.strings.getString(contextTab.hasAttribute("read") ? "mark_as_unread" : "mark_as_read"));
+        document.getElementById("menu_tabkit-tab-toggleUnread").setAttribute("label", document.getElementById("bundle_tabkit").getString(contextTab.hasAttribute("read") ? "mark_as_unread" : "mark_as_read"));
+        
+        // Only enable Make Group if contextTab isn't selectedTab
+        document.getElementById("cmd_tabkit-sortgroup-tab-makeGroup").setAttribute("disabled", (contextTab == gBrowser.selectedTab));
         
         // Show/hide items that only apply to groups
         var isGroup = contextTab.hasAttribute("groupid");
         var groupsOnly = popup.getElementsByAttribute("groupsonly", "true");
         for (var i = groupsOnly.length - 1; i >= 0; i--) {
-            groupsOnly[i].setAttribute("hidden", !isGroup);
+            groupsOnly[i].hidden = !isGroup;
         }
+        var couldBeSubtree = (isGroup && tk.subtreesEnabled());
+        document.getElementById("menu_tabkit-sortgroup-group-closeSubtree").hidden = !couldBeSubtree;
+        var isSubtree = (couldBeSubtree && tk.getSubtreeFromTab(contextTab).length > 1);
+        document.getElementById("cmd_tabkit-sortgroup-group-closeSubtree").setAttribute("disabled", !isSubtree);
         
-        //!!~ // Don't show start make group for groups
-        //!!~ document.getElementById("cmd_tabkit-sortgroup-tab-makeGroup").setAttribute("disabled", isGroup);
+        /*!!**/
+        // Show/hide items that only apply to multiple selected tabs
+        var isSelected = ("multipleTabsSelected" in tk && tk.multipleTabsSelected && contextTab.hasAttribute("alsoselected"));
+        var selectionOnly = popup.getElementsByAttribute("selectiononly", "true");
+        for (var i = selectionOnly.length - 1; i >= 0; i--) {
+            selectionOnly[i].hidden = !isSelected;
+        }
+        /**!!*/
+        
+        //!!//~ // Don't show start make group for groups
+        //!!//~ document.getElementById("cmd_tabkit-sortgroup-tab-makeGroup").setAttribute("disabled", isGroup);
         
         // Show Collapse or Expand as appropriate
         if (isGroup) {
             var groupCollapsed = contextTab.hasAttribute("groupcollapsed");
-            document.getElementById("menu_tabkit-sortgroup-group-collapse").setAttribute("collapsed", groupCollapsed);
-            document.getElementById("menu_tabkit-sortgroup-group-expand").setAttribute("collapsed", !groupCollapsed);
+            document.getElementById("menu_tabkit-sortgroup-group-collapse").collapsed = groupCollapsed;
+            document.getElementById("menu_tabkit-sortgroup-group-expand").collapsed = !groupCollapsed;
         }
         
         // Update radio buttons & checkboxes (esp. for new windows)        
-        switch (self.newTabPosition == 2 ? self.activeSort : "none") {
+        switch (tk.newTabPosition == 2 ? tk.activeSort : "none") {
             case "uri": document.getElementById("menu_tabkit-sortgroup-sortByUri").setAttribute("checked", "true"); break;
             case "lastLoaded": document.getElementById("menu_tabkit-sortgroup-sortByLastLoaded").setAttribute("checked", "true"); break;
             case "lastViewed": document.getElementById("menu_tabkit-sortgroup-sortByLastViewed").setAttribute("checked", "true"); break;
@@ -2624,7 +2818,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 document.getElementById("menu_tabkit-sortgroup-sortByOrigin").removeAttribute("checked");
                 document.getElementById("menu_tabkit-sortgroup-sortByTitle").removeAttribute("checked");
         }
-        switch (self.autoGroupNewTabs ? self.activeGrouping : "none") {
+        switch (tk.autoGroupNewTabs ? tk.activeGrouping : "none") {
         case "domain":
             document.getElementById("menu_tabkit-sortgroup-groupByDomain").setAttribute("checked", "true");
             document.getElementById("menu_tabkit-sortgroup-groupByOpener").removeAttribute("checked"); break;
@@ -2635,12 +2829,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             document.getElementById("menu_tabkit-sortgroup-groupByDomain").removeAttribute("checked");
             document.getElementById("menu_tabkit-sortgroup-groupByOpener").removeAttribute("checked");
         }
-        switch (self.newTabPosition) {
-            case 0: document.getElementById("menu_tabkit-sortgroup-newtabs-farRight").setAttribute("checked", "true"); break;
+        switch (tk.newTabPosition) {
+            default: /*case 0:*/ document.getElementById("menu_tabkit-sortgroup-newtabs-farRight").setAttribute("checked", "true"); break;
             case 1: document.getElementById("menu_tabkit-sortgroup-newtabs-nextToCurrent").setAttribute("checked", "true"); break;
             case 2: document.getElementById("menu_tabkit-sortgroup-newtabs-lastSort").setAttribute("checked", "true");
         }
-        if (self.autoGroupNewTabs)
+        if (tk.autoGroupNewTabs)
             document.getElementById("menu_tabkit-sortgroup-newtabs-autoGroup").setAttribute("checked", "true");
         else
             document.getElementById("menu_tabkit-sortgroup-newtabs-autoGroup").removeAttribute("checked");
@@ -2655,10 +2849,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (_keepGroupsTogether_timeoutID != -1) // Wait until this stops getting called
             window.clearTimeout(_keepGroupsTogether_timeoutID);
         _keepGroupsTogether_timeoutID = window.setTimeout(function () {
-            for each (var group in self.getAllGroups())
+            // TODO=P4: Check for singletons too
+            for each (var group in tk.getAllGroups())
                 for (var i = group.length - 2; i >= 0; i--)
                     if (group[i].nextSibling != group[i + 1])
-                        self.moveBefore(group[i], group[i + 1]);
+                        tk.moveBefore(group[i], group[i + 1]);
             _keepGroupsTogether_timeoutID = -1;
         }, 250); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
     };
@@ -2682,11 +2877,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     this.chosenNextIndex = -1;
     this.pickNextIndex = function pickNextIndex(index, tabCount) {
-        if (self.chosenNextIndex != -1) {
-            return self.chosenNextIndex;
+        if (tk.chosenNextIndex != -1) {
+            return tk.chosenNextIndex;
         }
         else {
-            self.dump("Hadn't chosen next index!");
+            tk.dump("Hadn't chosen next index!");
             return index== tabCount ? index - 1 : index;
         }
     };
@@ -2720,13 +2915,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         case 4: // Right
             return index;
         default: //case 0: // Auto // TODO=P4: Can I improve tree level in auto-sorted opener groups?
-            var defaultIndex = (self.openRelativePosition == "left") ? index - 1 : index;
+            var defaultIndex = (tk.openRelativePosition == "left") ? index - 1 : index;
             if (!gid) {
                 return defaultIndex;
             }
             if (next.getAttribute("groupid") != gid) {
                 if (prev.getAttribute("groupid") != gid) {
-                    self.dump("Why was there a singleton group at position " + index + " ?!");
+                    tk.dump("Why was there a singleton group at position " + index + " ?!");
                     return defaultIndex;
                 }
                 else {
@@ -2742,9 +2937,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
             var tid = tab.getAttribute("tabid");
             var pid = tab.getAttribute("possibleparent");
-            var openerGroup = tab.getAttribute(self.Groupings.opener);
-            if (prev.getAttribute(self.Groupings.opener) == openerGroup) {
-                if (next.getAttribute(self.Groupings.opener) != openerGroup) {
+            var openerGroup = tab.getAttribute(tk.Groupings.opener);
+            if (prev.getAttribute(tk.Groupings.opener) == openerGroup) {
+                if (next.getAttribute(tk.Groupings.opener) != openerGroup) {
                     return index - 1;
                 }
                 else {
@@ -2772,7 +2967,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     }
                 }
             }
-            if (next.getAttribute(self.Groupings.opener) == openerGroup) {
+            if (next.getAttribute(tk.Groupings.opener) == openerGroup) {
                 return index;
             }
             return defaultIndex;
@@ -2780,225 +2975,212 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     
     
-    // Deal with tab dragging
-    this.lateMethodHooks.push([
-        "gBrowser.onDrop",//{
-        null,
-        /(if \(copyKeyHit\) \{)\s+(var newTab = this.duplicateTab\(oldTab\);\s+this\.moveTabTo\(newTab, newIndex\);)/,
-        '$1 tabkit.addingTab("related", oldTab, true); $2 tabkit.addingTabOver();',
-        
-        'this.moveTabTo(oldTab, newIndex);',
-        'tabkit.moveDraggedTab(oldTab, newIndex, aEvent.shiftKey);', 
-        
-        /(oldTab = aDragSession\.sourceNode;)\s+(newTab = this.duplicateTab\(oldTab\);\s+this\.moveTabTo\(newTab, newIndex\);)/,
-        '$1 tabkit.addingTab("unrelated", null, true); $2 tabkit.addingTabOver();',
-        
-        'newTab = this.loadOneTab(getShortcutOrURI(url), null, null, null, bgLoad, false);',
-        'tabkit.addingTab("unrelated", null, true); $& tabkit.addingTabOver();'
-    ]);//}
-    
-    this.moveDraggedTab = function moveDraggedTab(oldTab, newIndex, shiftKey) { // TODO=P4: test
-        var ogid = oldTab.getAttribute("groupid");
-        if (shiftKey && ogid) { // shiftKey doesn't currently have a meaning for ungrouped tabs, TODO=P4: make it force group single tabs with destination
-            // We're dragging the whole group
-            var group = self.getGroupFromTab(oldTab);
-            if (newIndex >= oldTab._tPos)
-                newIndex++;
-            if (newIndex < _tabs.length) {
-                var target = _tabs[newIndex];
-                var tgid = target.getAttribute("groupid");
-                if (tgid && target.previousSibling && target.previousSibling.getAttribute("groupid") == tgid) {
-                    var newgid = tgid + "|" + ogid;
-                    var tgroup = self.getGroupById(tgid);
-                    for each (var tab in tgroup)
-                        self.setGID(tab, newgid);
-                    for each (var tab in group)
-                        self.setGID(tab, newgid);
-                    // TODO=P3: Merging groups like this means they'll be un[auto]sorted. It might be better to keep enclosing group's sort
-                }
-                for each (var tab in group)
-                    self.moveBefore(tab, target);
-            }
-            else {
-                for each (var tab in group)
-                    gBrowser.moveTabTo(tab, _tabs.length - 1);
-            }
-            
-        }
-        else { // Just dragging the one tab
-            var _previousSibling = oldTab.previousSibling;
-            var _nextSibling = oldTab.nextSibling;
-            
-            var reverse = (newIndex < oldTab._tPos);
-            
-            // Make the actual move
-            gBrowser.moveTabTo(oldTab, newIndex);
-            
-            // Now see if it's been dragged into a group
-            var ngid = oldTab.previousSibling.getAttribute("groupid");
-            if (oldTab.previousSibling && oldTab.nextSibling
-                && ngid
-                && ngid == oldTab.nextSibling.getAttribute("groupid"))
-            {
-                if (oldTab.previousSibling.getAttribute("groupcollapsed")) {
-                    // Prevent accidentally dragging into a collapsed group
-                    if (reverse) {
-                        var last = oldTab.nextSibling;
-                        while (last.nextSibling.getAttribute("groupid") == ngid)
-                            last = last.nextSibling;
-                        self.moveAfter(oldTab, last);
-                    }
-                    else {
-                        var first = oldTab.previousSibling;
-                        while (first.previousSibling.getAttribute("groupid") == ngid)
-                            first = first.previousSibling;
-                        self.moveBefore(oldTab, first);
-                    }
-                }
-                else {
-                    // Join the group
-                    self.setGID(oldTab, oldTab.previousSibling.getAttribute("groupid"));
-                }
-            }
-            else if (ogid
-                     && (!oldTab.previousSibling || oldTab.previousSibling.getAttribute("groupid") != ogid)
-                     && (!oldTab.nextSibling || oldTab.nextSibling.getAttribute("groupid") != ogid))
-            {
-                self.removeGID(oldTab);
-            }
-            
-            // Make sure the old group isn't now a singleton
-            if (ogid) {
-                if (_previousSibling && _previousSibling.getAttribute("groupid") == ogid) {
-                    if ((!_previousSibling.previousSibling || _previousSibling.previousSibling.getAttribute("groupid") != ogid)
-                        && (!_nextSibling || _nextSibling.getAttribute("groupid") != ogid))
-                    {
-                        self.removeGID(_previousSibling, true);
-                    }
-                }
-                else if (_nextSibling && _nextSibling.getAttribute("groupid") == ogid) {
-                    if (!_nextSibling.nextSibling || _nextSibling.nextSibling.getAttribute("groupid") != ogid)
-                        self.removeGID(_nextSibling, true);
-                }
-            }
-        }
-    };
-
-
     /// Methods Called From Menus:
     this.sortByUri = function sortByUri() {
-        self.sortTabsBy("uri");
+        tk.sortTabsBy("uri");
     };
     this.sortByLastLoaded = function sortByLastLoaded() {
-        self.sortTabsBy("lastLoaded");
+        tk.sortTabsBy("lastLoaded");
     };
     this.sortByLastViewed = function sortByLastViewed() {
-        self.sortTabsBy("lastViewed");
+        tk.sortTabsBy("lastViewed");
     };
     this.sortByCreation = function sortByCreation() {
-        self.sortTabsBy("creation");
+        tk.sortTabsBy("creation");
     };
     this.sortByOrigin = function sortByOrigin() {
-        self.sortTabsBy("origin");
+        tk.sortTabsBy("origin");
     };
     this.sortByTitle = function sortByTitle() {
-        self.sortTabsBy("title");
+        tk.sortTabsBy("title");
     };
     
     this.toggleGroupByDomain = function toggleGroupByDomain() {
-        if (self.autoGroupNewTabs && self.activeGrouping == "domain")
-            self.activeGrouping = "none";
+        if (tk.autoGroupNewTabs && tk.activeGrouping == "domain")
+            tk.activeGrouping = "none";
         else
-            self.groupTabsBy("domain");
+            tk.groupTabsBy("domain");
     };
     this.toggleGroupByOpener = function toggleGroupByOpener() {
-        if (self.autoGroupNewTabs && self.activeGrouping == "opener")
-            self.activeGrouping = "none";
+        if (tk.autoGroupNewTabs && tk.activeGrouping == "opener")
+            tk.activeGrouping = "none";
         else
-            self.groupTabsBy("opener");
+            tk.groupTabsBy("opener");
     };
     
     this.ungroupAll = function ungroupAll() {
-        self.activeGrouping = "none";
+        tk.activeGrouping = "none";
         for (var i = 0; i < _tabs.length; i++)
-            self.removeGID(_tabs[i]);
+            tk.removeGID(_tabs[i]);
+    };
+    
+    this.openOptions = function ungroupAll() {
+        var dialog = _wm.getMostRecentWindow("mozilla:tabkitsettings");
+        if (dialog) {
+            dialog.focus();
+            return;
+        }
+        try {
+            var instantApply = gPrefService.getBoolPref("browser.preferences.instantApply");
+        }
+        catch (ex) {
+            var instantApply = false;
+        }
+        openDialog("chrome://tabkit/content/settings.xul", "_blank", "chrome,titlebar,toolbar,centerscreen,"
+                   + (instantApply ? "dialog=no" : "modal"));
     };
     
     
     this.placeNewTabsAtFarRight = function placeNewTabsAtFarRight() {
-        self.newTabPosition = 0;
+        tk.newTabPosition = 0;
     };
     this.placeNewTabsNextToCurrent = function placeNewTabsNextToCurrent() {
-        self.newTabPosition = 1;
+        tk.newTabPosition = 1;
     };
     this.placeNewTabsByLastSort = function placeNewTabsByLastSort() {
-        self.newTabPosition = 2;
+        tk.newTabPosition = 2;
     };
     
     this.toggleAutoGroupNewTabs = function toggleAutoGroupNewTabs() {
-        self.autoGroupNewTabs = !self.autoGroupNewTabs;
+        tk.autoGroupNewTabs = !tk.autoGroupNewTabs;
     };
     
     
     this.openNewTabHere = function openNewTabHere(contextTab) {
-        if (!contextTab) contextTab = gBrowser.selectedTab;
-        self.addingTab("related", contextTab);
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        tk.addingTab("related", contextTab);
         BrowserOpenTab();
         var newTab = document.getAnonymousElementByAttribute(gBrowser, "linkedpanel", gBrowser.mPanelContainer.lastChild.id);
-        self.addingTabOver();
+        tk.addingTabOver();
         var gid = contextTab.getAttribute("groupid");
-        if (self.openRelativePosition == "left") {
+        if (tk.openRelativePosition == "left") {
             if (gid && contextTab.previousSibling && contextTab.previousSibling.getAttribute("groupid") == gid) {
-                self.setGID(newTab, gid);
+                tk.setGID(newTab, gid);
                 newTab.setAttribute("outoforder", "true");
             }
-            self.moveBefore(newTab, contextTab);
+            tk.moveBefore(newTab, contextTab);
         }
         else {
             if (gid && contextTab.nextSibling && contextTab.nextSibling.getAttribute("groupid") == gid) {
-                self.setGID(newTab, gid);
+                tk.setGID(newTab, gid);
                 newTab.setAttribute("outoforder", "true");
             }
-            self.moveAfter(newTab, contextTab);
+            tk.moveAfter(newTab, contextTab);
         }
     };
     // TODO=P3: Middle-click reload -> duplicate
     this.duplicateTab = function duplicateTab(contextTab) {
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
-        self.addingTab("related", contextTab);
-        var newTab = gBrowser.duplicateTab(contextTab);
-        self.addingTabOver();
+        tk.addingTab("related", contextTab);
+        var newTab = tk._duplicateTab(contextTab);
+        tk.addingTabOver();
         var gid = contextTab.getAttribute("groupid");
         if (gid && gid != newTab.getAttribute("groupid")) {
-            self.setGID(newTab, gid);
+            tk.setGID(newTab, gid);
             newTab.setAttribute("outoforder", "true");
         }
-        if (self.openRelativePosition == "left")
-            self.moveBefore(newTab, contextTab);
+        if (tk.openRelativePosition == "left")
+            tk.moveBefore(newTab, contextTab);
         else
-            self.moveAfter(newTab, contextTab);
+            tk.moveAfter(newTab, contextTab);
         gBrowser.selectedTab = newTab;
     };
-    this.startMakeGroup = function startMakeGroup(contextTab) {
-        if (!contextTab) contextTab = gBrowser.selectedTab;
+    this.makeGroup = function makeGroup(contextTab) {
+        // TODO=P3: replace redundant .hidden calls
+        if (!contextTab || contextTab == gBrowser.selectedTab)
+            return;
         
-        //!!~ if (contextTab.hasAttribute("groupid"))
-            //!!~ return;
+        var start = Math.min(contextTab._tPos, gBrowser.selectedTab._tPos);
+        var end = Math.max(contextTab._tPos, gBrowser.selectedTab._tPos);
+        
+        var reallyRegroup = false;
+        for (var i = start; i <= end; i++) {
+            if (_tabs[i].hasAttribute("groupid")) {
+                if (_prefs.getBoolPref("warnOnRegroup")) {
+                    var warnOnRegroup = { value: true };
+                    // Focus the window before prompting.
+                    // This will raise any minimized window, which will
+                    // make it obvious which window the prompt is for and will
+                    // solve the problem of windows "obscuring" the prompt.
+                    // See bug #350299 for more details
+                    window.focus();
+                    var strings = document.getElementById("bundle_tabkit");
+                    reallyRegroup = _ps.confirmCheck(
+                        window,
+                        strings.getString("tab_kit"),
+                        strings.getString("regroup_warning"),
+                        strings.getString("regroup_warning_prompt_me"),
+                        warnOnRegroup
+                    );
+                    // We don't set the pref unless they press OK and it's false
+                    if (!reallyRegroup)
+                        return;
+                    if (!warnOnRegroup.value)
+                        _prefs.setBoolPref("warnOnRegroup", false);
+                    break;
+                }
+            }
+        }
+        
+        // Ungroup soon-to-be-singleton groups
+        var first = _tabs[start];
+        var firstGID = first.getAttribute("groupid");
+        var firstPrev = first.previousSibling ? first.previousSibling.getAttribute("groupid") : "";
+        var last = _tabs[end];
+        var lastGID = last.getAttribute("groupid");
+        var lastNext = last.nextSibling ? last.nextSibling.getAttribute("groupid") : "";
+        if (firstGID != lastGID
+            || firstPrev != firstGID
+            || lastNext != lastGID)
+        {
+            if (firstGID
+                && firstPrev == firstGID
+                && (!first.previousSibling.previousSibling
+                    || first.previousSibling.previousSibling.getAttribute("groupid") != firstGID))
+            {
+                tk.removeGID(first.previousSibling, true);
+            }
+            if (lastGID
+                && lastNext == lastGID
+                && (!last.nextSibling.nextSibling
+                    || last.nextSibling.nextSibling.getAttribute("groupid") != lastGID))
+            {
+                tk.removeGID(last.nextSibling, true);
+            }
+        }
+        
+        // Group the new group
+        var gid = ":oG-manualGroup-" + tk.generateId(); // Pretend this is an opener group!
+        for (var i = start; i <= end; i++)
+            tk.setGID(_tabs[i], gid);
+        
+        if (reallyRegroup)
+            tk.keepGroupsTogether();
+    };
+    /*!!var _makingGroupStart;
+    this.startMakeGroup = function startMakeGroup(contextTab) {
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        
+        //~ if (contextTab.hasAttribute("groupid"))
+            //~ return;
         
         _makingGroupStart = contextTab;
         _tabContainer.setAttribute("makinggroup", "true");
     };
-    // TODO=P4: merge left/right & split group features?
     this._cancelMakeGroup = function _cancelMakeGroup() {
         if (_tabContainer.hasAttribute("makinggroup")) {
-            self.debug(stacktrace());
+            tk.debug(stacktrace());
             _tabContainer.removeAttribute("makinggroup");
         }
-    };
+    };*/
+    // TODO=P4: merge left/right & split group features?
     
     this.toggleUnread = function toggleUnread(contextTab) {
-        if (!contextTab) contextTab = gBrowser.selectedTab;
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
         
         if (contextTab.hasAttribute("read"))
             contextTab.removeAttribute("read");
@@ -3007,36 +3189,44 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     
     
-    // TODO=P3: One tab group at a time: collapse inactive ones
     // TODO=P4: Left click on already selected collapsed tab shows group as menu (with expand option obviously) - or maybe on right-click? (see auto-collapse/expanding)
     this.toggleGroupCollapsed = function toggleGroupCollapsed(contextTab) {
-        // TODO=P4: collapsed tabs should have a plus symbol
-        if (!contextTab) contextTab = gBrowser.selectedTab;
-        var group = self.getGroupFromTab(contextTab);
+        // TODO=P3: collapsed tabs should have a plus symbol
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        var group = tk.getGroupFromTab(contextTab);
+        
         if (group.length < 2) {
-            self.dump("toggleGroupCollapsed: Group too small (only \""+ group.length +"\" tabs)");
+            tk.dump("toggleGroupCollapsed: Group too small (only \""+ group.length +"\" tabs)");
+            return;
         }
-        else if (contextTab.hasAttribute("groupcollapsed")) {
+        
+        if (contextTab.hasAttribute("groupcollapsed")) {
             for each (var tab in group) {
                 tab.removeAttribute("groupcollapsed");
-                tab.removeAttribute("hidden");
+                tab.hidden = false;
             }
         }
         else {
             for each (var tab in group) {
                 tab.setAttribute("groupcollapsed", "true");
-                if (tab != contextTab) tab.setAttribute("hidden", "true");
+                if (tab != contextTab)
+                    tab.hidden = true;
             }
         }
-        if (gBrowser.selectedTab.getAttribute("hidden") == "true")
+        
+        tk.updateIndents();
+        
+        if (gBrowser.selectedTab.hidden)
             gBrowser.selectedTab = contextTab;
     };
     this.bookmarkGroup = function bookmarkGroup(contextTab) {
         // TODO=P4: Shift-drag onto bookmarks toolbar to create bookmark folder
-        if (!contextTab) contextTab = gBrowser.selectedTab;
-        var group = self.getGroupFromTab(contextTab);
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        var group = tk.getGroupFromTab(contextTab);
         if (group.length < 1) {
-            self.dump("bookmarkGroup: Group is empty!");
+            tk.dump("bookmarkGroup: Group is empty!");
             return;
         }
         if ("addBookmarkForTabBrowser" in window) {
@@ -3065,31 +3255,57 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             openDialog("chrome://browser/content/bookmarks/addBookmark2.xul", "", BROWSER_ADD_BM_FEATURES, dialogArgs);
         }
         else {
-            self.dump("TODO=P4: Is bookmarkGroup compatible with MOZ_PLACES?");
+            tk.dump("TODO=P4: Is bookmarkGroup compatible with MOZ_PLACES?");
         }
     };
     this.closeGroup = function closeGroup(contextTab) {
-        if (!contextTab) contextTab = gBrowser.selectedTab;
-        var group = self.getGroupFromTab(contextTab);
-        for each (var tab in group)
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        for each (var tab in tk.getGroupFromTab(contextTab))
+            gBrowser.removeTab(tab);
+    };
+    this.closeSubtree = function closeSubtree(contextTab) {
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        for each (var tab in tk.getSubtreeFromTab(contextTab))
             gBrowser.removeTab(tab);
     };
     this.ungroupGroup = function ungroupGroup(contextTab) {
-        if (!contextTab) contextTab = gBrowser.selectedTab;
-        var group = self.getGroupFromTab(contextTab);
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        var group = tk.getGroupFromTab(contextTab);
         for each (var tab in group)
-            self.removeGID(tab);
+            tk.removeGID(tab);
     };
     
     
     /// Utility Methods:
     this.compareTabCreated = function compareTabCreated(a, b) {
-        if (a.getAttribute(self.Sorts.creation) < b.getAttribute(self.Sorts.creation))
+        if (Number(a.getAttribute(tk.Sorts.creation)) < Number(b.getAttribute(tk.Sorts.creation)))
             return -1;
-        if (a.getAttribute(self.Sorts.creation) > b.getAttribute(self.Sorts.creation))
+        if (Number(a.getAttribute(tk.Sorts.creation)) > Number(b.getAttribute(tk.Sorts.creation)))
             return 1;
         return 0;
     }
+    this.compareTabViewed = function compareTabViewed(a, b) {
+        return Number(a.getAttribute(tk.Sorts.lastViewed)) - Number(b.getAttribute(tk.Sorts.lastViewed));
+        /*!!
+        if (Number(a.getAttribute(tk.Sorts.lastViewed)) < Number(b.getAttribute(tk.Sorts.lastViewed)))
+            return -1;
+        if (Number(a.getAttribute(tk.Sorts.lastViewed)) > Number(b.getAttribute(tk.Sorts.lastViewed)))
+            return 1;
+        return 0;
+        */
+    };
+    this.compareTabViewedExceptUnread = function compareTabViewedExceptUnread(a, b) {
+        var aV = Number(a.getAttribute(tk.Sorts.lastViewed));
+        var bV = Number(b.getAttribute(tk.Sorts.lastViewed));
+        if (Date.now() < aV && Date.now() >= bV)
+            return -1;
+        if (Date.now() >= aV && Date.now() < bV)
+            return 1;
+        return aV - bV;
+    };
     
     /* To sort domains:
      *
@@ -3180,9 +3396,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var uriGroup = parts[3] || parts[6] || parts[7] || uri.asciiSpec.replace(/^[^:]*\:(?:\/\/)?([^\/]+).*$/, "$1");
         if (uriKey == "/about/blank") // Sort blank tabs to end
             uriKey = "zzzzzzzzzzzzzzz/about/blank";
-        aTab.setAttribute(self.Sorts.uri, uriKey);
+        aTab.setAttribute(tk.Sorts.uri, uriKey);
         if (uriKey != "zzzzzzzzzzzzzzz/about/blank") // Blank tabs should not get grouped together
-            aTab.setAttribute(self.Groupings.domain, ":dG-" + uriGroup + ":"); // Just to prevent domains that are substrings of each other matching
+            aTab.setAttribute(tk.Groupings.domain, ":dG-" + uriGroup + ":"); // Just to prevent domains that are substrings of each other matching
     };
     // Allow easy access to the initial uri a tab is loading
     this.earlyMethodHooks.push([
@@ -3195,7 +3411,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     var _seed = 0; // Used to generate ids; TODO-P6: sync across windows to completely avoid duplicates
     this.generateId = function generateId() {
         return String(Date.now()) + "-" + String(++_seed);
-    }
+    };
 
     this.getTabById = function getTabById(tid) {
         for (var i = 0; i < _tabs.length; i++) {
@@ -3221,7 +3437,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         return tabs;
     };
     
-    this.getGroupById = function getGroupById(gid, lookForSingletons) {
+    this.getGroupById = function getGroupById(gid,  lookForSingletons) {
         // To find the group for a new tab
         var group = [];
         for (var i = 0; i < _tabs.length; i++) {
@@ -3230,7 +3446,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 group.push(t);
             }
             else if (lookForSingletons && t.getAttribute("singletonid").indexOf(gid) != -1) {
-                self.setGID(t, gid);
+                tk.setGID(t, gid);
                 group.push(t);
                 //lookForSingletons = false; // Possible optimisation
             }
@@ -3240,13 +3456,30 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     this.getGroupFromTab = function getGroupFromTab(tab) {
         // To get an existing grouped tab's group // TODO=P4: optimize using previous/nextSibling
-        var group = [];
         var gid = tab.getAttribute("groupid");
+        if (!gid)
+            return null;
+        
+        /*
+        var group = [];
         for (var i = 0; i < _tabs.length; i++) {
             var t = _tabs[i];
             if (t.getAttribute("groupid") == gid)
                 group.push(t);
         }
+        */
+        // We use previous/nextSibling as an optimization, but *also*
+        // because it must work across browser windows for onDrop
+        var group = [ tab ];
+        var cur;
+        while ((cur = group[group.length-1].previousSibling) && cur.getAttribute("groupid") == gid) {
+            group.push(cur);
+        }
+        group.reverse(); // Probably mildly faster than unshifting them in the first place
+        while ((cur = group[group.length-1].nextSibling) && cur.getAttribute("groupid") == gid) {
+            group.push(cur);
+        }
+        
         return group;
     };
 
@@ -3267,21 +3500,24 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     this.setGID = function setGID(tab, gid) {
         if (!gid) {
-            self.dump("setGID: Bad groupid \"" + gid + "\"");
+            tk.dump("setGID: Bad groupid \"" + gid + "\"");
             return;
         }
+        
+        tk.removeCollapsedTab(tab);
+        
         for (var i = 0; i < _tabs.length; i++) {
             var t = _tabs[i];
             if (t.getAttribute("groupid") == gid) {
-                if (t.getAttribute("groupcollapsed") == "true") {
+                if (t.hasAttribute("groupcollapsed")) {
                     tab.setAttribute("groupcollapsed", "true");
-                    for each (var st in self.getGroupById(gid)) {
-                        if (st.getAttribute("hidden") != "true") {
+                    for each (var st in tk.getGroupById(gid)) {
+                        if (!st.hidden) {
                             if (st.getAttribute("selected") == "true") {
-                                tab.setAttribute("hidden", "true");
+                                tab.hidden = true;
                             }
                             else {
-                                st.setAttribute("hidden", "true");
+                                st.hidden = true;
                             }
                             break;
                         }
@@ -3291,67 +3527,126 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 break;
             }
         }
+        
         tab.removeAttribute("singletonid");
         tab.setAttribute("groupid", gid);
-        self.colorizeTab(tab);
-        self.updateIndents();
+        tk.colorizeTab(tab);
+        tk.updateIndents();
     };
     
-    this.removeGID = function removeGID(tab, becauseSingleton) {
-        var gid = tab.getAttribute("groupid");
+    this.removeGID = function removeGID(tab,  becauseSingleton) {
+        tk.removeCollapsedTab(tab);
+        
         if (becauseSingleton)
-            tab.setAttribute("singletonid", gid);
+            tab.setAttribute("singletonid", tab.getAttribute("groupid"));
         else
             tab.removeAttribute("singletonid");
         tab.removeAttribute("groupid");
-        tab.removeAttribute("groupcollapsed");
-        tab.removeAttribute("hidden");
-        self.colorizeTab(tab);
-        self.updateIndents();
+        tk.colorizeTab(tab);
+        tk.updateIndents();
+    };
+    
+    this.removeCollapsedTab = function removeCollapsedTab(tab) {
+        if (tab.hasAttribute("groupcollapsed")) {
+            tab.removeAttribute("groupcollapsed");
+            
+            var tgid = tab.getAttribute("groupid");
+            if (tgid) { // Should always be true
+                var oldGroup = [];
+                for (var i = 0; i < _tabs.length; i++) {
+                    var t = _tabs[i];
+                    if (t !== tab && t.getAttribute("groupid") == tgid)
+                        oldGroup.push(t);
+                }
+                if (oldGroup.length > 0)
+                    tk.ensureCollapsedGroupVisible(oldGroup);
+            }
+        }
+        tab.hidden = false;  
     };
 
+    this.ensureCollapsedGroupVisible = function ensureCollapsedGroupVisible(group) {
+        // TODO=P3: Optimize ensureCollapsedGroupVisible with a timeout and Set of gids to avoid processing groups repeatedly [O(n^2) time]
+        for each (var t in group)
+            if (!t.hidden)
+                return;
+        var mostRecent = group[0];
+        for (var i = 1; i < group.length; i++)
+            if (tk.compareTabViewedExceptUnread(group[i], mostRecent) > 0)
+                mostRecent = group[i];
+        mostRecent.hidden = false;
+    };
+
+    this.subtreesEnabled = function subtreesEnabled() {
+        return (gBrowser.hasAttribute("vertitabbar")
+                && _prefs.getBoolPref("indentedTree"));
+    };
+    
+    this.getSubtreeFromTab = function getSubtreeFromTab(tab) {
+        if (!tk.subtreesEnabled())
+            return [ tab ];
+        
+        var group = tk.getGroupFromTab(tab);
+        var gid = tab.getAttribute("groupid");
+        tk.updateIndents(group);
+        var tabs = [ tab ];
+        for (var t = tab.nextSibling; t && t.treeLevel && t.treeLevel > tab.treeLevel && t.getAttribute("groupid") == gid; t = t.nextSibling)
+            tabs.push(t);
+        return tabs;
+    };
+    
     var _lastUpdateIndents = 0;
     var _updateIndentsRequested = false;
+    // Incidentally this should work across browser windows so getSubtreeFromTab works for onDrop
     this.updateIndents = function updateIndents(group) {
-        if (!gBrowser.hasAttribute("vertitabbar") || !_prefs.getBoolPref("indentedTree"))
-            return;
-        
         if (!group) {
+            if (!tk.subtreesEnabled())
+                return;
+            
             if (!_updateIndentsRequested) {
                 // Limit this to once every 150ms
                 var timeSinceLastUpdate = Date.now() - _lastUpdateIndents;
                 if (timeSinceLastUpdate >= 150) {
                     for (var i = 0; i < _tabs.length; i++)
-                        _tabs[i].style.marginLeft = null;
-                    for each (var g in self.getAllGroups())
-                        updateIndents(g);
+                        _tabs[i].style.paddingLeft = "";
+                    for each (var g in tk.getAllGroups())
+                        tk.updateIndents(g);
                     _lastUpdateIndents = Date.now();
                 }
                 else {
                     _updateIndentsRequested = true;
                     window.setTimeout(function __updateAllIndents() {
                         _updateIndentsRequested = false;
-                        self.updateIndents();
+                        tk.updateIndents();
                     }, 150 - timeSinceLastUpdate);
                 }
             }
             return;
         }
         /*!!else if (typeof group == "string") {
-            group = self.getGroupById(group);
+            group = tk.getGroupById(group);
         }
         else if ("nodeType" in group) {
             if (group.getAttribute("groupid")) {
-                group = self.getGroupFromTab(group);
+                group = tk.getGroupFromTab(group);
             }
             else {
-                group.style.marginLeft = null;
+                group.style.paddingLeft = "";
                 return;
             }
+        }*/
+        
+        if (!group.length) {
+            tk.debug("updateIndents called for zero length group: " + uneval(group) + "\n" + tk.quickStack());
+            return;
         }
         
-        if (!group.length)
-            return;*/
+        var groupcollapsed = group[0].hasAttribute("groupcollapsed");
+        if (groupcollapsed) {
+            for each (var t in group) {
+                t.style.paddingLeft = "";
+            }
+        }
         
         var stack = [];
         var maxlevel = _prefs.getIntPref("maxTreeLevel");
@@ -3362,7 +3657,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 for (var i = stack.length - 1; i >= 0; i--) {
                     if (stack[i] == pp) {
                         stack.push(t.getAttribute("tabid"));
-                        t.style.setProperty("margin-left", (indent * Math.min(i + 1, maxlevel)) + "px", "important")
+                        t.treeLevel = Math.min(i + 1, maxlevel); // For external use, e.g. dragging subtrees
+                        if (!groupcollapsed)
+                            t.style.setProperty("padding-left", (indent * t.treeLevel) + "px", "important");
                         break;
                     }
                     stack.pop();
@@ -3370,16 +3667,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (i >= 0)
                     continue;
             }
-            t.style.marginLeft = null;
+            t.treeLevel = 0;
+            t.style.paddingLeft = "";
             stack = [ t.getAttribute("tabid") ];
         }
     };
     this.toggleIndentedTree = function toggleIndentedTree() {
         if (gBrowser.hasAttribute("vertitabbar") && _prefs.getBoolPref("indentedTree"))
-            self.updateIndents();
+            tk.updateIndents();
         else
             for (var i = 0; i < _tabs.length; i++)
-                _tabs[i].style.marginLeft = null;
+                _tabs[i].style.paddingLeft = "";
     };
 
     this.updateColorTabNotLabel = function updateColorTabNotLabel() {
@@ -3400,7 +3698,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             colorTabNotLabel = compatibleTheme ? 1 : 0;*/
             // TODO=P4: test and add other themes, see list at http://en.design-noir.de/mozilla/aging-tabs
-            colorTabNotLabel = (currentTheme == "classic/1.0" || currentTheme == "BlueIce");
+            colorTabNotLabel = (currentTheme == "classic/1.0" || currentTheme == "BlueIce" || currentTheme == "MidnightFox");
         }
         if (colorTabNotLabel) {
             if (_tabContainer.getAttribute("colortabnotlabel") != "true") {
@@ -3408,7 +3706,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 for (var i = 0; i < _tabs.length; i++) {
                     var t = _tabs[i];
                     t.ownerDocument.getAnonymousElementByAttribute(t, "class", "tab-text").style.backgroundColor = null;
-                    self.colorizeTab(t);
+                    tk.colorizeTab(t);
                 }
             }
         }
@@ -3419,25 +3717,194 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 var nodes = t.ownerDocument.getAnonymousNodes(t);
                 for (var i = 0; i < nodes.length; i++)
                     nodes[i].style.backgroundColor = null;
-                self.colorizeTab(t);
+                tk.colorizeTab(t);
             }
         }
     };
 
+    this.allocateColor = function allocateColor(tab) {
+        var tgid = tab.getAttribute("groupid");
+        if (!tgid)
+            tk.dump("allocateColor requires a groupid!");
+        if (tk.getWindowValue("knownColor:" + tgid))
+            return;
+        
+        // Find neighbouring gids
+        var gids = [];
+        var gidDist = {};
+        // Get up to three gids before tab
+        for (var i = tab._tPos - 1, n = 0; i >= 0 && n < 3; i--) {
+            var gid = _tabs[i].getAttribute("groupid");
+            if (gid && gids.indexOf(gid) == -1 && tk.getWindowValue("knownColor:" + gid)) {
+                gids.push(gid);
+                gidDist[gid] = n;
+                n++;
+            }
+        }
+        // Get up to three gids after tab
+        for (var i = tab._tPos + 1, n = 0; i < _tabs.length && n < 3; i++) {
+            var gid = _tabs[i].getAttribute("groupid");
+            if (gid && gids.indexOf(gid) == -1 && tk.getWindowValue("knownColor:" + gid)) {
+                gids.push(gid);
+                gidDist[gid] = n;
+                n++;
+            }
+        }
+        
+        // If there are no surrounding groups, just generate a new color
+        if (gids.length < 1) {
+            // TODO=P4: Should I give domain groups a consistent color even if it might be the same as nearby groups?
+            /*!!var md5 = tabkit.rawMD5(tgid);
+            var hue = 0;
+            for (var i = 0; i < md5.length; i++)
+                hue += md5.charCodeAt(i);
+            hue %= 360;*/
+            //!!var hue = tk.hash(tk.rawMD5(gid)) % 360; // We get much better colour variation with the MD5
+            var hue = Math.floor(Math.random() * 360);
+        }
+        else {
+            // Convert gids into colors
+            var hues = [];
+            var hueDistance = {};
+            for each (var gid in gids) {
+                var match = /\d+/.exec(tk.getWindowValue("knownColor:" + gid)); // Find first number
+                var hue = Number(match[0]);
+                hues.push(hue);
+                switch (gidDist[gid]) {
+                    case 0: hueDistance[hue] = 60; break; // Neighbouring groups should be at least 60 apart in hue
+                    case 1: hueDistance[hue] = 60; break; // Groups one group away from each other should be 45 apart
+                    case 2: hueDistance[hue] = 45;        // Groups two groups away from each other should be 30 apart
+                }
+            };
+            
+            // Sort hues
+            hues.sort(function __compareNumbers(a, b) {
+                return a - b;
+            });
+            
+            /*!!var biggestGapO = {
+                start: hues[hues.length - 1],
+                end: hues[0],
+                gap: hues[0] - hues[hues.length - 1] + 360 // + 360 since it wraps around
+            };
+            var gaps = [ biggestGapO ];
+            for (var i = 1; i < hues.length; i++) {
+                var gapO = {
+                    start: hues[i - 1],
+                    end: hues[i],
+                    gap: hues[i] - hues[i - 1]
+                };
+                if (gapO.gap > biggestGapO.gap)
+                    biggestGapO = gapO;
+                gaps.push(gapO);
+            }
+            
+            var bigGaps = gaps.filter(function __gapGt90(gapO) {
+                return (gapO.gap > 90);
+            });
+            
+            if (bigGaps.length > 0) {
+                // Pick a random hue at least 45 away from a gap boundary
+                var total = 0;
+                for each (var gapO in bigGaps) {
+                    total += (gapO.gap - 90);
+                }
+                var target = Math.floor(Math.random() * total);
+                total = 0;
+                for each (var gapO in bigGaps) {
+                    total += (gapO.gap - 90);
+                    // T O D O: Find the target gap and get its color
+                }
+            }
+            else {
+                //!!if (gap > 90) {
+                //!!    // Pick a hue with more variation (so we don't keep getting the same 4 group colors)
+                //!!    var hue = (gapStart + 45 + Math.floor(Math.random() * (gap - 90))) % 360;
+                //!!}
+                // Pick the hue in the middle of the biggest gap
+                var hue = Math.round(biggestGapO.start + (biggestGapO.gap / 2)) % 360;
+            }*/
+            // Find greatest hue gap, or a random group with hues at least hueDistance[hue] away from other hues
+            var chosenGapStart = hues[hues.length - 1];
+            var chosenGapEnd = hues[0];
+            var chosenGap = chosenGapEnd - chosenGapStart + 360 - hueDistance[chosenGapStart] - hueDistance[chosenGapEnd];
+            var totalGap = chosenGap;
+            
+            for (var i = 1; i < hues.length; i++) {
+                var gapStart = hues[i - 1];
+                var gapEnd = hues[i];
+                var gap = gapEnd - gapStart - hueDistance[gapStart] - hueDistance[gapEnd];
+                if (totalGap <= 0) {
+                    // We haven't yet found a large enough gap, so always switch to this one if it's better
+                    if (gap > chosenGap) {
+                        chosenGapStart = gapStart;
+                        chosenGapEnd = gapEnd;
+                        totalGap = chosenGap = gap;
+                    }
+                }
+                else if (gap > 0) {
+                    // We already have a large enough gap, so decide at random whether to use this one instead,
+                    // such that the probability that a gap is picked is proportional to its size.
+                    totalGap += gap;
+                    if (Math.random() < gap / totalGap) {
+                        chosenGapStart = gapStart;
+                        chosenGapEnd = gapEnd;
+                        chosenGap = gap;
+                    }
+                }
+            }
+            
+            if (totalGap > 0) {
+                /*!!// Pick a random hue at least 45 away from the hues (in any large enough gap)
+                for (var n = 0; n < 6; n++) { // Limit this to 6 random tries
+                    var hue = Math.floor(Math.random() * 360);
+                    var ok = true;
+                    for each (var h in hues) {
+                        var diff = Math.abs(hue - h)
+                        if (diff > 180)
+                            diff = 360 - diff;
+                        if (diff < (hueIsNear[hue] ? 45 : 30)) {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if (ok)
+                        break;
+                }
+                if (n == 6) // Just pick a value in the largest gap
+                    var hue = (chosenGapStart + 45 + Math.floor(Math.random() * (chosenGap - 90))) % 360;*/
+                // Pick a random hue from the gap
+                chosenGapStart = (chosenGapStart + hueDistance[chosenGapStart]) % 360;
+                var hue = (chosenGapStart + Math.floor(Math.random() * chosenGap)) % 360;
+            }
+            else {
+                // Pick the hue in the middle of the entire gap
+                chosenGap += hueDistance[chosenGapStart] + hueDistance[chosenGapEnd];
+                var hue = Math.round(chosenGapStart + (chosenGap / 2)) % 360;
+                //!!tk.debug("Used middle as gap was only " + chosenGap);
+            }
+        }
+        
+        // TODO=P3: Stop memory-leaking known colors (for the duration of a session)
+        tk.setWindowValue("knownColor:" + tgid, "hsl(" + hue + ", 100%, 75%)"); // TODO=P4: add prefs for sat and lum
+    };
+    
     this.colorizeTab = function colorizeTab(tab) {
         try {
             var gid = tab.getAttribute("groupid");
             if (gid) {
-                var md5 = tabkit.rawMD5(gid); // TODO=P4: Use different colours if this would be too similar to a neighbouring group (except for domain groups)
-                var hue = 0;
-                for (var i = 0; i < md5.length; i++)
-                    hue += md5.charCodeAt(i);
-                hue %= 360;
-                //!!var hue = self.hash(self.rawMD5(gid)) % 360; // We get much better colour variation with the MD5
-                var bgColor = "hsl(" + hue + ", 100%, 75%)"; // TODO=P4: add prefs for sat and lum
+                var bgColor = tk.getWindowValue("knownColor:" + gid);
+                if (!bgColor) {
+                    // Use a timeout to make sure the tab is in place (next to the groups it will neighbour) before we color it
+                    window.setTimeout(function __colorizeTabLater(tk, tab) {
+                        tk.allocateColor(tab);
+                        tk.colorizeTab(tab);
+                    }, 0, tk, tab);
+                    return;
+                }
             }
             else {
-                bgColor = "";
+                var bgColor = "";
             }
             
             var tabText = tab.ownerDocument.getAnonymousElementByAttribute(tab, "class", "tab-text");
@@ -3455,15 +3922,15 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             // Color tabs-bottom (see also sortgroup_onTabSelect, and note that tabs-bottom is hidden during multirow mode)
             if (tab.getAttribute("selected") == "true" && _tabContainer.getAttribute("colortabnotlabel") == "true") {
-                var tabsBottom = document.getAnonymousElementByAttribute(tab.parentNode, "class", "tabs-bottom")
+                var tabsBottom = document.getAnonymousElementByAttribute(tab.parentNode, "class", "tabs-bottom");
                 if (tabsBottom)
                     tabsBottom.style.setProperty("background-color", bgColor, "important");
                 else
-                    self.debug("colorizeTab: Couldn't find tabs-bottom");
+                    tk.debug("colorizeTab: Couldn't find tabs-bottom");
             }
         }
         catch (ex) {
-            self.dump(ex);
+            tk.dump(ex);
         }
     };
 
@@ -3504,7 +3971,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         //}
     
     this.postInitAllTabsMenuColors = function postInitAllTabsMenuColors(event) {
-        self.addMethodHook([ // All tabs popup inherits tab colors (this also works for unread tabs)
+        tk.addMethodHook([ // All tabs popup inherits tab colors (this also works for unread tabs)
             '_tabContainer.mAllTabsPopup._onShowingAllTabsPopup',//{
             null,
             'menuItem.setAttribute("image", curTab.getAttribute("image"));',
@@ -3512,7 +3979,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         ]);//}
         
         if ("LastTab" in window && window.LastTab && LastTab.Browser && LastTab.Browser.OnTabMenuShowing) {
-            self.appendMethodCode('LastTab.Browser.OnTabMenuShowing',//{
+            tk.appendMethodCode('LastTab.Browser.OnTabMenuShowing',//{
                 'for (var i = 0; i < menu.childNodes.length; i++) { \
                     var menuItem = menu.childNodes[i]; \
                     if (LastTab.Preference.TabMenuSortMethod == LastTab.TabMenuSortMethod.MostRecent) \
@@ -3528,33 +3995,33 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     //!! Sets colors and attributes but doesn't move tabs
     /*!!this.addToGroupOf = function addToGroupOf(tab, grouptab, grouping,  newid) { // grouping is required, newid isn't
-        if (grouptab.hasAttribute(self.Groupings[grouping])) {
-            newid = grouptab.getAttribute(self.Groupings[grouping])
-            tab.setAttribute(self.Groupings[grouping], newid);
+        if (grouptab.hasAttribute(tk.Groupings[grouping])) {
+            newid = grouptab.getAttribute(tk.Groupings[grouping])
+            tab.setAttribute(tk.Groupings[grouping], newid);
             
-            if (self.groupScheme[grouping]) {
+            if (tk.groupScheme[grouping]) {
                 if (grouptab.hasAttribute("groupid")) {
-                    self.setGID(tab, grouptab.getAttribute("groupid"));
+                    tk.setGID(tab, grouptab.getAttribute("groupid"));
                 }
                 else {
-                    self.setGID(grouptab, newid);
-                    self.setGID(tab, newid);
+                    tk.setGID(grouptab, newid);
+                    tk.setGID(tab, newid);
                 }
             }
         }
         else {
             if (!newid)
-                newid = self.generateId();
-            grouptab.setAttribute(self.Groupings[grouping], newid);
-            tab.setAttribute(self.Groupings[grouping], newid);
+                newid = tk.generateId();
+            grouptab.setAttribute(tk.Groupings[grouping], newid);
+            tab.setAttribute(tk.Groupings[grouping], newid);
             
-            if (self.groupScheme[grouping]) {
+            if (tk.groupScheme[grouping]) {
                 if (grouptab.hasAttribute("groupid")) { // It might be grouped by a different grouping - in which case add it to that group...
-                    self.setGID(tab, grouptab.getAttribute("groupid"));
+                    tk.setGID(tab, grouptab.getAttribute("groupid"));
                 }
                 else {
-                    self.setGID(grouptab, newid);
-                    self.setGID(tab, newid);
+                    tk.setGID(grouptab, newid);
+                    tk.setGID(tab, newid);
                 }
             }
         }
@@ -3565,7 +4032,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             return;
         
         for (i = 1; i < tabs.length; i++) {
-            self.addToGroupOf(tabs[i], tabs[i - 1], grouping, id);
+            tk.addToGroupOf(tabs[i], tabs[i - 1], grouping, id);
         }
     };*/
     
@@ -3590,7 +4057,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     this.setSubtree = function setSubtree(subtree, stid) {
         if (!stid)
-            stid = self.generateId();
+            stid = tk.generateId();
 
         for (var i = 0; i < subtree.length; i++) {
             var t = subtree[i];
@@ -3611,12 +4078,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tab.setAttribute("subtreelevel", Number(level) + 1);
         }
         
-        var subtree = self.getSubtree(parent); // Fine if parent isn't in a subtree yet
+        var subtree = tk.getSubtree(parent); // Fine if parent isn't in a subtree yet
         subtree.splice(subtree.indexOf(parent), 0, tab);
-        self.setSubtree(subtree, stid); // Will generate an id if !stid
+        tk.setSubtree(subtree, stid); // Will generate an id if !stid
         
-        if (self.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
-            self.moveBefore(tab, parent);
+        if (tk.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
+            tk.moveBefore(tab, parent);
         }
     };
     
@@ -3632,12 +4099,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tab.setAttribute("subtreelevel", Number(level) + 1);
         }
         
-        var subtree = self.getSubtree(parent); // Fine if parent isn't in a subtree yet
+        var subtree = tk.getSubtree(parent); // Fine if parent isn't in a subtree yet
         subtree.splice(subtree.indexOf(parent) + 1, 0, tab);
-        self.setSubtree(subtree, stid); // Will generate an id if !stid
+        tk.setSubtree(subtree, stid); // Will generate an id if !stid
         
-        if (self.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
-            self.moveAfter(tab, parent);
+        if (tk.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
+            tk.moveAfter(tab, parent);
         }
     };
     
@@ -3656,19 +4123,19 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tab.setAttribute("subtreelevel", level + 1);
         }
         
-        var subtree = self.getSubtree(parent); // Fine if parent isn't in a subtree yet
+        var subtree = tk.getSubtree(parent); // Fine if parent isn't in a subtree yet
         var firstIndex = subtree.indexOf(parent) + 1;
         var index = firstIndex;
         if (level != "") {
-            while (index < subtree.length && (index - self.firstIndex) < self.recentChildren && level < Number(subtree[index].getAttribute(level))) {
+            while (index < subtree.length && (index - tk.firstIndex) < tk.recentChildren && level < Number(subtree[index].getAttribute(level))) {
                 index++;
             }
         }
         subtree.splice(index, 0, tab);
-        self.setSubtree(subtree, stid); // Will generate an id if !stid
+        tk.setSubtree(subtree, stid); // Will generate an id if !stid
         
-        if (self.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
-            self.moveAfter(tab, subtree[index - 1]);
+        if (tk.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
+            tk.moveAfter(tab, subtree[index - 1]);
         }
     };
     
@@ -3685,7 +4152,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tab.setAttribute("subtreelevel", level + 1);
         }
         
-        var subtree = self.getSubtree(parent); // Fine if parent isn't in a subtree yet
+        var subtree = tk.getSubtree(parent); // Fine if parent isn't in a subtree yet
         var index = subtree.indexOf(parent) + 1;
         if (level != "") {
             while (index < subtree.length && level < Number(subtree[index].getAttribute(level))) {
@@ -3693,35 +4160,35 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
         }
         subtree.splice(index, 0, tab);
-        self.setSubtree(subtree, stid); // Will generate an id if !stid
+        tk.setSubtree(subtree, stid); // Will generate an id if !stid
         
-        if (self.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
-            self.moveAfter(tab, subtree[index - 1]);
+        if (tk.groupScheme.origin && _prefs.getBoolPref("originOverridesSortOrder")) {
+            tk.moveAfter(tab, subtree[index - 1]);
         }
     };*/
 
     /// Public Methods:
     this.groupTabsBy = function groupTabsBy(groupingName) {
-        var groupingAttr = self.Groupings[groupingName];
+        var groupingAttr = tk.Groupings[groupingName];
         var newGroups = {};
         for (var i = 0; i < _tabs.length; i++) {
             var t = _tabs[i];
             if (!t.hasAttribute("groupid")) {
                 var gid = t.getAttribute(groupingAttr);
                 if (gid != "") {
-                    var group = self.getGroupById(gid);
+                    var group = tk.getGroupById(gid);
                     if (group.length > 0) {
                         // TODO=P4: move next to parent if it's in the group
-                        if (self.newTabPosition == 2 && self.activeSort != "origin"
+                        if (tk.newTabPosition == 2 && tk.activeSort != "origin"
                             && (groupingName != "domain" || !_prefs.getBoolPref("autoSortDomainGroups")) // We're going to sort all the groups anyway
                             && (groupingName != "opener" || !_prefs.getBoolPref("autoSortOpenerGroups"))) // We're going to sort all the groups anyway
                         {
-                            self.insertTab(t, gid)
+                            tk.insertTab(t, gid);
                         }
                         else {
-                            self.moveAfter(t, group[group.length - 1]);
+                            tk.moveAfter(t, group[group.length - 1]);
                         }
-                        self.setGID(t, group[0].getAttribute("groupid"));
+                        tk.setGID(t, group[0].getAttribute("groupid"));
                     }
                     else {
                         if (gid in newGroups)
@@ -3737,64 +4204,64 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var group = newGroups[gid];
             if (group.length > 1) {
                 for each (var tab in group) {
-                    self.setGID(tab, gid);
+                    tk.setGID(tab, gid);
                 }
                 
-                // Move all tabs to where the median positioned tab currently is // TODO=P4: if self.newTabPosition == 2 && self.activeSort in self.DateSorts move to most recent tab instead?
+                // Move all tabs to where the median positioned tab currently is // TODO=P4: if tk.newTabPosition == 2 && tk.activeSort in tk.DateSorts move to most recent tab instead?
                 var mi = group.length >> 1;
                 var median = group[mi];
                 for (var i = 0; i < mi; i++)
-                    self.moveBefore(group[i], median);
+                    tk.moveBefore(group[i], median);
                 for (var i = group.length - 1; i > mi; i--)
-                    self.moveAfter(group[i], median);
+                    tk.moveAfter(group[i], median);
             }
         }
         
         // Sort all groupingName groups
         if (groupingName == "domain") {
             if (_prefs.getBoolPref("autoSortDomainGroups")) {
-                var groups = self.getAllGroups();
+                var groups = tk.getAllGroups();
                 for each (var gid in groups)
                     if (gid.indexOf(":dG-") != -1)
-                        self.sortTabsBy("uri", gid);
+                        tk.sortTabsBy("uri", gid);
             }
         }
         else if (groupingName == "opener") {
             if (_prefs.getBoolPref("autoSortOpenerGroups")) {
-                var groups = self.getAllGroups();
+                var groups = tk.getAllGroups();
                 for (var gid in groups)
-                    if (gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) // TODO-P6: Would it make more sense for manual groups not to get autosorted, i.e. if ((gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) && !self.startsWith(gid, ":oG-manualGroup-"))
-                        self.sortTabsBy("origin", gid);
+                    if (gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) // TODO-P6: Would it make more sense for manual groups not to get autosorted, i.e. if ((gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) && !tk.startsWith(gid, ":oG-manualGroup-"))
+                        tk.sortTabsBy("origin", gid);
             }
         }
         
-        if (groupingName != self.activeGrouping)
-            self.activeGrouping = groupingName;
+        if (groupingName != tk.activeGrouping)
+            tk.activeGrouping = groupingName;
     };
 
     // If gid is specified, assumes the group is already together (else it will be arbitrarily positioned)
     this.sortTabsBy = function sortTabsBy(sortName, gid) { // gid is optional
-        if (!sortName in self.Sorts) {
-            self.dump("sortTabsBy: Bad sortName: \"" + sortName + "\"");
+        if (!sortName in tk.Sorts) {
+            tk.dump("sortTabsBy: Bad sortName: \"" + sortName + "\"");
             return;
         }
 
-        var isReverse = (sortName in self.ReverseSorts);
-        var isNumeric = (sortName in self.NumericSorts);
-        //~ var isDate = (sortName in self.DateSorts);
+        var isReverse = (sortName in tk.ReverseSorts);
+        var isNumeric = (sortName in tk.NumericSorts);
+        //~ var isDate = (sortName in tk.DateSorts);
         var isOrigin = (sortName == "origin");
         
         if (isOrigin) {
             // We need to calculate a set of keys we can sort by
             if (gid) {
-                var tabset = self.getGroupById(gid);
+                var tabset = tk.getGroupById(gid);
             }
             else {
                 var tabset = [];
                 for (var i = 0; i < _tabs.length; i++)
                     tabset.push(_tabs[i]);
             }
-            tabset.sort(self.compareTabCreated);
+            tabset.sort(tk.compareTabCreated);
             var lastParent = null;
             var recentChildren = 0;
             for (var i = 1; i < tabset.length; i++) {
@@ -3802,11 +4269,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (pp) {
                     for (var j = i - 1; j >= 0; j--) {
                         if (tabset[j].getAttribute("tabid") == pp) {
-                            if (self.openRelativePosition == "left") {
+                            if (tk.openRelativePosition == "left") {
                                 tabset.splice(j, 0, tabset.splice(i, 1)[0]); // Move i before j
                             }
                             else {
-                                if (self.openRelativePosition != "right") { // rightOfRecent is treated as rightOfConsecutive, since we don't know about tab selections
+                                if (tk.openRelativePosition != "right") { // rightOfRecent is treated as rightOfConsecutive, since we don't know about tab selections
                                     if (lastParent === pp) {
                                         j += recentChildren++;
                                     }
@@ -3827,16 +4294,16 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
         }
         else {
-            var attr = self.Sorts[sortName];
+            var attr = tk.Sorts[sortName];
         }
 
         // Presort groups and calculate medians
         if (gid) {
             var groups = {};
-            groups[gid] = self.getGroupById(gid);
+            groups[gid] = tk.getGroupById(gid);
         }
         else {
-            var groups = self.getAllGroups();
+            var groups = tk.getAllGroups();
         }
         for (var groupid in groups) {
             var g = groups[groupid];
@@ -3847,7 +4314,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     g[i].key = isNumeric ? Number(g[i].getAttribute(attr)) : g[i].getAttribute(attr).toLowerCase();
             
             if (gid
-                || self.countGroups(groupid) != 1
+                || tk.countGroups(groupid) != 1
                 || ((groupid.indexOf(":dG-") == -1 || !_prefs.getBoolPref("autoSortDomainGroups"))
                     && ((groupid.indexOf(":oG-") == -1 && groupid.indexOf(":tmpOG-") == -1) || !_prefs.getBoolPref("autoSortOpenerGroups"))))
             {
@@ -3870,7 +4337,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (!gid) {
                 // TODO=P4: ignore outoforder tabs?
                 if (sortName == "origin")
-                    var representative = (self.openRelativePosition == "left") ? g.concat().sort(self.compareTabCreated)[0].key : g[0].key;
+                    var representative = (tk.openRelativePosition == "left") ? g.concat().sort(tk.compareTabCreated)[0].key : g[0].key;
                 //~ else if (isDate) // TODO=P4: Should I?
                     //~ var representative = g[ g.length - 1 ].key
                 else // Median
@@ -3885,7 +4352,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var group = groups[gid];
             var firstTab = group[0];
             for (var i = 1; i < group.length; i++)
-                self.moveAfter(group[i], firstTab);
+                tk.moveAfter(group[i], firstTab);
         }
         else {
             // Sort all tabs/groups (by insertion sort)
@@ -3915,18 +4382,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 }
             }
             
-            if (self.activeSort != sortName)
-                self.activeSort = sortName;
+            if (tk.activeSort != sortName)
+                tk.activeSort = sortName;
         }
     };
 
     /* Usage:
-        - self.insertTab(tab); inserts a tab into _tabs by self.activeSort (ASSUMES self.newTabPosition == 2 && self.activeSort != "origin")
-        - self.insertTab(tab, gid); inserts a tab into self.getGroupById(gid) by self.activeSort (ASSUMES self.newTabPosition == 2 && self.activeSort != "origin")
-        - self.insertTab(tab, gid, sortName); inserts a tab into self.getGroupById(gid) using sortName (ASSUMES sortName != "origin") */
+        - tk.insertTab(tab); inserts a tab into _tabs by tk.activeSort (ASSUMES tk.newTabPosition == 2 && tk.activeSort != "origin")
+        - tk.insertTab(tab, gid); inserts a tab into tk.getGroupById(gid) by tk.activeSort (ASSUMES tk.newTabPosition == 2 && tk.activeSort != "origin")
+        - tk.insertTab(tab, gid, sortName); inserts a tab into tk.getGroupById(gid) using sortName (ASSUMES sortName != "origin") */
     this.insertTab = function insertTab(tab, gid, sortName) { // gid and grouping are optional
         if (gid) {
-            var tabset = self.getGroupById(gid);
+            var tabset = tk.getGroupById(gid);
         }
         else {
             var tabset = [];
@@ -3937,21 +4404,21 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (tabIndex != -1)
             tabset.splice(tabIndex, 1);
         if (tabset.length == 0) {
-            self.dump("insertTab: tabset is empty!");
+            tk.dump("insertTab: tabset is empty!");
             return;
         }
         
         if (!sortName)
-            sortName = self.activeSort;
-        if (!sortName in self.Sorts || sortName == "origin") {
-            self.dump("Cannot insert by \"" + sortName + "\"");
+            sortName = tk.activeSort;
+        if (!sortName in tk.Sorts || sortName == "origin") {
+            tk.dump("Cannot insert by \"" + sortName + "\"");
             return;
         }
         
-        var isReverse = (sortName in self.ReverseSorts);
-        var isNumeric = (sortName in self.NumericSorts);
+        var isReverse = (sortName in tk.ReverseSorts);
+        var isNumeric = (sortName in tk.NumericSorts);
         
-        var attr = self.Sorts[sortName];
+        var attr = tk.Sorts[sortName];
         tab.key = isNumeric ? Number(tab.getAttribute(attr)) : tab.getAttribute(attr);
         
         var i = 0;
@@ -3965,9 +4432,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             i++;
         }
         if (i < tabset.length)
-            self.moveBefore(tab, tabset[i]);
+            tk.moveBefore(tab, tabset[i]);
         else
-            self.moveAfter(tab, tabset[tabset.length - 1]);
+            tk.moveAfter(tab, tabset[tabset.length - 1]);
         tab.removeAttribute("outoforder"); // In case it was set
     };
 
@@ -3976,11 +4443,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
      * and reasonably efficient even for a couple of hundred tabs...
      */
     /*!!this.sortTabsBy = function sortTabsBy(keyname) {
-        self.activeSort = keyname;
-        if (keyname == self.SortOrders.NONE) return;
+        tk.activeSort = keyname;
+        if (keyname == tk.SortOrders.NONE) return;
 
-        var numericSort = (keyname in self.NumericKeys);
-        var reverseSort = (keyname in self.ReverseKeys);
+        var numericSort = (keyname in tk.NumericKeys);
+        var reverseSort = (keyname in tk.ReverseKeys);
 
         for (var i = 1; i < _tabs.length; i++) {
             var tab = _tabs[i];
@@ -4019,7 +4486,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };*/
 
     /// Method Hooks
-    
     // Fix strict warning when moving tab to end of tab bar - https://bugzilla.mozilla.org/show_bug.cgi?id=347683#c9
     this.earlyMethodHooks.push([
         "gBrowser.moveTabTo",//{
@@ -4033,23 +4499,560 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         "_tabContainer.selectNewTab",//{
         null,
         '(aNewTab.getAttribute("hidden"))',
-        '(aNewTab.getAttribute("hidden") && !aNewTab.hasAttribute("groupcollapsed"))'
+        '(aNewTab.hidden && !aNewTab.hasAttribute("groupcollapsed"))'
     ]);//}
 
+    /// Implement Bug 298571 - support tab duplication (using ctrl) on tab drag and drop
+    /// Partly based on Simon B�nzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
+    this._duplicateTab = function _duplicateTab(aTab) {
+        if (_ss) {
+            // Try to have SessionStore serialize the given tab
+            try {
+                var tabState = _ss.getWindowState(aTab.ownerDocument.defaultView);
+                tabState = eval("(" + tabState + ")");
+
+                // Get the information for just the one tab and append it to this tabbrowser
+                tabState.windows[0].tabs = tabState.windows[0].tabs.splice(aTab._tPos, 1);
+                _ss.setWindowState(window, tabState.toSource(), false);
+
+                // Return the tab belonging to the most recently added browser
+                var newTab = document.getAnonymousElementByAttribute(gBrowser, "linkedpanel", gBrowser.mPanelContainer.lastChild.id);
+                newTab.setAttribute("tabid", tk.generateId());
+                tk.removeGID(newTab);
+                return newTab;
+            }
+            catch (ex) {
+                // Fall back to basic URL copying
+            }
+        }
+        return gBrowser.loadOneTab(gBrowser.getBrowserForTab(aTab).currentURI.spec);
+    };
+    
+    this.onDrop = function onDrop(aEvent, aXferData, aDragSession) {
+        if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab") {
+            var copyNotMove = ((navigator.platform.indexOf("Mac") == -1 ? aEvent.ctrlKey : aEvent.metaKey)
+                                   && _prefs.getBoolPref("accelDragCopy"));
+            
+            var oldTab = aDragSession.sourceNode;
+            var ogid = oldTab.getAttribute("groupid");
+            var _previousSibling = oldTab.previousSibling;
+            var _nextSibling = oldTab.nextSibling;
+            
+            var newIndex = gBrowser.getNewIndex(aEvent);
+            var beforeTab = newIndex > 0 ? _tabs[newIndex - 1] : null;
+            var afterTab = newIndex < _tabs.length ? _tabs[newIndex] : null;
+            var bgid = beforeTab ? beforeTab.getAttribute("groupid") : null;
+            var agid = afterTab ? afterTab.getAttribute("groupid") : null;
+            
+            // Prevent accidentally dragging into a collapsed group
+            if (agid && agid == bgid && afterTab.hasAttribute("groupcollapsed")) {
+                for each (var t in tk.getGroupFromTab(afterTab)) {
+                    if (t.hidden) {
+                        if (t._tPos < afterTab._tPos) {
+                            beforeTab = afterTab;
+                            while (beforeTab.nextSibling && beforeTab.nextSibling.getAttribute("groupid") == agid)
+                                beforeTab = beforeTab.nextSibling;
+                            afterTab = beforeTab.nextSibling; // May be null
+                            newIndex = beforeTab._tPos + 1;
+                        }
+                        else {
+                            var afterTab = beforeTab;
+                            while (afterTab.previousSibling && afterTab.previousSibling.getAttribute("groupid") == bgid)
+                                afterTab = afterTab.previousSibling;
+                            beforeTab = afterTab.previousSibling; // May be null
+                            newIndex = afterTab._tPos;
+                        }
+                        bgid = beforeTab ? beforeTab.getAttribute("groupid") : null;
+                        agid = afterTab ? afterTab.getAttribute("groupid") : null;
+                        break;
+                    }
+                }
+            }
+            
+            // [Moving or copying a group or subtree (possibly from a different window)]
+            if (aEvent.shiftKey && _prefs.getBoolPref("shiftDragGroups") && ogid) {
+                var shiftDragSubtree = _prefs.getBoolPref("shiftDragSubtrees");
+                
+                if (shiftDragSubtree) {
+                    /* Note that tk.getSubtreeFromTab checks tk.subtreesEnabled,
+                     * which checks gBrowser.hasAttribute("vertitabbar") &&
+                     * _prefs.getBoolPref("indentedTree")*/
+                    var tabs = tk.getSubtreeFromTab(oldTab);
+                    if (tabs.length < 2)
+                        shiftDragSubtree = false;
+                }
+                if (!shiftDragSubtree) {
+                    // Calculate the treeLevels - we'll need these when copying
+                    // possibleparents (getSubtreeFromTab normally does this)
+                    tk.updateIndents(group);
+                    var tabs = tk.getGroupFromTab(oldTab);
+                }
+                //TODO=P4: make shift-drag force group ungrouped tabs with destination - or something!
+                if (tabs) {
+                    if (copyNotMove || oldTab.parentNode != _tabContainer) {
+                        // Copying within/across windows, or moving across windows
+                        var newTabs = [];
+                        var tabIdMapping = {};
+                        for (var i = 0; i < tabs.length; i++) {                            
+                            tk.addingTab("unrelated", null, true);
+                            
+                            newTabs[i] = tk._duplicateTab(tabs[i]);
+                            if (i == 0 && oldTab.parentNode != _tabContainer)
+                                gBrowser.selectedTab = newTabs[i];
+                            
+                            //!!gBrowser.moveTabTo(newTabs[i], newIndex); // WRONG! Reverses order
+                            if (newIndex < _tabs.length)
+                                tk.moveBefore(newTabs[i], afterTab);
+                            else
+                                gBrowser.moveTabTo(newTabs[i], _tabs.length - 1);
+                            
+                            tk.addingTabOver();
+                            
+                            // Map tabids of original tabs to tabids of their clones
+                            tabIdMapping[tabs[i].getAttribute("tabid")] = newTabs[i].getAttribute("tabid");
+                            
+                            /*!! // Set appropriate possibleparent
+                            if (i == 0) {
+                                // Only inherit possibleparent if afterTab's group will enclose newTabs
+                                if (agid && agid == bgid) {
+                                    var app = afterTab.getAttribute("possibleparent");
+                                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                                    var parent = tk.getTabById(app);
+                                    if (parent && parent.getAttribute("groupid") == agid)
+                                        newTabs[0].setAttribute("possibleparent", app);
+                                    else
+                                        newTabs[0].setAttribute("possibleparent", tabs[0].getAttribute("possibleparent"));
+                                }
+                            }
+                            else {
+                                var tpp = tabs[i].getAttribute("possibleparent");
+                                if (tpp in tabIdMapping)
+                                    tpp = tabIdMapping[tpp];
+                                newTabs[i].setAttribute("possibleparent", tpp);
+                            }*/
+                        }
+                        
+                        // Inherit indentation
+                        var app = null;
+                        // Only inherit possibleparent if afterTab's group will enclose newTabs
+                        if (agid && agid == bgid) {
+                            app = afterTab.getAttribute("possibleparent");
+                            // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                            var parent = tk.getTabById(app);
+                            if (!parent || parent.getAttribute("groupid") != agid)
+                                app = null;
+                        }
+                        for (var i = 0; i < tabs.length; i++) {
+                            if (app && /*!! (!shiftDragSubtree
+                                        || !("treeLevel" in tabs[i])
+                                        || !("treeLevel" in tabs[0])
+                                        || */tabs[i].treeLevel <= tabs[0].treeLevel/*!! )*/)
+                            {
+                                newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
+                            }
+                            else {
+                                var tpp = tabs[i].getAttribute("possibleparent");
+                                if (tpp in tabIdMapping)
+                                    tpp = tabIdMapping[tpp];
+                                newTabs[i].setAttribute("possibleparent", tpp);
+                            }
+                        }
+                        
+                        // Do this afterwards so sortgroup_onTabRemoved doesn't mess up tabs we have yet to copy across
+                        if (!copyNotMove) {
+                            var browser = oldTab.ownerDocument.defaultView.getBrowser();
+                            for (var i = 0; i < tabs.length; i++)
+                                browser.removeTab(tabs[i]);
+                        }
+                        
+                        // Copy enclosing groupid, or create a new one
+                        var useEnclosing = (agid && agid == bgid);
+                        var ngid = useEnclosing ? agid : (_prefs.getBoolPref("autoGroupNewTabs") ? ":oG-copiedGroupOrSubtree-" + tk.generateId() : null);
+                        if (ngid) {
+                            for each (var newTab in newTabs) {
+                                tk.setGID(newTab, ngid);
+                                if (useEnclosing)
+                                    newTab.setAttribute("outoforder", "true");
+                            }
+                        }
+                        // TODO=P3: Add an openerGroup to copied groups/subtrees
+                        if (!copyNotMove)
+                            window.focus();
+                    }
+                    else { // Move group within window
+                        for each (var tab in tabs) // Save the treeLevels before we move the tabs
+                            tab.originalTreeLevel = tab.treeLevel;
+                        
+                        if (newIndex < _tabs.length) {
+                            for each (var tab in tabs)
+                                tk.moveBefore(tab, afterTab);
+                        }
+                        else {
+                            for each (var tab in tabs)
+                                gBrowser.moveTabTo(tab, _tabs.length - 1);
+                        }
+                        if (agid && agid == bgid) {
+                            /*!!
+                            if (!shiftDragSubtree) {
+                                // Merge the two groups
+                                var newgid = agid + "|" + ogid;
+                                tk.setWindowValue("knownColor:" + newgid, tk.getWindowValue("knownColor:" + agid)); // Preserve color of enclosing group
+                                var enclosingGroup = tk.getGroupById(agid);
+                                for each (var tab in enclosingGroup) {
+                                    tk.setGID(tab, newgid);
+                                }
+                                for each (var tab in tabs) {
+                                    tk.setGID(tab, newgid);
+                                    tab.setAttribute("outoforder", "true");
+                                }
+                                // T-O-D-O-P4: Merging groups like this means they'll be un[auto]sorted. It might be better to keep enclosing group's sort
+                            }
+                            */
+                            // Insert subtree/group into group
+                            for each (var tab in tabs) {
+                                tk.setGID(tab, agid);
+                                tab.setAttribute("outoforder", "true");
+                            }
+                            // Inherit indentation
+                            var app = afterTab.getAttribute("possibleparent");
+                            // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                            //!!tk.log(app);
+                            var parent = tk.getTabById(app);
+                            if (parent && parent.getAttribute("groupid") == agid) {
+                                for each (var tab in tabs) {
+                                    if (/*!! !shiftDragSubtree
+                                        || !("treeLevel" in tab)
+                                        || !("treeLevel" in tabs[0])
+                                        || */tab.originalTreeLevel <= tabs[0].originalTreeLevel) {
+                                        tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
+                                    }
+                                }
+                            }
+                        }
+                        else if (shiftDragSubtree && _prefs.getBoolPref("autoGroupNewTabs")) {
+                            // Make the subtree into a new group
+                            var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
+                            for each (var tab in tabs)
+                                tk.setGID(tab, newgid);
+                        }
+                        
+                        if (shiftDragSubtree) {
+                            // Make sure old group isn't now a singleton
+                            var group = tk.getGroupById(ogid);
+                            if (group.length == 1)
+                                tk.removeGID(group[0], true);
+                        }
+                    }
+                    return;
+                }
+            }
+            
+            // [Copying a single tab within/across windows, or moving a tab across windows]
+            // TODO=P4: Allow Accel-dropping onto current tab (instead of having to drop onto the neighbouring tab)
+            if (copyNotMove || oldTab.parentNode != _tabContainer) {
+                if (oldTab.parentNode == _tabContainer) // Copying one tab (possibly from a different window)
+                    tk.addingTab("related", oldTab, true);
+                else // Moving a tab from a different window
+                    tk.addingTab("unrelated", null, true);
+                
+                var newTab = tk._duplicateTab(oldTab);
+                if (oldTab.parentNode != _tabContainer)
+                    gBrowser.selectedTab = newTab;
+                
+                gBrowser.moveTabTo(newTab, newIndex);
+                tk.addingTabOver();
+                
+                if (agid && agid == bgid) {
+                    tk.setGID(newTab, agid);
+                    newTab.setAttribute("outoforder", "true");
+                    
+                    var app = afterTab.getAttribute("possibleparent");
+                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                    var parent = tk.getTabById(app);
+                    if (parent && parent.getAttribute("groupid") == agid)
+                        newTab.setAttribute("possibleparent", app);
+                    else
+                        newTab.setAttribute("possibleparent", oldTab.getAttribute("possibleparent"));
+                }
+                
+                if (!copyNotMove) {
+                    oldTab.ownerDocument.defaultView.gBrowser.removeTab(oldTab);
+                    window.focus();
+                }
+                return;
+            }
+            
+            // [Just dragging the one tab]
+            if (newIndex == oldTab._tPos) 
+                return;
+            
+            var reverse = (newIndex < oldTab._tPos);
+            
+            // Make the actual move
+            gBrowser.moveTabTo(oldTab, reverse ? newIndex : newIndex - 1);
+            
+            // See if it's been dragged into a group
+            if (agid && agid == bgid) {
+                tk.setGID(oldTab, agid) // Join the group
+                oldTab.setAttribute("outoforder", "true");
+                
+                var app = afterTab.getAttribute("possibleparent");
+                // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                var parent = tk.getTabById(app);
+                if (parent && parent.getAttribute("groupid") == agid)
+                    oldTab.setAttribute("possibleparent", app);
+            }
+            else if (ogid && agid != ogid && bgid != ogid) {
+                tk.removeGID(oldTab);
+            }
+            
+            // Make sure the old group isn't now a singleton
+            if (ogid) {
+                if (_previousSibling && _previousSibling.getAttribute("groupid") == ogid) {
+                    if ((!_previousSibling.previousSibling || _previousSibling.previousSibling.getAttribute("groupid") != ogid)
+                        && (!_nextSibling || _nextSibling.getAttribute("groupid") != ogid))
+                    {
+                        tk.removeGID(_previousSibling, true);
+                    }
+                }
+                else if (_nextSibling && _nextSibling.getAttribute("groupid") == ogid) {
+                    if (!_nextSibling.nextSibling || _nextSibling.nextSibling.getAttribute("groupid") != ogid)
+                        tk.removeGID(_nextSibling, true);
+                }
+            }
+            
+            return;
+        }
+        else {
+            gBrowser._pre_tk_onDrop(aEvent, aXferData, aDragSession);
+        }
+    };
+    
+    this.preInitTabDragModifications = function preInitTabDragModifications(event) {
+        tk.addMethodHook([
+            "gBrowser.onDrop",//{
+            null,
+            /*!!
+            /if \(aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer\) {/,
+            'var copyKeyHit = (navigator.platform.indexOf("Mac") == -1) ? aEvent.ctrlKey : aEvent.metaKey; \
+            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab" \
+                && (aDragSession.sourceNode.parentNode == this.mTabContainer || copyKeyHit)) {',
+            
+            /var oldIndex = aDragSession.sourceNode\._tPos;\s+if \(newIndex > oldIndex\) {\s+newIndex--;\s+}\s+if \(newIndex != oldIndex\) {\s+this\.moveTabTo\(this\.mTabs\[oldIndex\], newIndex\);\s+}/,
+            '    var oldTab = aDragSession.sourceNode; \
+                if (copyKeyHit) { \
+                    var newTab = this.duplicateTab(oldTab); \
+                    this.moveTabTo(newTab, newIndex); \
+                    if (oldTab.parentNode != this.mTabContainer || aEvent.shiftKey) \
+                        this.selectedTab = newTab; \
+                } \
+                else { \
+                    if (newIndex > oldTab._tPos) \
+                        newIndex--; \
+                    if (newIndex != oldTab._tPos) \
+                        this.moveTabTo(oldTab, newIndex); \
+                } \
+            } \
+            else if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab") { \
+                newIndex = this.getNewIndex(aEvent); \
+                oldTab = aDragSession.sourceNode; \
+                newTab = this.duplicateTab(oldTab); \
+                this.moveTabTo(newTab, newIndex); \
+                this.selectedTab = newTab; \
+                oldTab.ownerDocument.defaultView.getBrowser().removeTab(oldTab); \
+                window.focus();',
+            */
+            // Allow Accel-dragging a url onto a tab to create a new tab instead of replacing it
+            /if \(document\.getBindingParent\(aEvent\.originalTarget\)\.localName != "tab"\) \{\s+this\.loadOneTab\(getShortcutOrURI\(url\), null, null, null, bgLoad, false\);/,
+            'if (document.getBindingParent(aEvent.originalTarget).localName != "tab" || \
+                (navigator.platform.indexOf("Mac") == -1 ? aEvent.ctrlKey : aEvent.metaKey)) \
+            { \
+                newIndex = this.getNewIndex(aEvent); \
+                tabkit.addingTab("unrelated", null, true); \
+                newTab = this.loadOneTab(getShortcutOrURI(url), null, null, null, bgLoad, false); \
+                tabkit.addingTabOver(); \
+                this.moveTabTo(newTab, newIndex);'
+            /*!!
+            /(if \(copyKeyHit\) \{)\s+(var newTab = this.duplicateTab\(oldTab\);\s+this\.moveTabTo\(newTab, newIndex\);)/,
+            '$1 tabkit.addingTab("related", oldTab, true); $2 tabkit.addingTabOver();',
+            
+            'this.moveTabTo(oldTab, newIndex);',
+            'tabkit.moveDraggedTab(oldTab, newIndex, aEvent.shiftKey);', 
+            
+            /(oldTab = aDragSession\.sourceNode;)\s+(newTab = this.duplicateTab\(oldTab\);\s+this\.moveTabTo\(newTab, newIndex\);)/,
+            '$1 tabkit.addingTab("unrelated", null, true); $2 tabkit.addingTabOver();',
+            */
+        ]);//}
+        tk.addMethodHook([
+            'gBrowser.onDragOver',//{
+            null,
+            // Firefox 2
+            'var isTabDrag = aDragSession.sourceNode.parentNode == this.mTabContainer;',
+            'var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";',
+            // Firefox 3
+            /var isTabDrag = aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer;/,
+            'var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";'
+        ]);//}
+    };
+    this.preInitListeners.push(this.preInitTabDragModifications);
+    this.postInitTabDragModifications = function postInitTabDragModifications(event) { // TODO=P4: Test
+        gBrowser._pre_tk_onDrop = gBrowser.onDrop;
+        gBrowser.onDrop = tk.onDrop;
+        
+        /*!!gBrowser.duplicateTab = function(aTab) {
+            tabkit.addingTab("unrelated", null, "true"); // Don't let it be moved // Depends on Sorting and Grouping
+            var state = _ss.getWindowState(aTab.ownerDocument.defaultView);
+            state = eval("(" + state + ")");
+            state.windows[0].tabs = state.windows[0].tabs.splice(aTab._tPos, 1);
+            _ss.setWindowState(window, state.toSource(), false);
+            tabkit.addingTabOver(); // Depends on Sorting and Grouping
+
+            return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);
+        };
+
+        gBrowser.__preCDT_onDrop = gBrowser.onDrop;
+        gBrowser.onDrop = function(aEvent, aXferData, aDragSession) {
+            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab")
+            {
+                var oldTab = aDragSession.sourceNode;
+                if (aEvent.ctrlKey)
+                {
+                    tabkit.addingTab("related", oldTab, "true"); // Depends on Sorting and Grouping
+                    var tab = this.duplicateTab(oldTab);
+                    tabkit.addingTabOver(); // Depends on Sorting and Grouping
+                    if (oldTab.parentNode != this.mTabContainer)
+                    {
+                        this.selectedTab = tab;
+                    }
+                    this.moveTabTo(tab, this.getNewIndex(aEvent));
+                    return;
+                }
+                if (oldTab.parentNode != this.mTabContainer)
+                {
+                    this.selectedTab = this.duplicateTab(oldTab);
+                    this.moveTabTo(this.selectedTab, this.getNewIndex(aEvent));
+                    oldTab.ownerDocument.defaultView.gBrowser.removeTab(oldTab);
+                    window.focus();
+                    return;
+                }
+            }
+            gBrowser.__preCDT_onDrop(aEvent, aXferData, aDragSession);
+        };
+
+        gBrowser.__preCDT_onDragOver = gBrowser.onDragOver;
+        gBrowser.onDragOver = function(aEvent, aFlavour, aDragSession) {
+            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab" && aDragSession.sourceNode.parentNode != this.mTabContainer)
+            {
+                aDragSession = { canDrop: aDragSession.canDrop, sourceNode: this.selectedTab };
+            }
+            this.__preCDT_onDragOver(aEvent, aFlavour, aDragSession);
+        };*/
+    };
+    this.postInitListeners.push(this.postInitTabDragModifications);
+    
+    /*!! /// Let Ctrl-Tab switch tabs in most recently viewed order
+    // I would put this under the Gestures section, but it relies on the sorting attributes set here
+    
+<CHANGELOG>
+    
+    * - Can set Ctrl-Tab to switch tabs in most recently viewed order
+    
+<HERE>
+    
+    ADD TO this.initSortingAndGrouping = function initSortingAndGrouping(event) {
+        
+        ...
+        
+        //tk.updateCtrlTabStack();
+        
+        ...
+    
+        //window.addEventListener("keydown", tk.onKeyDown, true);
+        window.addEventListener("keypress", tk.onKeyPress, true);
+        window.addEventListener("keyup", tk.onKeyUp, true);
+        
+        ... 
+        
+    };
+    //this.updateCtrlTabStack = function updateCtrlTabStack(event) {
+    //    gBrowser.mTabBox.handleCtrlTab = 
+    //};
+    this.compareTabViewedExceptUnreadOrSwitching = function compareTabViewedExceptUnreadOrSwitching(aV, bV) {
+        if (Date.now() < aV && Date.now >= bV)
+            return -1;
+        if (Date.now() >= aV && Date.now < bV)
+            return 1;
+        return aV - bV;
+    };
+    this.isCtrlTabSwitching = false;
+    //this.onKeyDown = function onKeyDown(event) {
+    //    if (!event.isTrusted)
+    //        return;
+    //};
+    this.onKeyPress = function onKeyPress(event) {
+        if (!event.isTrusted
+            || event.keyCode != event.DOM_VK_TAB
+            || !event.ctrlKey
+            || event.altKey
+            || event.metaKey
+            || !_prefs.getBoolPref("ctrlTabStack"))
+        {
+            return;
+        }
+        
+        var selectedLastViewed = Number(b.hasAttribute("tempLastViewedKey") ? b.getAttribute("tempLastViewedKey")
+                                                                            : b.getAttribute(tk.Sorts.lastViewed));
+        var beforeSelected;
+        var afterSelected;
+        var 
+        
+        event.stopPropagation();
+        event.preventDefault();
+    };
+    this.onKeyUp = function onKeyUp(event) {
+        if (!event.isTrusted
+            || event.keyCode != event.DOM_VK_CONTROL
+            || !tk.isCtrlTabSwitching)
+        {
+            return;
+        }
+        
+        for (var i = 0; i < _tabs.length; i++)
+            _tabs[i].removeAttribute("tempLastViewedKey");
+        tk.isCtrlTabSwitching = false;
+    };
+    
+<defaults.js>
+    
+    pref("extensions.tabkit.ctrlTabStack", false);
+    
+<settings.xul>
+    
+    <preference id="ctrltabstack-pref" name="extensions.tabkit.ctrlTabStack" type="bool"/>
+    
+    <checkbox id="ctrltabstack" label="&ctrlTabStack.label;"
+        accesskey="&ctrlTabStack.accesskey;" preference="ctrltabstack-pref"/>
+    
+<settings.dtd>
+    
+    <!ENTITY ctrlTabStack.label "Ctrl-Tab switches tabs in most recently viewed order (no change to Ctrl-PageDown)">
+    <!ENTITY ctrlTabStack.accesskey "W">
+    */
+    
     //}##########################
     //{=== Tab Min Width
     //|##########################
 
     /// Initialisation:
     this.initTabMinWidth = function initTabMinWidth(event) {
-        self.addGlobalPrefListener("browser.tabs.tabMinWidth", self.resetTabMinWidth);
+        tk.addGlobalPrefListener("browser.tabs.tabMinWidth", tk.resetTabMinWidth);
     };
     this.initListeners.push(this.initTabMinWidth);
 
     /// Pref Listener/method:
     // Note: this is also used by multi-row tabs
     this.resetTabMinWidth = function resetTabMinWidth(pref) {
-        self.setTabMinWidth(gPrefService.getIntPref("browser.tabs.tabMinWidth"));
+        tk.setTabMinWidth(gPrefService.getIntPref("browser.tabs.tabMinWidth"));
     };
 
     /// Methods:
@@ -4060,7 +5063,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             _tabs[i].minWidth = minWidth;
         }
         _tabContainer.adjustTabstrip();
-    }
+    };
 
     //}##########################
     //{>>> Tab Bar position
@@ -4078,44 +5081,48 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Initialisation:
     this.initTabbarPosition = function initTabbarPosition(event) {
-        // Persist tab bar splitter width
-        var persist = gBrowser.mStrip.getAttribute("persist");
+        /*!!// Persist tab bar splitter width
+        var persist = gBrowser.mStrip.persist;
         if (persist.indexOf("width") == -1) {
             if (persist != "")
-                gBrowser.mStrip.setAttribute("persist", persist + " width");
+                gBrowser.mStrip.persist = persist + " width";
             else
-                gBrowser.mStrip.setAttribute("persist", "width");
-        }
+                gBrowser.mStrip.persist = "width";
+        }*/
         
         var sidebarPosition = _prefs.getIntPref("sidebarPosition");
-        if (sidebarPosition == self.Positions.TOP || sidebarPosition == self.Positions.BOTTOM)
-            self.moveSidebar();
-        self.addPrefListener("sidebarPosition", self.moveSidebar);
+        if (sidebarPosition != tk.Positions.LEFT)
+            tk.moveSidebar();
+        tk.addPrefListener("sidebarPosition", tk.moveSidebar);
         var tabbarPosition = _prefs.getIntPref("tabbarPosition");
-        if (tabbarPosition == self.Positions.LEFT || tabbarPosition == self.Positions.RIGHT)
-            self.moveTabbar();
-        self.addPrefListener("tabbarPosition", self.moveTabbar);
+        if (tabbarPosition != tk.Positions.TOP)
+            tk.moveTabbar();
+        tk.addPrefListener("tabbarPosition", tk.moveTabbar);
 
-        _tabContainer.addEventListener("TabOpen", self.positionedTabbar_onTabOpen, false);
-        _tabContainer.addEventListener("TabSelect", self.positionedTabbar_onTabSelect, false);
-        _tabContainer.addEventListener("TabMove", self.positionedTabbar_onTabSelect, false); // In case a tab is moved out of sight
+        _tabContainer.addEventListener("TabOpen", tk.positionedTabbar_onTabOpen, false);
+        _tabContainer.addEventListener("TabSelect", tk.positionedTabbar_onTabSelect, false);
+        _tabContainer.addEventListener("TabMove", tk.positionedTabbar_onTabSelect, false); // In case a tab is moved out of sight
     };
     this.initListeners.push(this.initTabbarPosition);
 
     /// Event listeners:
     this.positionedTabbar_onTabOpen = function positionedTabbar_onTabOpen(event) {
-        if (document.getElementById("tabkit-splitter")) {
+        if (gBrowser.hasAttribute("vertitabbar") && document.getElementById("tabkit-splitter")) {
             var tab = event.target;
-            tab.maxWidth = 1000;
+            
+            tab.maxWidth = null;
             tab.minWidth = 0;
+            
+            // Ensure newly opened tabs can be seen (even if, in some cases, this may put the selected tab offscreen - TODO=P4: Make sure not to move selected tab offscreen if it is onscreen)
+            window.setTimeout(function() {
+                tk.scrollToElement(_tabInnerBox, tab);
+            }, 0);
         }
-    }
+    };
     this.positionedTabbar_onTabSelect = function positionedTabbar_onTabSelect(event) {
         if (gBrowser.hasAttribute("vertitabbar")) {
             var tab = gBrowser.selectedTab;
-
-            self.scrollToElement(_tabInnerBox, tab);
-
+            
             // Tabs on different rows shouldn't get before/afterselected attributes
             if (tab.previousSibling != null) {
                 tab.previousSibling.removeAttribute("beforeselected");
@@ -4123,12 +5130,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (tab.nextSibling != null) {
                 tab.nextSibling.removeAttribute("afterselected");
             }
+            
+            // Ensure selected tabs become visible (and the tabs before/after if scrollOneExtra)
+            tk.scrollToElement(_tabInnerBox, tab);
         }
     };
     this.positionedTabbar_onResize = function positionedTabbar_onResize(event) {
         var width = parseInt(gBrowser.mStrip.width);
-        if (width < 1000)
-            _prefs.setIntPref("tabSidebarWidth", width);
+        _prefs.setIntPref("tabSidebarWidth", Math.min(width, 576));
     };
 
     /// Methods:
@@ -4136,12 +5145,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (typeof pos != "number") pos = _prefs.getIntPref("sidebarPosition");
 
         // Calculate new orient attributes
-        var flipOrient = (pos == self.Positions.TOP || pos == self.Positions.BOTTOM);
+        var flipOrient = (pos == tk.Positions.TOP || pos == tk.Positions.BOTTOM);
         var fromHorizontal = flipOrient ? "vertical" : "horizontal";
         var fromVertical = flipOrient ? "horizontal" : "vertical";
 
         // Calculate new direction attribute
-        var flipDirection = (pos == self.Positions.RIGHT || pos == self.Positions.BOTTOM);
+        var flipDirection = (pos == tk.Positions.RIGHT || pos == tk.Positions.BOTTOM);
         var fromNormal = flipDirection ? "reverse" : "normal";
 
         // Get some nodes
@@ -4164,31 +5173,31 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
         // Set new attributes
         for each (var node in normallyNormal) 
-            ode.setAttribute("dir", fromNormal);
-        sidebarHeader.setAttribute("pack", flipOrient ? "end" : "start");
+            ode.dir = fromNormal;
+        sidebarHeader.pack = (flipOrient ? "end" : "start");
 
         // Set orient attributes last or stuff messes up
         for each (var node in normallyHorizontal)
-            node.setAttribute("orient", fromHorizontal);
+            node.orient = fromHorizontal;
         for each (var node in normallyVertical)
-            node.setAttribute("orient", fromVertical);
+            node.orient = fromVertical;
 
         // Now activate our css
         gBrowser.removeAttribute("horizsidebar");
         gBrowser.removeAttribute("vertisidebar");
         browser.setAttribute(fromVertical.substring(0, 5) + "sidebar", fromNormal);
-    }
+    };
 
     this.moveTabbar = function moveTabbar(pos) {
         if (typeof pos != "number") pos = _prefs.getIntPref("tabbarPosition");
 
         // Calculate new orient attributes
-        var flipOrient = (pos == self.Positions.LEFT || pos == self.Positions.RIGHT);
+        var flipOrient = (pos == tk.Positions.LEFT || pos == tk.Positions.RIGHT);
         var fromHorizontal = flipOrient ? "vertical" : "horizontal";
         var fromVertical = flipOrient ? "horizontal" : "vertical";
 
         // Calculate new direction attribute
-        var flipDirection = (pos == self.Positions.RIGHT || pos == self.Positions.BOTTOM);
+        var flipDirection = (pos == tk.Positions.RIGHT || pos == tk.Positions.BOTTOM);
         var fromNormal = flipDirection ? "reverse" : "normal";
 
         // Get some nodes
@@ -4217,17 +5226,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         // Set new attributes
         for each (var node in normallyNormal)
-            node.setAttribute("dir", fromNormal);
-        //!!_tabInnerBox.setAttribute("pack", flipOrient ? "start" : "end");//mine
-        //!!_tabContainer.setAttribute("align", flipOrient ? "start" : "stretch");
-        //!!_tabInnerBox.setAttribute("align", flipOrient ? "stretch" : "start");
-        //!!_tabContainer.mAllTabsButton.parentNode.setAttribute("pack", flipOrient ? "end" : "start"); // redundant as we hide this anyway (see css)
+            node.dir = fromNormal;
+        //!!_tabInnerBox.pack = (flipOrient ? "start" : "end");//mine
+        //!!_tabContainer.align = (flipOrient ? "start" : "stretch");
+        //!!_tabInnerBox.align = (flipOrient ? "stretch" : "start");
+        //!!_tabContainer.mAllTabsButton.parentNode.pack = (flipOrient ? "end" : "start"); // redundant as we hide this anyway (see css)
 
         // Set orient attributes last or stuff messes up
         for each (var node in normallyHorizontal)
-            node.setAttribute("orient", fromHorizontal);
+            node.orient = fromHorizontal;
         for each (var node in normallyVertical)
-            node.setAttribute("orient", fromVertical);
+            node.orient = fromVertical;
 
         // Now activate our css
         gBrowser.removeAttribute("horiztabbar");
@@ -4238,51 +5247,46 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var splitter = document.getElementById("tabkit-splitter");
         if (flipOrient) {
             if (!splitter) {
-                if (!tabHbox.hasAttribute("flex"))
-                    tabHbox.setAttribute("flex", "1");
-                if (_tabs[0].maxWidth != 1000) {
-                    for (var i = 0; i < _tabs.length; i++) {
-                        var t = _tabs[i];
-                        t.maxWidth = 1000;
-                        t.minWidth = 0;
-                    }
-                }
+                tabHbox.flex = "1";
+                tabHbox.align = "stretch";
+                
                 splitter = document.createElementNS(XUL_NS, "splitter");
-                splitter.setAttribute("id", "tabkit-splitter");
+                splitter.id = "tabkit-splitter";
                 splitter.appendChild(document.createElementNS(XUL_NS, "grippy"));
                 gBrowser.mTabBox.insertBefore(splitter, gBrowser.mPanelContainer);
+                
                 gBrowser.mStrip.width = _prefs.getIntPref("tabSidebarWidth");
-                gBrowser.mTabBox.addEventListener("resize", self.positionedTabbar_onResize, false);
+                for (var i = 0; i < _tabs.length; i++)
+                    _tabs[i].maxWidth = null;
+                tk.setTabMinWidth(0);
+                gBrowser.mTabBox.addEventListener("resize", tk.positionedTabbar_onResize, false);
             }
-            if ("toggleIndentedTree" in self)
-                self.toggleIndentedTree()
+            if ("toggleIndentedTree" in tk)
+                tk.toggleIndentedTree();
         }
         else {
-            if ("toggleIndentedTree" in self)
-                self.toggleIndentedTree()
+            if ("toggleIndentedTree" in tk)
+                tk.toggleIndentedTree();
             if (splitter) {
-                gBrowser.mTabBox.removeEventListener("resize", self.positionedTabbar_onResize, false);
-                if (_tabs[0].maxWidth == 1000) {
-                    for (var i = 0; i < _tabs.length; i++) {
-                        var t = _tabs[i];
-                        t.maxWidth = 250;
-                        t.minWidth = _tabContainer.mTabMinWidth;
-                    }
-                }
+                tabHbox.removeAttribute("flex");
+                tabHbox.removeAttribute("align");
+                gBrowser.mTabBox.removeEventListener("resize", tk.positionedTabbar_onResize, false);
+                for (var i = 0; i < _tabs.length; i++)
+                    _tabs[i].maxWidth = 250;
+                tk.resetTabMinWidth();
                 gBrowser.mTabBox.removeChild(splitter);
             }
         }
         
-        self.positionedTabbar_onTabSelect();
-    }
+        tk.positionedTabbar_onTabSelect();
+    };
 
     //}##########################
     //{>>> Multi-row tabs
     //|##########################
 
-    // TODO=P3: TMT scrollbar would be nice (though with centered tabs)
     // TODO=P4: Multi-row on hover
-    // TODO=P4: Vertical splitter to adjust [max] no. of rows?
+    // TODO=P3: Vertical splitter to adjust [max] no. of rows?
 
     /// Initialisation:
     this.initMultiRowTabs = function initMultiRowTabs(event) {
@@ -4290,20 +5294,20 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         _tabstrip.addEventListener("overflow", _preventMultiRowFlowEvent, true);
         _tabstrip.addEventListener("underflow", _preventMultiRowFlowEvent, true);
         
-        self.addPrefListener("tabRows", self.updateMultiRowTabs);
-        self.addPrefListener("tabbarPosition", self.updateMultiRowTabs);
-        self.addGlobalPrefListener("browser.tabs.tabMinWidth", self.updateMultiRowTabs);
-        self.addGlobalPrefListener("browser.tabs.closeButtons", self.updateMultiRowTabs);
-        _tabContainer.addEventListener("TabOpen", self.updateMultiRowTabs, false);
-        self.addDelayedEventListener(_tabContainer, "TabClose", self.updateMultiRowTabs);
-        document.addEventListener("SSTabRestoring", self.updateMultiRowTabs, false); // "hidden" attributes might be restored!
-        window.addEventListener("resize", self.updateMultiRowTabs, false);
-        self.appendMethodCode("self.toggleGroupCollapsed", 'self.updateMultiRowTabs();');
+        tk.addPrefListener("tabRows", tk.updateMultiRowTabs);
+        tk.addPrefListener("tabbarPosition", tk.updateMultiRowTabs);
+        tk.addGlobalPrefListener("browser.tabs.tabMinWidth", tk.updateMultiRowTabs);
+        tk.addGlobalPrefListener("browser.tabs.closeButtons", tk.updateMultiRowTabs);
+        _tabContainer.addEventListener("TabOpen", tk.updateMultiRowTabs, false);
+        tk.addDelayedEventListener(_tabContainer, "TabClose", tk.updateMultiRowTabs);
+        document.addEventListener("SSTabRestoring", tk.updateMultiRowTabs, false); // "hidden" attributes might be restored!
+        window.addEventListener("resize", tk.updateMultiRowTabs, false);
+        tk.appendMethodCode("tk.toggleGroupCollapsed", 'tk.updateMultiRowTabs();');
 
-        _tabContainer.addEventListener("TabSelect", self.multiRow_onTabSelect, false);
-        _tabContainer.addEventListener("TabMove", self.multiRow_onTabSelect, false); // In case a tab is moved out of sight
+        _tabContainer.addEventListener("TabSelect", tk.multiRow_onTabSelect, false);
+        _tabContainer.addEventListener("TabMove", tk.multiRow_onTabSelect, false); // In case a tab is moved out of sight
         
-        self.updateMultiRowTabs();
+        tk.updateMultiRowTabs();
         
         // Setup new drop indicator (this way it can be moved up and down as well as left and right)
         var oldIndicatorBar = gBrowser.mTabBox.firstChild;
@@ -4312,7 +5316,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var oldStyle = window.getComputedStyle(oldIndicator, null);
         var newDropIndicatorBar = document.createElementNS(XUL_NS, "hbox");
         var newDropIndicator = document.createElementNS(XUL_NS, "hbox");
-        newDropIndicatorBar.setAttribute("id", "tabkit-tab-drop-indicator-bar");
+        newDropIndicatorBar.id = "tabkit-tab-drop-indicator-bar";
         //newDropIndicatorBar.setAttribute("dragging", oldIndicatorBar.getAttribute("dragging")); // This shouldn't be the case
         newDropIndicator.setAttribute("mousethrough", "always");
         newDropIndicatorBar.style.height = oldBarStyle.height;
@@ -4349,16 +5353,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //!!~ function _doUpdateMultiRowTabs() {
         //!!~ _updateMultiRowTabsTimer = false;
         var tabbarPosition = _prefs.getIntPref("tabbarPosition");
-        if ((tabbarPosition == self.Positions.TOP || tabbarPosition == self.Positions.BOTTOM) && _prefs.getIntPref("tabRows") > 1) {
+        var needsDisabling = false;
+        if ((tabbarPosition == tk.Positions.TOP || tabbarPosition == tk.Positions.BOTTOM) && _prefs.getIntPref("tabRows") > 1) {
             if (!gBrowser.getStripVisibility()) {
                 var rows = 0;
             }
             else {
                 var visibleTabs = _tabs.length;
-                //!!if (typeof arg == "object" && "type" in arg && arg.type == "TabClose" && arg.target.getAttribute("hidden") != "true")
+                //!!if (typeof arg == "object" && "type" in arg && arg.type == "TabClose" && !arg.target.hidden)
                 //!!    visibleTabs--;
                 for (var i = 0; i < _tabs.length; i++)
-                    if (_tabs[i].getAttribute("hidden") == "true")
+                    if (_tabs[i].hidden)
                         visibleTabs--;
                 var availWidth = _tabstrip._scrollbox.boxObject.width;
                 var tabsPerRow = Math.floor(availWidth / gPrefService.getIntPref("browser.tabs.tabMinWidth"));
@@ -4382,7 +5387,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     _tabstrip.style.setProperty("max-height", 24 * maxRows + "px", "important");
 
                     try {
-                        _tabInnerBox.mVerticalScrollbar.removeEventListener("DOMAttrModified", self.preventChangeOfAttributes, true);
+                        _tabInnerBox.mVerticalScrollbar.removeEventListener("DOMAttrModified", tk.preventChangeOfAttributes, true);
                     }
                     catch (ex) {
                         // It wasn't set...
@@ -4390,12 +5395,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     try {
                         _tabInnerBox.mVerticalScrollbar.setAttribute("increment", 24);
                         _tabInnerBox.mVerticalScrollbar.setAttribute("pageincrement", 48);
-                        _tabInnerBox.mVerticalScrollbar.addEventListener("DOMAttrModified", self.preventChangeOfAttributes, true);
+                        _tabInnerBox.mVerticalScrollbar.addEventListener("DOMAttrModified", tk.preventChangeOfAttributes, true);
                         
                         availWidth -= _tabInnerBox.mVerticalScrollbar.boxObject.width;
                     }
                     catch (ex) {
-                        // Oops, the scrollbar hasn't been created yet... TODO-P6: use a timeout
+                        tk.debug("Oops, the scrollbar hasn't been created yet... TODO-P6: use a timeout");
                         availWidth -= 22;
                     }
                 }
@@ -4406,50 +5411,43 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     _tabstrip.style.setProperty("max-height", 24 * rows + "px", "important");
                 }
 
-                self.setTabMinWidth(availWidth / tabsPerRow);
+                tk.setTabMinWidth(availWidth / tabsPerRow);
                 
                 if (rows > maxRows)
-                    self.multiRow_onTabSelect(); // Check if we need to scroll
+                    tk.multiRow_onTabSelect(); // Check if we need to scroll
             }
             else {
                 // Disable multi-row tabs
-                self.resetTabMinWidth();
-
-                var needsScrolling = (_tabContainer.getAttribute("multirow") == "true");
+                if (_tabContainer.getAttribute("multirow") == "true")
+                    needsDisabling = true;
+                    var needsScrolling = true;
                 _tabContainer.setAttribute("multirow", "false");
-
-                if (needsScrolling) {
-                    try {
-                        if (gBrowser.mCurrentTab.nextSibling && _prefs.getBoolPref("scrollOneExtra")) {
-                            _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab.nextSibling);
-                        }
-                        _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab);
-                    }
-                    catch (ex) {}
-                }
-
-                _tabstrip.style.removeProperty("min-height");
-                _tabstrip.style.removeProperty("max-height");
             }
         }
-        else {
+        else if (_tabContainer.hasAttribute("multirow")) {
             // Turn off multi-row tabs
-            self.resetTabMinWidth();
-
+            needsDisabling = true;
             var needsScrolling = (_tabContainer.getAttribute("multirow") == "true");
             _tabContainer.removeAttribute("multirow");
-
+        }
+        
+        if (needsDisabling) {
+            tk.resetTabMinWidth();
+            
             if (needsScrolling) {
-                if (gBrowser.mCurrentTab.nextSibling && _prefs.getBoolPref("scrollOneExtra")) {
-                    _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab.nextSibling);
+                try {
+                    if (gBrowser.selectedTab.nextSibling && _prefs.getBoolPref("scrollOneExtra")) {
+                        _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.selectedTab.nextSibling);
+                    }
+                    _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.selectedTab);
                 }
-                _tabstrip._scrollBoxObject.ensureElementIsVisible(gBrowser.mCurrentTab);
+                catch (ex) {}
             }
-
+            
             _tabstrip.style.removeProperty("min-height");
             _tabstrip.style.removeProperty("max-height");
         }
-    }
+    };
 
     this.preventChangeOfAttributes = function preventChangeOfAttributes(event) {
         if (event.attrName == "increment") {
@@ -4461,13 +5459,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             _tabInnerBox.mVerticalScrollbar.setAttribute("pageincrement", 48);
             event.stopPropagation();
         }
-    }
+    };
 
     this.multiRow_onTabSelect = function multiRow_onTabSelect() {
         if (_tabContainer.getAttribute("multirow") == "true") {
             var tab = gBrowser.selectedTab;
 
-            self.scrollToElement(_tabInnerBox, tab);
+            tk.scrollToElement(_tabInnerBox, tab);
 
             // Tabs on different rows shouldn't get before/afterselected attributes
             if (tab.previousSibling != null && tab.boxObject.y != tab.previousSibling.boxObject.y) {
@@ -4611,10 +5609,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Initialisation:
     this.initHighlightUnreadTabs = function initHighlightUnreadTabs(event) {
-        self.mapBoolPrefToAttribute("highlightUnreadTabs", _tabContainer, "highlightunread");
-        self.mapBoolPrefToAttribute("emphasizeCurrentTab", _tabContainer, "emphasizecurrent");
+        tk.mapBoolPrefToAttribute("highlightUnreadTabs", _tabContainer, "highlightunread");
+        tk.mapBoolPrefToAttribute("emphasizeCurrentTab", _tabContainer, "emphasizecurrent");
 
-        _tabContainer.addEventListener("TabSelect", self.tabRead, false);
+        _tabContainer.addEventListener("TabSelect", tk.tabRead, false);
 
         if (_ss)
             _ss.persistTabAttribute("read"); // So restored sessions remember which tabs have been read
@@ -4630,7 +5628,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.tabRead = function tabRead(event) {
         var tab = event.target; //!! Or gBrowser.selectedTab ?
         tab.setAttribute("read", "true");
-    }
+    };
 
     //}##########################
     //{=== Mouse Gestures
@@ -4643,15 +5641,39 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Initialisation:
     this.initMouseGestures = function initMouseGestures(event) {
-        gBrowser.addEventListener("mouseup", self.onMouseUpGesture, true);
-        gBrowser.addEventListener("mousedown", self.onMouseDownGesture, true);
-        gBrowser.addEventListener("contextmenu", self.onContextMenuGesture, true);
-        gBrowser.addEventListener("draggesture", self.onMouseDragGesture, true);
-        gBrowser.addEventListener("mouseout", self.onMouseOutGesture, false);
-        gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", self.onRMBWheelGesture, true);
-        _tabInnerBox.addEventListener("DOMMouseScroll", self.onTabWheelGesture, true);
-        _tabContainer.mTabstripClosebutton.addEventListener("DOMMouseScroll", self.onTabWheelGesture, true);
+        gBrowser.addEventListener("mouseup", tk.onMouseUpGesture, true);
+        gBrowser.addEventListener("mousedown", tk.onMouseDownGesture, true);
+        gBrowser.addEventListener("contextmenu", tk.onContextMenuGesture, true);
+        gBrowser.addEventListener("draggesture", tk.onMouseDragGesture, true);
+        gBrowser.addEventListener("mouseout", tk.onMouseOutGesture, false);
+        gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", tk.onRMBWheelGesture, true);
+        _tabInnerBox.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
+        _tabContainer.mTabstripClosebutton.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.addEventListener("TabSelect", function(event) { _mouseScrollWrapCounter = 0; }, false);
+        
+        // Move Close Tab Before/After to the tab context menu (from the Tools menu)
+        var tabContextMenu = gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0];
+        for (var i = 0; i < tabContextMenu.childNodes.length; i++) {
+            var el = tabContextMenu.childNodes[i];
+            if (el.getAttribute("oncommand").indexOf("removeAllTabsBut") != -1) {
+                tabContextMenu.insertBefore(document.getElementById("menu_tabkit-closeTabsToLeft"), el);
+                tabContextMenu.insertBefore(document.getElementById("menu_tabkit-closeTabsToRight"), el);
+                tabContextMenu.insertBefore(document.getElementById("menu_tabkit-closeTabsAbove"), el);
+                tabContextMenu.insertBefore(document.getElementById("menu_tabkit-closeTabsBelow"), el);
+                
+                tk.addMethodHook([
+                    'gBrowser.warnAboutClosingTabs',//{
+                    null,
+                    'numTabs = this.mTabContainer.childNodes.length;',
+                    'numTabs = (typeof aAll == "number" ? aAll : this.mTabContainer.childNodes.length);'
+                ]);//}
+                
+                tk.mapBoolPrefToAttribute("closeBeforeAfterNotOther", gBrowser, "closebeforeafternotother");
+                
+                return;
+            }
+        }
+        tk.dump("Could not find removeAllTabsBut");
     };
     this.initListeners.push(this.initMouseGestures);
 
@@ -4721,7 +5743,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (!event.isTrusted || !_mousedown[2] || !_prefs.getBoolPref("gestures.rmbWheelTabSwitch"))
             return;
 
-        self.scrollwheelTabSwitch(event);
+        tk.scrollwheelTabSwitch(event);
         if (event.change != 0)
             _preventContext = true;
     };
@@ -4754,7 +5776,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             event.stopPropagation();
         }
         else if (_prefs.getBoolPref("gestures.tabWheelTabSwitch")) {
-            self.scrollwheelTabSwitch(event);
+            tk.scrollwheelTabSwitch(event);
         }
     };
 
@@ -4782,6 +5804,21 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         event.stopPropagation();
     };
 
+    this.removeTabsBefore = function removeTabsBefore(contextTab) {
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        if (gBrowser.warnAboutClosingTabs(contextTab._tPos))
+            for (var i = contextTab._tPos - 1; i >= 0; i--)
+                gBrowser.removeTab(_tabs[i]);
+    };
+    this.removeTabsAfter = function removeTabsAfter(contextTab) {
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        if (gBrowser.warnAboutClosingTabs(_tabs.length - contextTab._tPos - 1))
+            for (var i = _tabs.length - 1; i > contextTab._tPos; i--)
+                gBrowser.removeTab(_tabs[i]);
+    };
+    
     //}##########################
     //{=== Scrollbars not arrows
     //|##########################
@@ -4796,151 +5833,25 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Initialisation:
     this.initScrollbarsNotArrows = function initScrollbarsNotArrows(event) {
-        //self.mapBoolPrefToAttribute("scrollbarsNotArrows", document.getElementById("main-window"), "scrollbarsnotarrows"); // disabling the attribute didn't disable the overflow auto, so it's best to only apply changes to new windows
+        //tk.mapBoolPrefToAttribute("scrollbarsNotArrows", document.getElementById("main-window"), "scrollbarsnotarrows"); // disabling the attribute didn't disable the overflow auto, so it's best to only apply changes to new windows
         if (_prefs.getBoolPref("scrollbarsNotArrows"))
             document.getElementById("main-window").setAttribute("scrollbarsnotarrows", "true");
-        self.addDelayedEventListener(_tabContainer.mAllTabsPopup, "popupshowing", self.scrollAllTabsMenu);
+        tk.addDelayedEventListener(_tabContainer.mAllTabsPopup, "popupshowing", tk.scrollAllTabsMenu);
     };
     this.initListeners.push(this.initScrollbarsNotArrows);
 
     /// Event Listeners:
     this.scrollAllTabsMenu = function scrollAllTabsMenu(event) {
         if (!_allTabsInnerBox) {
-            var arrowScrollBox = _tabContainer.mAllTabsPopup.popupBoxObject.firstChild
+            var arrowScrollBox = _tabContainer.mAllTabsPopup.popupBoxObject.firstChild;
             if (!arrowScrollBox) {
-                self.dump("_tabContainer.mAllTabsPopup.popupBoxObject.firstChild is null");
+                tk.dump("_tabContainer.mAllTabsPopup.popupBoxObject.firstChild is null");
                 return;
             }
             _allTabsInnerBox = document.getAnonymousElementByAttribute(arrowScrollBox._scrollbox, "class", "box-inherit scrollbox-innerbox");
         }
-        self.scrollToElement(_allTabsInnerBox, gBrowser.mCurrentTab.mCorrespondingMenuitem);
-    }
-
-    //}##########################
-    //{=== Bug 298571: Tab DnD+
-    //|##########################
-    
-    // Implement Bug 298571 – support tab duplication (using ctrl) on tab drag and drop
-    // Based on Simon Bünzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
-
-    this.initCopyDraggedTab = function initCopyDraggedTab(event) { // TODO=P3: Test
-        if ("duplicateTab" in gBrowser)
-            return; // Don't duplicate existing implementations of this
-
-        gBrowser.duplicateTab = function duplicateTab(aTab) {
-            if (_ss) {
-                // try to have SessionStore serialize the given tab
-                try {
-                    var tabState = _ss.getWindowState(aTab.ownerDocument.defaultView);
-                    tabState = eval("(" + tabState + ")");
-
-                    // get the information for just the one tab and append it to this tabbrowser
-                    tabState.windows[0].tabs = tabState.windows[0].tabs.splice(aTab._tPos, 1);
-                    _ss.setWindowState(window, tabState.toSource(), false);
-
-                    // return the tab belonging to the most recently added browser
-                    return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);
-                }
-                catch (ex) { /* fall back to basic URL copying */ }
-            }
-
-            return this.loadOneTab(this.getBrowserForTab(aTab).currentURI.spec);
-        };
-        
-        self.addMethodHook([
-            'gBrowser.onDragOver',
-            null,
-            'var isTabDrag = aDragSession.sourceNode.parentNode == this.mTabContainer;',
-            'var isTabDrag = aDragSession.sourceNode.localName == "tab";'
-        ]);
-        
-        self.addMethodHook([
-            'gBrowser.onDrop',
-            null,
-            /if \(aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer\) {/,
-            'var copyKeyHit = (navigator.platform.indexOf("Mac") == -1) ? aEvent.ctrlKey : aEvent.metaKey; \
-            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab" && \
-                (aDragSession.sourceNode.parentNode == this.mTabContainer || copyKeyHit)) {',
-            /var oldIndex = aDragSession.sourceNode\._tPos;\s+if \(newIndex > oldIndex\) {\s+newIndex--;\s+}\s+if \(newIndex != oldIndex\) {\s+this\.moveTabTo\(this\.mTabs\[oldIndex\], newIndex\);\s+}/,
-            '    var oldTab = aDragSession.sourceNode; \
-                if (copyKeyHit) { \
-                    var newTab = this.duplicateTab(oldTab); \
-                    this.moveTabTo(newTab, newIndex); \
-                    if (oldTab.parentNode != this.mTabContainer || aEvent.shiftKey) \
-                        this.selectedTab = newTab; \
-                } \
-                else { \
-                    if (newIndex > oldTab._tPos) \
-                        newIndex--; \
-                    if (newIndex != oldTab._tPos) \
-                        this.moveTabTo(oldTab, newIndex); \
-                } \
-            } \
-            else if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab") { \
-                newIndex = this.getNewIndex(aEvent); \
-                oldTab = aDragSession.sourceNode; \
-                newTab = this.duplicateTab(oldTab); \
-                this.moveTabTo(newTab, newIndex); \
-                this.selectedTab = newTab; \
-                oldTab.ownerDocument.defaultView.getBrowser().removeTab(oldTab); \
-                window.focus();',
-            /if \(document\.getBindingParent\(aEvent\.originalTarget\)\.localName != "tab"\) {\s+this\.loadOneTab\(getShortcutOrURI\(url\), null, null, null, bgLoad, false\);/,
-            'if (document.getBindingParent(aEvent.originalTarget).localName != "tab" || copyKeyHit) { \
-            newIndex = this.getNewIndex(aEvent); \
-            newTab = this.loadOneTab(getShortcutOrURI(url), null, null, null, bgLoad, false); \
-            this.moveTabTo(newTab, newIndex);'
-        ]);
-    
-        /*!!gBrowser.duplicateTab = function(aTab) {
-            tabkit.addingTab("unrelated", null, "true"); // Don't let it be moved // Depends on Sorting and Grouping
-            var state = _ss.getWindowState(aTab.ownerDocument.defaultView);
-            state = eval("(" + state + ")");
-            state.windows[0].tabs = state.windows[0].tabs.splice(aTab._tPos, 1);
-            _ss.setWindowState(window, state.toSource(), false);
-            tabkit.addingTabOver(); // Depends on Sorting and Grouping
-
-            return document.getAnonymousElementByAttribute(this, "linkedpanel", this.mPanelContainer.lastChild.id);
-        };
-
-        gBrowser.__preCDT_onDrop = gBrowser.onDrop;
-        gBrowser.onDrop = function(aEvent, aXferData, aDragSession) {
-            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab")
-            {
-                var oldTab = aDragSession.sourceNode;
-                if (aEvent.ctrlKey)
-                {
-                    tabkit.addingTab("related", oldTab, "true"); // Depends on Sorting and Grouping
-                    var tab = this.duplicateTab(oldTab);
-                    tabkit.addingTabOver(); // Depends on Sorting and Grouping
-                    if (oldTab.parentNode != this.mTabContainer)
-                    {
-                        this.selectedTab = tab;
-                    }
-                    this.moveTabTo(tab, this.getNewIndex(aEvent));
-                    return;
-                }
-                if (oldTab.parentNode != this.mTabContainer)
-                {
-                    this.selectedTab = this.duplicateTab(oldTab);
-                    this.moveTabTo(this.selectedTab, this.getNewIndex(aEvent));
-                    oldTab.ownerDocument.defaultView.gBrowser.removeTab(oldTab);
-                    window.focus();
-                    return;
-                }
-            }
-            gBrowser.__preCDT_onDrop(aEvent, aXferData, aDragSession);
-        };
-
-        gBrowser.__preCDT_onDragOver = gBrowser.onDragOver;
-        gBrowser.onDragOver = function(aEvent, aFlavour, aDragSession) {
-            if (aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab" && aDragSession.sourceNode.parentNode != this.mTabContainer)
-            {
-                aDragSession = { canDrop: aDragSession.canDrop, sourceNode: this.selectedTab };
-            }
-            this.__preCDT_onDragOver(aEvent, aFlavour, aDragSession);
-        };*/
+        tk.scrollToElement(_allTabsInnerBox, gBrowser.selectedTab.mCorrespondingMenuitem);
     };
-    this.initListeners.push(this.initCopyDraggedTab);
 
     //}##########################
     //{### Debug Aids
@@ -4975,7 +5886,7 @@ variables/arrays/objects after their definition but can be refered to by
 functions at any time.
 
 
-/*** Snippets ***
+**** Snippets ***
 
 if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpoint requires QuickPrompt extension
 
@@ -4985,7 +5896,12 @@ loadscript("file:///C:/Coding/Code/Firefox/Extensions/tabkit/xpi/chrome/content/
 
 
 
-tabkit._eval('for (var i = 0; i < _tabs.length; i++) { var t=_tabs[i]; self.setGID(t, tabkit.generateId()); }');
+// Rainbow tabs
+tabkit._eval('var inc = 30; var hue = 0; var groups = tk.getAllGroups(); for (var gid in groups) { tk.setWindowValue("knownColor:"+gid, "hsl("+hue+", 100%, 75%)"); hue += inc; for each (var t in groups[gid]) tk.colorizeTab(t); }')
+
+
+
+tabkit._eval('for (var i = 0; i < _tabs.length; i++) { var t=_tabs[i]; tk.setGID(t, tabkit.generateId()); }');
 
 
 
@@ -5017,7 +5933,7 @@ var progressListener = {
         var doc = aProgress.DOMWindow.document;
         var tab = gBrowser.mTabs[gBrowser.getBrowserIndexForDocument(doc)];
         
-        self.setTabUriKey(tab);
+        tk.setTabUriKey(tab);
     },
     onProgressChange: function() {},
     onSecurityChange: function() {},
