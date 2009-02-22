@@ -1,0 +1,243 @@
+/**
+ * Tab Kit
+ * http://jomel.me.uk/software/firefox/tabkit/
+ */
+ 
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+/*************************
+ * Emphasize unread tabs *
+ *************************/
+
+.tabbrowser-tabs[highlightunread][colortabsnotlabels] .tabbrowser-tab:not([read]) > * {
+	background-color: yellow !important;
+}
+.tabbrowser-tabs[highlightunread]:not([colortabsnotlabels]) .tabbrowser-tab:not([read]) .tab-text {
+	background-color: yellow !important;
+}
+
+.tabbrowser-tabs[highlightunread] .tabbrowser-tab:not([read]) .tab-text {
+	font-style: italic !important;
+}
+.tabbrowser-tabs[highlightunread] .tabbrowser-tab[read] .tab-text {
+	font-style: normal !important; /* just in case themes use italic by default! */
+}
+
+/************************************************************
+ * Hack to expose overflow scrollbars for Javascript access *
+ ************************************************************/
+
+.tabbrowser-tabs scrollbar {
+	-moz-binding: url(chrome://tabkit/content/bindings.xml#scrollbar);
+}
+
+/******************************
+ * Tab bar & sidebar position *
+ ******************************/
+
+/*
+stack					H #browser-stack
+ hbox					H #browser
+  vbox					V #sidebar-box
+  splitter				H #sidebar-splitter
+  vbox					V #appcontent
+   tabbrowser			H #content							gBrowser
+    tabbox				V   > tabbox						gBrowser.mTabBox
+     hbox				H .tabbrowser-strip					gBrowser.mStrip
+      tabs				H .tabbrowser-tabs					_tabContainer
+       stack			H .tabs-stack
+        vbox			V   > vbox:last-child
+         hbox			H   > vbox:last-child > hbox
+          arrowscrollboxH .tabbrowser-arrowscrollbox		_tabstrip
+           scrollbox	H   > scrollbox
+            box			H .box-inherit scrollbox-innerbox	_tabInnerBox
+             tab		H 
+     tabpanels          H
+*/
+
+/* Inspired by Kurt Schultz (supernova_00): http://www.supernova00.biz/userchrome.html */
+
+/* Note:
+ * All the -moz-box-* properties set below are mainly for reference
+ * The real work goes on in the JS that sets their corresponding attributes
+ */
+
+/* This is set by JS. If you set both they cancel out!! */
+/*#browser[vertisidebar="reverse"],
+#browser[horizsidebar="reverse"],
+#browser[horizsidebar] > #sidebar-box > sidebarheader {
+	-moz-box-direction: reverse !important;
+}*/
+
+#browser[horizsidebar],
+#browser[horizsidebar] > #sidebar-splitter,
+#browser[horizsidebar] > #sidebar-box > sidebarheader {
+	-moz-box-orient: vertical !important;
+}
+#browser[horizsidebar] > #sidebar-box,
+#browser[horizsidebar] > #appcontent {
+	-moz-box-orient: horizontal !important;
+}
+
+#browser[horizsidebar] > #sidebar-box > sidebarheader {
+	-moz-box-pack: end !important;
+	border-left: 1px solid ThreeDHighlight !important;
+	margin-left: 1px !important;
+}
+#browser[horizsidebar] > #sidebar-box .tabs-closebutton > .toolbarbutton-icon {
+	padding: 4px 2px !important;
+}
+#browser[horizsidebar] #sidebar-title {
+	display: none !important;
+}
+#browser[horizsidebar] #sidebar-throbber {
+	margin-left: 4px !important;
+}
+#browser[horizsidebar] #sidebar {
+	width: inherit !important;
+	max-width: inherit !important;
+	height: 200px !important;
+	min-height: 150px !important;
+}
+
+/* Inspired by Stephen Clavering (clav): http://forums.mozillazine.org/viewtopic.php?p=238798#238798 */
+
+/* Note:
+ * All the -moz-box-* properties set below are mainly for reference
+ * The real work goes on in the JS that sets their corresponding attributes
+ * (except .tabbrowser-tab { -moz-box-align })
+ */
+
+/* This is set by JS. If you set both they cancel out!! */
+/*#content[horiztabbar="reverse"] > tabbox,
+#content[vertitabbar="reverse"] > tabbox {
+	-moz-box-direction: reverse !important;
+}*/
+
+#content[vertitabbar] > tabbox,
+#content[vertitabbar] .tabs-stack > vbox:last-child {
+	-moz-box-orient: horizontal !important;
+	max-height: none !important;
+}
+#content[vertitabbar],
+#content[vertitabbar] > tabbox > .tabbrowser-strip,
+#content[vertitabbar] .tabbrowser-tabs,
+#content[vertitabbar] .tabs-stack,
+#content[vertitabbar] .tabs-stack > vbox:last-child > hbox,
+#content[vertitabbar] .tabbrowser-arrowscrollbox,
+#content[vertitabbar] .tabbrowser-arrowscrollbox > scrollbox,
+#content[vertitabbar] .tabbrowser-arrowscrollbox > scrollbox > .scrollbox-innerbox,
+#content[vertitabbar] > tabbox > tabpanels {
+	-moz-box-orient: vertical !important;
+	max-height: none !important;	
+}
+
+/*#content[vertitabbar] .tabbrowser-tabs {
+	-moz-box-align: start !important;
+}*/
+#content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
+	/* -moz-box-align: stretch !important; */
+	overflow-x: hidden !important;
+	overflow-y: auto !important;
+}
+#content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbutton-up,
+#content[vertitabbar] .tabbrowser-arrowscrollbox .scrollbutton-down-stack {
+	display: none !important;
+}
+#content[vertitabbar] .tabbrowser-tab {
+	min-width: 25ex !important; /* TODO: allow customization. splitter? */
+	min-height: 24px !important;
+	max-height: 24px !important;
+	/*-moz-box-orient: horizontal !important;*/ /* not done by JS */
+	/*-moz-box-align: start !important;*/ /* not done by JS */
+}
+
+/* The All Tabs button is redundant since the vertical tab bar is a permanent
+ * equivalent to the All Tabs popup.
+ * There's nowhere pretty for a single close button to go - close buttons ought
+ * to go on tabs or nowhere (and anyone who's changed browser.tabs.closeButtons
+ * will know about Ctrl-W or Ctrl/middle-clicking anyway...)
+ */
+#content[vertitabbar] .tabs-alltabs-stack,
+#content[vertitabbar] .tabs-closebutton-box {
+	display: none; /* Not !important though, allow user to override */
+}
+
+/* Hide bottom border */
+#content[vertitabbar] .tabs-stack > vbox:first-child {
+	display: none !important;
+}
+
+#content[vertitabbar] .tabbrowser-tabs {
+	/* Background was designed for repeat-y, and looks ugly when tiled vertically */
+	background-image: none !important;
+	/* Pretending that the tab bar is a tabpanel is quite pretty under Windows,
+	 * and while somewhat illogical should never look awful.
+	 * Not !important though, allow user to override! */
+	-moz-appearance: tabpanels;
+}
+
+/************************
+ * Sorting and Grouping *
+ ************************/
+
+.tabbrowser-tab[collapsedgroup] {
+	text-decoration: underline;
+	/* Also give it a plus symbol... */
+}
+
+/******************
+ * Multi-row tabs *
+ ******************/
+
+.tabbrowser-tabs[multirow="true"] {
+	max-height: none !important;
+}
+
+.tabbrowser-tabs[multirow] .tabbrowser-arrowscrollbox .scrollbutton-up,
+.tabbrowser-tabs[multirow] .tabbrowser-arrowscrollbox .scrollbutton-down-stack {
+	display: none !important;
+}
+
+.tabbrowser-tabs[multirow="true"] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
+	display: block !important; /* or table ? */
+}
+
+.tabbrowser-tabs[multirow="true"][multirowscroll] .tabbrowser-arrowscrollbox .scrollbox-innerbox {
+	overflow-y: auto !important;
+	/* note that min/max-height will be set to 24*rows too */
+}
+
+.tabbrowser-tabs[multirow] .tabbrowser-tab {
+	min-height: 24px !important;
+	max-height: 24px !important;
+	/*max-height: none !important;
+	min-height: 0 !important;*/
+	/*min-width: 0 !important;*/
+	/*vertical-align: bottom;*/
+}
+
+/* Center All Tabs button */
+.tabbrowser-tabs .tabs-stack > vbox:last-child > hbox {
+	-moz-box-align: center !important;
+}
+.tabbrowser-tabs .tabs-alltabs-stack {
+	max-height: 29px !important;
+}
+
+/* Hide bottom border as it doesn't work graphically with multiple rows of tabs TODO: find a way to replace it? */
+.tabbrowser-tabs[multirow="true"] .tabs-stack > vbox:first-child {
+	display: none !important;
+}
+
+/*************************
+ * Scrollbars not arrows *
+ *************************/
+
+#main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > scrollbox > .scrollbox-innerbox {
+	overflow-y: auto !important;
+}
+#main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > .autorepeatbutton-up,
+#main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > .autorepeatbutton-down {
+	display: none !important;
+}

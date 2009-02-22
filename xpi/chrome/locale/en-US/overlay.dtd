@@ -1,0 +1,82 @@
+<!ENTITY tabTree "Tab Tree">
+<!ENTITY tabTree.contextMenu.accesskey "E">
+
+<!ENTITY tabTree.tabGroupCmd.label "New Tab Group">
+<!ENTITY tabTree.tabGroupCmd.tooltip "Open a new tab group">
+<!ENTITY tabTree.tabGroupCmd.accesskey "G">
+
+<!ENTITY tabTree.mergeLeft.label "Merge With Previous Group">
+<!ENTITY tabTree.mergeLeft.commandkey ",">
+<!ENTITY tabTree.mergeLeft.accesskey "P">
+<!ENTITY tabTree.mergeRight.label "Merge With Next Group">
+<!ENTITY tabTree.mergeRight.commandkey ".">
+<!ENTITY tabTree.mergeRight.accesskey "N">
+<!ENTITY tabTree.splitGroup.label "Split Group Here">
+<!ENTITY tabTree.splitGroup.commandkey "/">
+<!ENTITY tabTree.splitGroup.accesskey "S">
+
+<!ENTITY tabTree.mergeAll.label "Merge All Groups">
+<!ENTITY tabTree.mergeAll.accesskey "A">
+<!ENTITY tabTree.groupByDomain.label "Group Tabs By Domain">
+<!ENTITY tabTree.groupByDomain.accesskey "D">
+
+<!ENTITY options.title "Tab Tree Options">
+
+<!ENTITY options.general.title "General">
+<!ENTITY options.tabsOpen.label "Related tabs open:">
+<!ENTITY options.tabsOpen.accesskey "R">
+<!ENTITY options.tabsOpen.endOfChildren.label "At end of current tab's children">
+<!ENTITY options.tabsOpen.startOfChildren.label "At start of current tab's children">
+<!ENTITY options.tabsOpen.tabbarEnd.label "At end of tabbar">
+<!ENTITY options.unrelatedTabsOpen.label "Unrelated tabs open:">
+<!ENTITY options.unrelatedTabsOpen.accesskey "U">
+<!ENTITY options.unrelatedTabsOpen.tabbarEnd.label "At end of tabbar">
+<!ENTITY options.unrelatedTabsOpen.next.label "To right of current group">
+<!ENTITY options.selectOnClose.label "On closing active tab:">
+<!ENTITY options.selectOnClose.accesskey "C">
+<!ENTITY options.selectOnClose.automatic.label "Auto-select (afterwards if it's a child or sibling, otherwise before)">
+<!ENTITY options.selectOnClose.left.label "Select the previous tab (left by default)">
+<!ENTITY options.selectOnClose.right.label "Select the next tab (right by default)">
+
+<!ENTITY options.tabbar.title "Tab bar">
+<!ENTITY options.tabBarPosition.label "Tab bar position:">
+<!ENTITY options.tabBarPosition.accesskey "T">
+<!ENTITY options.tabBarPosition.top.label "Top">
+<!ENTITY options.tabBarPosition.left.label "Left">
+<!ENTITY options.tabBarPosition.right.label "Right">
+<!ENTITY options.tabBarPosition.bottom.label "Bottom">
+<!ENTITY options.sidebarPosition.label "Sidebar position:">
+<!ENTITY options.sidebarPosition.accesskey "S">
+<!ENTITY options.sidebarPosition.top.label "Top">
+<!ENTITY options.sidebarPosition.left.label "Left">
+<!ENTITY options.sidebarPosition.right.label "Right">
+<!ENTITY options.sidebarPosition.bottom.label "Bottom">
+<!ENTITY options.tabBarWidth.label "Tab bar width:">
+<!ENTITY options.tabBarWidth.accesskey "W">
+<!ENTITY options.showTwistys.label "Show minus buttons on tabs with children">
+<!ENTITY options.showTwistys.accesskey "M">
+
+<!ENTITY options.style.title "Style">
+<!ENTITY options.color.label "Color:">
+<!ENTITY options.color.accesskey "C">
+<!ENTITY options.color.nothing.label "nothing">
+<!ENTITY options.color.groups.label "each tab group">
+<!ENTITY options.color.eachTab.label "each tab individually">
+<!ENTITY options.darkenChildren.label "Darken children to indicate how many levels of parents they have">
+<!ENTITY options.darkenChildren.accesskey "D">
+<!ENTITY options.emphasizeGroups.label "Emphasize tab group boundaries">
+<!ENTITY options.emphasizeGroups.accesskey "E">
+<!ENTITY options.darkTheme.label "Check this if you use a dark theme">
+<!ENTITY options.darkTheme.accesskey "H">
+
+<!ENTITY options.advanced.title "Advanced">
+<!ENTITY options.resetAll.label "Reset All">
+<!ENTITY options.resetAll.accesskey "R">
+<!ENTITY options.doubleClickModifiers.caption "Tab double-click modifiers:">
+<!ENTITY options.doubleClickModifiers.accesskey "D">
+<!ENTITY options.groupDragModifiers.caption "Tab group drag modifiers (select at least one):">
+<!ENTITY options.groupDragModifiers.accesskey "G">
+<!ENTITY options.ctrl.label "Ctrl">
+<!ENTITY options.alt.label "Alt">
+<!ENTITY options.shift.label "Shift">
+<!ENTITY options.meta.label "Meta">

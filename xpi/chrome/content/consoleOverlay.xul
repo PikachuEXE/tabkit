@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<!-- Debugging: Preserve newlines in tabkit.dump output! -->
+<?xml-stylesheet href="data:text/css,
+.console-row[msg^=%22TK Error:%22] description {
+	white-space: -moz-pre-wrap;
+}
+" type="text/css"?>
+
+<overlay id="tabkit-console" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"></overlay>

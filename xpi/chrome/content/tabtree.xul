@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet href="chrome://tabtree/content/tabtree.css" type="text/css"?>
+<?xml-stylesheet href="chrome://tabtree/skin/tabtree.css" type="text/css"?>
+
+<!DOCTYPE overlay [
+	<!ENTITY % browserDTD SYSTEM "chrome://browser/locale/browser.dtd" >
+	%browserDTD;
+	<!ENTITY % tabtreeDTD SYSTEM "chrome://tabtree/locale/overlay.dtd" >
+	%tabtreeDTD;
+]>
+
+<overlay id="tabtree" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+<script type="application/x-javascript" src="chrome://tabtree/content/tabtree.js"/>
+
+<script type="application/x-javascript"><![CDATA[
+	window.addEventListener("DOMContentLoaded", tabtree_DOMContentLoaded, false);
+	window.addEventListener("load", tabtree_onLoad, false);
+]]></script>
+
+<commandset id="mainCommandSet">
+	<!--<command id="cmd_newNavigatorTab" oncommand="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> (is the default anyway)-->
+	<command id="cmd_tabTree_newNavigatorTabGroup" oncommand="tabtree_tempParent = TABTREE_ROOT; BrowserOpenTab();"/>
+</commandset>
+
+<keyset id="mainKeyset">
+	<key id="key_tabTree_newNavigatorTabGroup" modifiers="accel shift" key="&tabCmd.commandkey;" command="cmd_tabTree_newNavigatorTabGroup"/>
+	<!-- TODO: replace these keys/actions -->
+	<key id="key_tabTree_mergeLeft" modifiers="accel shift" key="&tabTree.mergeLeft.commandkey;" oncommand="tabtree_mergeWithPrevious();"/><!--keycode="VK_COMMA"-->
+	<key id="key_tabTree_mergeRight" modifiers="accel shift" key="&tabTree.mergeRight.commandkey;" oncommand="tabtree_mergeWithNext();"/><!--keycode="VK_PERIOD"-->
+	<key id="key_tabTree_splitGroup" modifiers="accel shift" key="&tabTree.splitGroup.commandkey;" oncommand="tabtree_splitGroup();"/><!--keycode="VK_SLASH"-->
+</keyset>
+
+<menupopup id="menu_FilePopup">
+	<menuitem id="tabtree-file-new-tab-group" command="cmd_tabTree_newNavigatorTabGroup" key="key_tabTree_newNavigatorTabGroup"
+		label="&tabTree.tabGroupCmd.label;" accesskey="&tabTree.tabGroupCmd.accesskey;" position="3"/>
+</menupopup>
+
+<toolbarpalette id="BrowserToolbarPalette">
+	<toolbarbutton id="new-tab-group-button" class="toolbarbutton-1 chromeclass-toolbar-additional"
+		style="list-style-image: url(chrome://tabtree/skin/newtab.png);" label="&tabTree.tabGroupCmd.label;"
+		command="cmd_tabTree_newNavigatorTabGroup" tooltiptext="&tabTree.tabGroupCmd.tooltip;"/>
+		<!--TODO:ondragover="nsDragAndDrop.dragOver(event, newTabButtonObserver);"
+		ondragdrop="nsDragAndDrop.drop(event, newTabButtonObserver);"
+		ondragexit="nsDragAndDrop.dragExit(event, newTabButtonObserver);"/>
+		(see also browser.js:newTabButtonObserver-->
+</toolbarpalette>
+
+<!--<tabbrowser id="content" onnewtab="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> (for context menu item, but is the default anyway)-->
+
+<menupopup id="menu_ToolsPopup">
+	<!-- we move this to the tab context menu in tabtree_onLoad -->
+	<menu label="&tabTree;" id="tabtree-menu" accesskey="&tabTree.contextMenu.accesskey;">
+		<menupopup onpopupshowing="tabtree_updateMenu();">
+			<menuitem id="tabtree-new-tab-group" command="cmd_tabTree_newNavigatorTabGroup"
+				key="key_tabTree_newNavigatorTabGroup" label="&tabTree.tabGroupCmd.label;" accesskey="&tabTree.tabGroupCmd.accesskey;"/>
+			<menuseparator/>
+			<!-- TODO: sort out all these menuitems -->
+			<menuitem id="tabtree-merge-left" oncommand="tabtree_mergeWithPrevious(gBrowser.mContextTab);"
+				key="key_tabTree_mergeLeft" label="&tabTree.mergeLeft.label;" accesskey="&tabTree.mergeLeft.accesskey;"/>
+			<menuitem id="tabtree-merge-right" oncommand="tabtree_mergeWithNext(gBrowser.mContextTab);"
+				key="key_tabTree_mergeRight" label="&tabTree.mergeRight.label;" accesskey="&tabTree.mergeRight.accesskey;"/>
+			<menuitem id="tabtree-split-here" oncommand="tabtree_splitGroup(gBrowser.mContextTab);"
+				key="key_tabTree_splitGroup" label="&tabTree.splitGroup.label;" accesskey="&tabTree.splitGroup.accesskey;"/>
+			<menuseparator/>
+			<menuitem id="tabtree-merge-all" oncommand="tabtree_mergeAll();"
+				label="&tabTree.mergeAll.label;" accesskey="&tabTree.mergeAll.accesskey;"/>
+			<menuitem id="tabtree-group-by-domain" oncommand="tabtree_groupByDomain();"
+				label="&tabTree.groupByDomain.label;" accesskey="&tabTree.groupByDomain.accesskey;"/>
+		</menupopup>
+	</menu>
+</menupopup>
+
+</overlay>

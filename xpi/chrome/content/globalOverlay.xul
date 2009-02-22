@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<overlay id="tabkit-global" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+<script type="application/x-javascript" src="chrome://tabkit/content/tabkit.js"/>
+
+<script type="application/x-javascript"><![CDATA[
+	window.addEventListener("DOMContentLoaded", tt.onDOMContentLoaded_global, false);
+]]></script>
+
+</overlay>

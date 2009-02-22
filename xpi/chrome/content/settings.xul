@@ -1,0 +1,225 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet href="chrome://browser/skin/"?>
+<?xml-stylesheet href="chrome://mozapps/skin/pref/pref.css" type="text/css"?>
+
+<!DOCTYPE prefwindow SYSTEM "chrome://tabtree/locale/overlay.dtd">
+
+<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+	id="tabtree-preferences" windowtype="mozilla:tabtreeoptions" title="&options.title;">
+	
+	<script type="application/x-javascript" src="chrome://tabtree/content/settings.js"/>
+	
+	<prefpane id="general-pane" label="&options.general.title;" image="chrome://tabtree/skin/prefs-general.png">
+		<!--
+		Tabs open
+		 @ To right of current tab {[A] a1 a2 a3 B C} {D E}
+		 O To right of current tab but with inverse opening order {[A] a3 a2 a1 B C} {D E}
+		 O At end of current tab group {[A] B C a1 a2 a3} {D E}
+		 O At end of tabbar {[A] B C} {D E} a1 a2 a3 (not recommended)
+		
+		Tab groups open
+		 @ At end of tabbar {[A] B C} {D E} {a1} {a2} {a3}
+		 O After current tab group {[A] B C} {a1} {a2} {a3} {D E}
+		-->
+		
+		<preferences>
+			<preference id="tabsopen-pref" name="extensions.tabtree.tabsopen" type="int"/>
+			<preference id="unrelatedtabsopen-pref" name="extensions.tabtree.unrelatedtabsopen" type="int"/>
+			<preference id="selectonclose-pref" name="extensions.tabtree.selectonclose" type="int"/>
+		</preferences>
+			
+		<grid>
+		<rows>
+		<row align="baseline">
+			<label control="tabsopen" value="&options.tabsOpen.label;" accesskey="&options.tabsOpen.accesskey;"/>
+			<menulist id="tabsopen" preference="tabsopen-pref">
+			<menupopup>
+				<menuitem id="tabsopen-right" value="1"
+					label="&options.tabsOpen.endOfChildren.label; - A:{1 2:{i ii} 3} B:{1 2}"/>
+				<menuitem id="tabsopen-endofchildren" value="2"
+					label="&options.tabsOpen.startOfChildren.label; - A:{3 2:{ii i} 1} B:{2 1}"/>
+				<menuitem id="tabsopen-startofchildren" value="0"
+					label="&options.tabsOpen.tabbarEnd.label; - A a1 B a2 b1 a2i a3 b2 a2ii"/>
+			</menupopup>
+			</menulist>
+		</row>
+		
+		<row align="baseline">
+			<label control="unrelatedtabsopen" value="&options.unrelatedTabsOpen.label;" accesskey="&options.unrelatedTabsOpen.accesskey;"/>
+			<menulist id="unrelatedtabsopen" preference="unrelatedtabsopen-pref">
+			<menupopup>
+				<menuitem id="unrelatedtabsopen-tabbarend" value="0"
+					label="&options.unrelatedTabsOpen.tabbarEnd.label; - A:{..} [B]:{..} C:{..} 1:{..} 2:{..}"/>
+				<menuitem id="unrelatedtabsopen-next" value="1"
+					label="&options.unrelatedTabsOpen.next.label; - A:{..} [B]:{..} 1:{..} 2:{..} C:{..}"/>
+			</menupopup>
+			</menulist>
+		</row>
+		
+		<row align="baseline">
+			<label control="selectonclose" value="&options.selectOnClose.label;" accesskey="&options.selectOnClose.accesskey;"/>
+			<menulist id="selectonclose" preference="selectonclose-pref">
+			<menupopup>
+				<menuitem id="selectonclose-automatic" value="0"
+					label="&options.selectOnClose.automatic.label;"/>
+				<menuitem id="selectonclose-left" value="-1"
+					label="&options.selectOnClose.left.label;"/>
+				<menuitem id="selectonclose-right" value="1"
+					label="&options.selectOnClose.right.label;"/>
+			</menupopup>
+			</menulist>
+		</row>
+		</rows>
+		</grid>
+		
+	</prefpane>
+
+	<prefpane id="tabbar-pane" label="&options.tabbar.title;" image="chrome://tabtree/skin/prefs-tabbar.png" onpaneload="updateTabBarWidth(event);">
+		<!--
+		{Tab bar}
+		<fill in>
+		-->
+		
+		<preferences>
+			<preference id="tabbarposition-pref" name="extensions.tabtree.tabbar.position" type="int"/>
+			<preference id="sidebarposition-pref" name="extensions.tabtree.tabbar.sidebarposition" type="int"/>
+			<preference id="tabbarwidth-pref" name="extensions.tabtree.tabbar.horizontal.width" type="string"/>
+			<preference id="showtwistys-pref" name="extensions.tabtree.tabbar.showtwistys" type="bool"/>
+		</preferences>
+
+		<grid>
+		<rows>
+		<row align="baseline">
+			<label control="tabbarposition" value="&options.tabBarPosition.label;" accesskey="&options.tabBarPosition.accesskey;"/>
+			<menulist id="tabbarposition" preference="tabbarposition-pref">
+			<menupopup>
+				<menuitem id="tabbarposition-top" value="0"
+					label="&options.tabBarPosition.top.label;"/>
+				<menuitem id="tabbarposition-left" value="3"
+					label="&options.tabBarPosition.left.label;"/>
+				<menuitem id="tabbarposition-right" value="1"
+					label="&options.tabBarPosition.right.label;"/>
+				<menuitem id="tabbarposition-bottom" value="2"
+					label="&options.tabBarPosition.bottom.label;"/>
+			</menupopup>
+			</menulist>
+		</row>
+		
+		<row align="baseline">
+			<label control="sidebarposition" value="&options.sidebarPosition.label;" accesskey="&options.sidebarPosition.accesskey;"/>
+			<menulist id="sidebarposition" preference="sidebarposition-pref">
+			<menupopup>
+				<menuitem id="sidebarposition-top" value="0"
+					label="&options.sidebarPosition.top.label;"/>
+				<menuitem id="sidebarposition-left" value="3"
+					label="&options.sidebarPosition.left.label;"/>
+				<menuitem id="sidebarposition-right" value="1"
+					label="&options.sidebarPosition.right.label;"/>
+				<menuitem id="sidebarposition-bottom" value="2"
+					label="&options.sidebarPosition.bottom.label;"/>
+			</menupopup>
+			</menulist>
+		</row>
+		
+		<row align="baseline">
+			<label control="tabbarwidth" value="&options.tabBarWidth.label;" accesskey="&options.tabBarWidth.accesskey;"/>
+			<textbox id="tabbarwidth" preference="tabbarwidth-pref"/>
+		</row>
+		</rows>
+		</grid>
+		
+		<checkbox id="showtwistys" preference="showtwistys-pref"
+			label="&options.showTwistys.label;" accesskey="&options.showTwistys.accesskey;"/>
+			
+	</prefpane>
+
+	<prefpane id="style-pane" label="&options.style.title;" image="chrome://tabtree/skin/prefs-style.png" onpaneload="updateDarktheme(event);">
+		<!--
+		{Style}
+		[x] Color tabs
+		[x] Emphasize tab group boundaries
+		[ ] Check this if you use a dark theme <disable if the above two are off>
+		-->
+		
+		<preferences>
+			<preference id="color-pref" name="extensions.tabtree.style.color" type="int"/>
+			<preference id="darkenchildren-pref" name="extensions.tabtree.style.darkenchildren" type="bool"/>
+			<preference id="emphasizegroups-pref" name="extensions.tabtree.style.emphasizegroups" type="bool"/>
+			<preference id="darktheme-pref" name="extensions.tabtree.style.darktheme" type="bool"/>
+		</preferences>
+
+		<hbox align="baseline">
+			<label control="color" value="&options.color.label;" accesskey="&options.color.accesskey;"/>
+			<menulist id="color" preference="color-pref" oncommand="updateDarktheme(event);">
+			<menupopup>
+				<menuitem id="color-nothing" value="0"
+					label="&options.color.nothing.label;"/>
+				<menuitem id="color-groups" value="1"
+					label="&options.color.groups.label;"/>
+				<menuitem id="color-eachtab" value="2"
+					label="&options.color.eachTab.label;"/>
+			</menupopup>
+			</menulist>
+		</hbox>
+		<checkbox id="darkenchildren" preference="darkenchildren-pref" label="&options.darkenChildren.label;"
+			accesskey="&options.darkenChildren.accesskey;" oncommand="updateDarktheme(event);"/>
+		<checkbox id="emphasizegroups" preference="emphasizegroups-pref" label="&options.emphasizeGroups.label;"
+			accesskey="&options.emphasizeGroups.accesskey;" oncommand="updateDarktheme(event);"/>
+		<checkbox id="darktheme" preference="darktheme-pref"
+			label="&options.darkTheme.label;" accesskey="&options.darkTheme.accesskey;"/>
+			
+	</prefpane>
+
+	<prefpane id="advanced-pane" label="&options.advanced.title;" image="chrome://tabtree/skin/prefs-advanced.png">
+		<!--
+		{Advanced}
+		Tab double-click modifiers:
+		[ ] Ctrl  [ ] Alt  [ ] Shift  [ ] Meta
+		
+		Tab group drag modifiers (select at least one):
+		[x] Ctrl  [ ] Alt  [ ] Shift  [ ] Meta
+		-->
+		
+		<preferences>
+			<preference id="groupdragmodifiers-ctrl-pref" name="extensions.tabtree.groupdragmodifiers.ctrl" type="bool"/>
+			<preference id="groupdragmodifiers-alt-pref" name="extensions.tabtree.groupdragmodifiers.alt" type="bool"/>
+			<preference id="groupdragmodifiers-shift-pref" name="extensions.tabtree.groupdragmodifiers.shift" type="bool"/>
+			<preference id="groupdragmodifiers-meta-pref" name="extensions.tabtree.groupdragmodifiers.meta" type="bool"/>
+			<preference id="doubleclickmodifiers-ctrl-pref" name="extensions.tabtree.doubleclickmodifiers.ctrl" type="bool"/>
+			<preference id="doubleclickmodifiers-alt-pref" name="extensions.tabtree.doubleclickmodifiers.alt" type="bool"/>
+			<preference id="doubleclickmodifiers-shift-pref" name="extensions.tabtree.doubleclickmodifiers.shift" type="bool"/>
+			<preference id="doubleclickmodifiers-meta-pref" name="extensions.tabtree.doubleclickmodifiers.meta" type="bool"/>
+		</preferences>
+		
+		<hbox><button label="&options.resetAll.label;" accesskey="&options.resetAll.accesskey;" oncommand="resetAll(event);"/></hbox>
+		
+		<label id="doubleclickmodifiers" control="doubleclickmodifiers-alt" value="&options.doubleClickModifiers.caption;"
+			accesskey="&options.doubleClickModifiers.accesskey;"/>
+		<hbox>
+			<checkbox id="doubleclickmodifiers-ctrl" preference="doubleclickmodifiers-ctrl-pref"
+				label="&options.ctrl.label;"/>
+			<checkbox id="doubleclickmodifiers-alt" preference="doubleclickmodifiers-alt-pref"
+				label="&options.alt.label;"/>
+			<checkbox id="doubleclickmodifiers-shift" preference="doubleclickmodifiers-shift-pref"
+				label="&options.shift.label;"/>
+			<checkbox id="doubleclickmodifiers-meta" preference="doubleclickmodifiers-meta-pref"
+				label="&options.meta.label;"/>
+		</hbox>
+		
+		<label id="groupdragmodifiers" control="groupdragmodifiers-alt" value="&options.groupDragModifiers.caption;"
+			accesskey="&options.groupDragModifiers.accesskey;"/>
+		<hbox>
+			<checkbox id="groupdragmodifiers-ctrl" preference="groupdragmodifiers-ctrl-pref"
+				label="&options.ctrl.label;"/>
+			<checkbox id="groupdragmodifiers-alt" preference="groupdragmodifiers-alt-pref"
+				label="&options.alt.label;"/>
+			<checkbox id="groupdragmodifiers-shift" preference="groupdragmodifiers-shift-pref"
+				label="&options.shift.label;"/>
+			<checkbox id="groupdragmodifiers-meta" preference="groupdragmodifiers-meta-pref"
+				label="&options.meta.label;"/>
+		</hbox>
+		
+	</prefpane>
+	
+</prefwindow>

@@ -1,0 +1,12 @@
+content	tabkit	chrome/content/
+
+overlay	chrome://browser/content/browser.xul	chrome://tabkit/content/browserOverlay.xul
+overlay	chrome://browser/content/bookmarks/bookmarksManager.xul	chrome://tabkit/content/globalOverlay.xul
+overlay	chrome://browser/content/bookmarks/bookmarksPanel.xul	chrome://tabkit/content/globalOverlay.xul
+overlay	chrome://browser/content/history/history-panel.xul	chrome://tabkit/content/globalOverlay.xul
+overlay	chrome://global/content/console.xul	chrome://tabkit/content/consoleOverlay.xul
+
+locale	tabkit	en-US chrome/locale/en-US/
+locale	tabkit	fr-FR chrome/locale/fr-FR/
+
+skin	tabkit	classic/1.0	chrome/skin/classic/

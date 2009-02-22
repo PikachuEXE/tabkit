@@ -1,0 +1,149 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet href="chrome://tabkit/content/tabkit.css" type="text/css"?>
+<?xml-stylesheet href="chrome://tabkit/skin/tabkit.css" type="text/css"?>
+
+<!DOCTYPE overlay [
+	<!ENTITY % browserDTD SYSTEM "chrome://browser/locale/browser.dtd" >
+	%browserDTD;
+	<!ENTITY % tabkitDTD SYSTEM "chrome://tabkit/locale/overlay.dtd" >
+	%tabkitDTD;
+]>
+
+<overlay id="tabkit-browser" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+<script type="application/x-javascript" src="chrome://tabkit/content/tabkit.js"/>
+
+<script type="application/x-javascript"><![CDATA[
+	window.addEventListener("DOMContentLoaded", tabkit.onDOMContentLoaded, false);
+	window.addEventListener("load", tabkit.onLoad, false);
+]]></script>
+
+<commandset id="mainCommandSet">
+	<command id="cmd_tabkit-sessions-saveWindow" oncommand="tabkit.saveWindow();"/>
+	<command id="cmd_tabkit-sessions-saveAllWindows" oncommand="tabkit.saveAllWindows();"/>
+	<command id="cmd_tabkit-sessions-options" oncommand="/* TODO */"/>
+	<command id="cmd_tabkit-recentwindows-openAll" oncommand="tabkit.openAllRecentWindows();"/>
+	
+	<!-- TODO: set type="radio" name="radio_tabkit-sortTabs" and checked="true" on lastSort when newtabs is last sort -->
+	<command id="cmd_tabkit-sortgroup-sortByUri" name="radio_tabkit-sortTabs" oncommand="tabkit.sortByUri();"/>
+	<command id="cmd_tabkit-sortgroup-sortByLastLoaded" name="radio_tabkit-sortTabs" oncommand="tabkit.sortByLastLoaded();"/>
+	<command id="cmd_tabkit-sortgroup-sortByLastViewed" name="radio_tabkit-sortTabs" oncommand="tabkit.sortByLastViewed();"/>
+	<command id="cmd_tabkit-sortgroup-sortByCreated" name="radio_tabkit-sortTabs" oncommand="tabkit.sortByCreated();"/>
+	<command id="cmd_tabkit-sortgroup-sortByTitle" name="radio_tabkit-sortTabs" oncommand="tabkit.sortByTitle();"/>
+	
+	<command id="cmd_tabkit-sortgroup-groupByDomain" type="checkbox" checked="false" oncommand="tabkit.toggleGroupByDomain();"/>
+	<command id="cmd_tabkit-sortgroup-groupByOrigin" type="checkbox" checked="false" oncommand="tabkit.toggleGroupByOrigin();"/>
+	
+	<command id="cmd_tabkit-sortgroup-ungroupAll" oncommand="tabkit.ungroupAll();"/>
+	
+	<!--<command id="cmd_newNavigatorTab" oncommand="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> (is the default anyway)-->
+	<!--<command id="cmd_tabTree_newNavigatorTabGroup" oncommand="tabtree_tempParent = TABTREE_ROOT; BrowserOpenTab();"/>-->
+</commandset>
+
+<keyset id="mainKeyset">
+	<key id="key_tabkit-sessions-saveWindow" modifiers="accel shift" key="S" command="cmd_tabkit-sessions-saveWindow"/><!-- TODO: check keys -->
+	<key id="key_tabkit-sessions-saveAllWindows" modifiers="accel shift" key="A" command="cmd_tabkit-sessions-saveAllWindows"/><!-- TODO: check keys -->
+	
+	<!-- TODO: are these the most useful functions to have keys? what about sorts? -->
+	<key id="key_tabkit-sortgroup-groupByDomain" modifiers="accel shift" key="," command="cmd_tabkit-sortgroup-groupByDomain"/><!-- TODO: check keys -->
+	<key id="key_tabkit-sortgroup-groupByOrigin" modifiers="accel shift" key="." command="cmd_tabkit-sortgroup-groupByOrigin"/><!-- TODO: check keys -->
+	
+	<!--<key id="key_tabTree_newNavigatorTabGroup" modifiers="accel shift" key="&tabCmd.commandkey;" command="cmd_tabTree_newNavigatorTabGroup"/>-->
+	<!-- TODO: replace these keys/actions -->
+	<!--<key id="key_tabTree_mergeLeft" modifiers="accel shift" key="&tabTree.mergeLeft.commandkey;" oncommand="tabtree_mergeWithPrevious();"/>--><!--keycode="VK_COMMA"-->
+	<!--<key id="key_tabTree_mergeRight" modifiers="accel shift" key="&tabTree.mergeRight.commandkey;" oncommand="tabtree_mergeWithNext();"/>--><!--keycode="VK_PERIOD"-->
+	<!--<key id="key_tabTree_splitGroup" modifiers="accel shift" key="&tabTree.splitGroup.commandkey;" oncommand="tabtree_splitGroup();"/>--><!--keycode="VK_SLASH"-->
+</keyset>
+
+<menupopup id="menu_FilePopup">
+	<!--<menuitem id="tabtree-file-new-tab-group" command="cmd_tabTree_newNavigatorTabGroup" key="key_tabTree_newNavigatorTabGroup"
+		label="&tabTree.tabGroupCmd.label;" accesskey="&tabTree.tabGroupCmd.accesskey;" position="3"/>-->
+</menupopup>
+
+<menupopup id="goPopup">
+	<!-- No accesskeys, see bug 308812 -->
+	<menu id="menu_tabkit-recentwindows-menu" insertbefore="endUndoSeparator" label="Recently Closed Windows" disabled="true">
+		<menupopup id="menu_tabkit-recentwindows-popup" onpopupshowing="tabkit.updateRecentWindowsMenu(event, this);">
+			<menuseparator id="menu_tabkit-recentwindows-endList"/>
+			<menuitem id="menu_tabkit-recentwindows-openAll" label="Open All in New Windows"
+				accesskey="O" command="cmd_tabkit-recentwindows-openAll"/>
+		</menupopup>
+	</menu>
+	<menu id="menu_tabkit-sessions-menu" insertbefore="endUndoSeparator" label="Browsing Sessions">
+		<menupopup id="menu_tabkit-sessions-popup" onpopupshowing="tabkit.updateSessionsMenu(event, this);">
+			<menuitem id="menu_tabkit-sessions-saveWindow" label="Save Current Window"
+				key="key_tabkit-sessions-saveWindow" accesskey="S" command="cmd_tabkit-sessions-saveWindow"/>
+			<menuitem id="menu_tabkit-sessions-saveAllWindows" label="Save All Windows"
+				key="key_tabkit-sessions-saveAllWindows" accesskey="A" command="cmd_tabkit-sessions-saveAllWindows"/>
+			<menuseparator id="menu_tabkit-sessions-startList"/>
+			<menuseparator id="menu_tabkit-sessions-endList" hidden="true"/>
+			<menuitem id="menu_tabkit-sessions-options" label="Sessions Options"
+				accesskey="O" command="cmd_tabkit-sessions-options"/>
+		</menupopup>
+	</menu>
+</menupopup>
+
+<toolbarpalette id="BrowserToolbarPalette">
+	<!--<toolbarbutton id="new-tab-group-button" class="toolbarbutton-1 chromeclass-toolbar-additional"
+		style="list-style-image: url(chrome://tabtree/skin/newtab.png);" label="&tabTree.tabGroupCmd.label;"
+		command="cmd_tabTree_newNavigatorTabGroup" tooltiptext="&tabTree.tabGroupCmd.tooltip;"/>-->
+		<!--TODO:ondragover="nsDragAndDrop.dragOver(event, newTabButtonObserver);"
+		ondragdrop="nsDragAndDrop.drop(event, newTabButtonObserver);"
+		ondragexit="nsDragAndDrop.dragExit(event, newTabButtonObserver);"/>
+		(see also browser.js:newTabButtonObserver-->
+</toolbarpalette>
+
+<toolbarbutton id="new-tab-button" command="" oncommand="tabkit.tabType = 'newtab'; tabkit.tabSource = gBrowser.selectedTab; BrowserOpenTab();" onclick="if (event.button == 1) { tabkit.tabType = 'newtabmiddle'; BrowserOpenTab(); }"/>
+
+<!--<tabbrowser id="content" onnewtab="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> (for context menu item, but is the default anyway)-->
+
+<menupopup id="menu_ToolsPopup">
+	<!-- we move this to the tab context menu in tabkit.onLoad -->
+	<menu id="menu_tabkit-sortgroup" label="Tab Kit" accesskey="K">
+		<menupopup>
+			<menuitem id="menu_tabkit-sortgroup-sortByUri" label="Sort By Address" accesskey="A"
+				command="cmd_tabkit-sortgroup-sortByUri"/>
+			<menuitem id="menu_tabkit-sortgroup-sortByLastLoaded" label="Sort By Last Loaded" accesskey="L"
+				command="cmd_tabkit-sortgroup-sortByLastLoaded"/>
+			<menuitem id="menu_tabkit-sortgroup-sortByLastViewed" label="Sort By Last Viewed" accesskey="V"
+				command="cmd_tabkit-sortgroup-sortByLastViewed"/>
+			<menuitem id="menu_tabkit-sortgroup-sortByCreated" label="Sort By Order Of Creation" accesskey="C"
+				command="cmd_tabkit-sortgroup-sortByCreated"/>
+			<menuitem id="menu_tabkit-sortgroup-sortByTitle" label="Sort By Page Title" accesskey="T"
+				command="cmd_tabkit-sortgroup-sortByTitle"/>
+			
+			<menuseparator/>
+			
+			<menu id="menu_tabkit-sortgroup-newtabs" label="Open New Ungrouped Tabs..." accesskey="N">
+				<menupopup>
+					<menuitem id="menu_tabkit-sortgroup-newtabs-lastSort" label="According To Last Sort" accesskey="S"
+						command="cmd_tabkit-sortgroup-newtabs-lastSort"/><!-- TODO: YOU ARE HERE! -->
+				</menupopup>
+			</menu>
+			
+			<menuseparator/>
+			
+			<menuitem id="menu_tabkit-sortgroup-groupByDomain" label="Group By Domain" accesskey="D"
+				key="key_tabkit-sortgroup-groupByDomain" command="cmd_tabkit-sortgroup-groupByDomain"/>
+			<menuitem id="menu_tabkit-sortgroup-groupByOrigin" label="Group By Origin" accesskey="O"
+				key="key_tabkit-sortgroup-groupByOrigin" command="cmd_tabkit-sortgroup-groupByOrigin"/>
+			
+			<menuseparator/>
+			
+			<menuitem id="menu_tabkit-sortgroup-ungroupAll" label="Ungroup All Tabs" accesskey="U"
+				command="cmd_tabkit-sortgroup-ungroupAll"/>
+				
+			<!-- TODO: sort out all these menuitems -->
+			<!--<menuseparator/>
+			<menuitem id="tabtree-merge-left" oncommand="tabtree_mergeWithPrevious(gBrowser.mContextTab);"
+				key="key_tabTree_mergeLeft" label="&tabTree.mergeLeft.label;" accesskey="&tabTree.mergeLeft.accesskey;"/>
+			<menuitem id="tabtree-merge-right" oncommand="tabtree_mergeWithNext(gBrowser.mContextTab);"
+				key="key_tabTree_mergeRight" label="&tabTree.mergeRight.label;" accesskey="&tabTree.mergeRight.accesskey;"/>
+			<menuitem id="tabtree-split-here" oncommand="tabtree_splitGroup(gBrowser.mContextTab);"
+				key="key_tabTree_splitGroup" label="&tabTree.splitGroup.label;" accesskey="&tabTree.splitGroup.accesskey;"/>-->
+		</menupopup>
+	</menu>
+</menupopup>
+
+</overlay>

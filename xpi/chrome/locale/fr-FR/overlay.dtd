@@ -1,0 +1,54 @@
+<!ENTITY tabtree "Tab Tree">
+
+<!ENTITY tabtree.tabGroupCmd.label "Nouveau Groupe D'onglets">
+<!ENTITY tabtree.tabGroupCmd.tooltip "Ouvrez un nouveau groupe d'onglets">
+<!ENTITY tabtree.tabGroupCmd.accesskey "G">
+
+<!ENTITY tabtree.mergeLeft.label "Fusionnez Avec Le Groupe Precedent">
+<!ENTITY tabtree.mergeLeft.commandkey ",">
+<!ENTITY tabtree.mergeLeft.accesskey "P">
+<!ENTITY tabtree.mergeRight.label "Fusionnez Avec Le Groupe Suivant">
+<!ENTITY tabtree.mergeRight.commandkey ".">
+<!ENTITY tabtree.mergeRight.accesskey "S">
+<!ENTITY tabtree.splitGroup.label "Divisez Le Groupe Ici">
+<!ENTITY tabtree.splitGroup.commandkey "/">
+<!ENTITY tabtree.splitGroup.accesskey "D">
+
+<!ENTITY tabtree.mergeAll.label "Fusionnez Tous Les Groupes">
+<!ENTITY tabtree.mergeAll.accesskey "T">
+<!ENTITY tabtree.groupByDomain.label "Groupez Les Onglets Par Domaine">
+<!ENTITY tabtree.groupByDomain.accesskey "D">
+
+<!ENTITY options.title "Options Tab Tree">
+
+<!ENTITY options.general.title "Général">
+<!ENTITY options.tabsOpen.label "Ouvrir les onglets:">
+<!ENTITY options.tabsOpen.accesskey "O">
+<!ENTITY options.tabsOpen.groupEnd.label "Au bout du groupe d'onglets courant">
+<!ENTITY options.tabsOpen.right.label "à droite de l'onglet courant">
+<!ENTITY options.tabsOpen.rightReversed.label "à droite mais dans l'ordre inverse">
+<!ENTITY options.tabsOpen.tabbarEnd.label "Au bout de la barre d'onglets">
+<!ENTITY options.groupsOpen.label "Ouvrir les groupes d'onglets:">
+<!ENTITY options.groupsOpen.accesskey "U">
+<!ENTITY options.groupsOpen.tabbarEnd.label "Au bout de la barre d'onglets">
+<!ENTITY options.groupsOpen.right.label "A droite du group d'onglets courant">
+<!ENTITY options.alwaysCloseToLeft.label "Toujours sélectionner l'onglet de gauche après avoir fermé un onglet">
+<!ENTITY options.alwaysCloseToLeft.accesskey "T">
+
+<!ENTITY options.style.title "Style">
+<!ENTITY options.colorTabs.label "Colorer les groupes d'onglets">
+<!ENTITY options.colorTabs.accesskey "C">
+<!ENTITY options.emphasizeGroups.label "Accentuer les bordures entre les groupes d'onglets">
+<!ENTITY options.emphasizeGroups.accesskey "A">
+<!ENTITY options.darkTheme.label "Cochez cette case si vous utilisez un thème foncé">
+<!ENTITY options.darkTheme.accesskey "F">
+
+<!ENTITY options.advanced.title "Avancé">
+<!ENTITY options.doubleClickModifiers.caption "Touches de modification pour double-clic sur onglet:">
+<!ENTITY options.doubleClickModifiers.accesskey "C">
+<!ENTITY options.groupDragModifiers.caption "Touches de modification pour déplacement de group d'onglets (sélectionnez au moins un):">
+<!ENTITY options.groupDragModifiers.accesskey "D">
+<!ENTITY options.ctrl.label "Ctrl">
+<!ENTITY options.alt.label "Alt">
+<!ENTITY options.shift.label "Shift">
+<!ENTITY options.meta.label "Meta">

@@ -1,0 +1,120 @@
+/*
+ * Tab Tree
+ * http://jomel.me.uk/software/firefox/tabtree/
+ * 
+ * Copyright (C) 2006 John Mellor (see license.txt)
+ */
+ 
+/*
+ * NOTE THAT MOST OF THE STYLES ARE IN: /tabtree/skin/classic/tabtree.css (aka chrome://tabtree/skin/tabtree.css)
+ */
+
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+/*
+ * Display the tab bar on the left/right
+ * with thanks to clav for the CSS this is originally based on: http://forums.mozillazine.org/viewtopic.php?p=238798#238798
+ * Note that Javascript controls all the -moz-box-directions
+ */
+#content[verticaltabbar] > tabbox {
+	/*-moz-box-orient: horizontal !important;*//* applied via JS */
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabbrowser-strip {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	overflow-x: hidden !important;
+	overflow-y: auto !important;
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabbrowser-tabs {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	-moz-box-align: start !important;
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabs-stack {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabs-stack > vbox + vbox {
+	/*-moz-box-orient: horizontal !important;*//* applied via JS */
+}
+#content[verticaltabbar] .tabs-stack > vbox + vbox > hbox {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabbrowser-arrowscrollbox {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabbrowser-arrowscrollbox > scrollbox {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabbrowser-arrowscrollbox > scrollbox > box {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+	-moz-box-align: stretch !important;
+	max-height: none !important;
+}
+#content[verticaltabbar] .tabbrowser-tabs tab {
+	-moz-box-orient: horizontal !important;
+	-moz-box-align: start !important;
+}
+/* TODO: Deal with tab picker */
+/* Expose the vertical tabs scrollbar object to the DOM */
+#content[verticaltabbar] .tabbrowser-strip > scrollbar {
+	-moz-binding: url(chrome://toomanytabs/content/bindings.xml#scrollbar);
+}
+
+/*
+ * Display the sidebar on the top/bottom
+ * with thanks to Kurt Schultz (supernova_00) for the CSS this is originally based on: http://www.supernova00.biz/userchrome.html (look for "Move sidebar to bottom")
+ * Note that Javascript controls all the -moz-box-directions
+ */
+#browser[horizontalsidebar] #sidebar-box {
+	/*-moz-box-orient: horizontal !important;*//* applied via JS */
+}
+#browser[horizontalsidebar] #sidebar-splitter {
+	/*-moz-box-orient: vertical !important;*//* applied via JS */
+}
+#browser[horizontalsidebar] #appcontent {
+	-moz-box-orient: horizontal !important;
+}
+#browser[horizontalsidebar] #sidebar {
+	width: inherit !important;
+	max-width: inherit !important;
+	height: 200px !important;
+	min-height: 150px !important;
+}
+#browser[horizontalsidebar] #sidebar-box > sidebarheader {
+	-moz-box-orient: vertical !important;
+	-moz-box-direction: reverse !important;
+	-moz-box-pack: end !important;
+	border-left: 1px solid ThreeDHighlight !important;
+	margin-left: 1px !important;
+}
+#browser[horizontalsidebar] #sidebar-box .tabs-closebutton > .toolbarbutton-icon {
+	padding: 4px 2px !important;
+}
+#browser[horizontalsidebar] #sidebar-title {
+	display: none !important;
+}
+#browser[horizontalsidebar] #sidebar-throbber {
+	margin-left: 4px !important;
+}
+
+
+/*
+ * new tab group button
+ */
+#new-tab-group-button {
+	-moz-image-region: auto !important;
+}
+#new-tab-group-button:hover {
+	list-style-image: url(chrome://tabtree/skin/newtab-hover.png) !important;
+}
+toolbar[iconsize="small"] #new-tab-group-button {
+	list-style-image: url(chrome://tabtree/skin/newtab-small.png) !important;
+}
+toolbar[iconsize="small"] #new-tab-group-button:hover {
+	list-style-image: url(chrome://tabtree/skin/newtab-small-hover.png) !important;
+}
