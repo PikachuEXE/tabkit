@@ -3326,7 +3326,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tk.removeGID(_tabs[i]);
     };
     
-    this.openOptions = function ungroupAll() {
+    this.openOptions = function openOptions() {
         var dialog = _wm.getMostRecentWindow("mozilla:tabkitsettings");
         if (dialog) {
             dialog.focus();
