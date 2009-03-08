@@ -89,7 +89,13 @@
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for "TODO=P"
  
+ * TODO=P1: Drop compatibility with Firefox 2
+ 
+ * TODO=P1: Fx3.1: Fix tab dragging
+ 
  * TODO=P2: Prevent first group randomly collapsing and/or losing indents when restarting (and changing theme, but that's probably irrelevant)
+ 
+ * TODO=P3: Group Tabs From Here To Current in middle of group should cause inner group to be ejected from outer group
  
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
  
