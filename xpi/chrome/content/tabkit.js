@@ -89,9 +89,9 @@
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for "TODO=P"
  
- * TODO=P1: Drop compatibility with Firefox 2
+ * TODO=P2: Drop compatibility with Firefox 2
  
- * TODO=P1: Fx3.1: Fix tab dragging
+ * TODO=P1: Fx3.5: Fix tab dragging
  
  * TODO=P2: Prevent first group randomly collapsing and/or losing indents when restarting (and changing theme, but that's probably irrelevant)
  
@@ -103,7 +103,7 @@
  * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
  * TODO=P4: Cleverer Open Selected Text Link matching (e.g. ignore surrounding brackets)
  * TODO=P3: When automatically switching tab (e.g. chooseNextIndex), skip hidden tabs of collapsed groups [but maybe not if autocollapse is on]
- * TODO=P3: Fx3: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
+ * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
  
  * TODO=P3: Open tabs from bookmarks, history, (groupmarks)
  
@@ -114,7 +114,7 @@
  * TODO=P3: Add double-click to close tab option (and make sure doesn't conflict with Tab Clicking Options when disabled)
  
  * TODO=P3: Use preventChangeOfAttributes to set vertical tabbar increment (though not pageincrement)
- * TODO=P3: Fx3: Update Sorting & Grouping method hooks
+ * TODO=P3: Fx3+: Update Sorting & Grouping method hooks
  
  * TODO=P3: Investigate http://piro.sakura.ne.jp/xul/_treestyletab.html.en
              - Collapse/expand any subtree, not just entire groups?
@@ -139,11 +139,12 @@
  * TODO=P3: More flexible/intuitive tree drag&drop, letting you arbitrarily assign parents etc, and also make the indents etc more robust
  
  * TODO=P3: Window merging
- * TODO=P3: .tabs-bottom color isn't updated when closing a tab group, and doesn't work at all in Fx3
- * TODO=P3: Fx3: Bottom row of multirow tabs is 1px too tall
- * TODO=P3: Fx2: Can't drag scrollbar slider on bookmarks menu without closing menu (works in Fx3)
+ * TODO=P3: .tabs-bottom color doesn't work in Fx3+ (and was never updated when closing a tab group)
+ * TODO=P3: Fx3+: Bottom row of multirow tabs is 1px too tall
+ * TODO=P3: Fx3.5: Scrollbars on bookmarks and all tabs menus causes all menus to randomly show scrollbars (both horiz and vert!)
+ * TODO=P4: Fx2: Can't drag scrollbar slider on bookmarks menu without closing menu (works in Fx3+)
  
- * TODO=P3: Implement lite version of LastTab Ctrl-Tab stack switching? No actually, since Ctrl-Tab is going to be incorporated into Fx3.1
+ * TODO=P3: Implement lite version of LastTab Ctrl-Tab stack switching? No actually, since Ctrl-Tab is supposedly going to be incorporated into Fx3.5
  * TODO=P3: Multi-row on hover (for more than ~1 second)
  * TODO=P3: Multi-row: vertical splitter to adjust [max] no. of rows?
  * TODO=P3: Allow dragging into collapsed groups (especially with auto-collapse tabs), e.g. by temporarily expanding hovered-over groups (alternatively show a popup menu)
@@ -164,7 +165,7 @@
  
  * TODO=P4: Groups change colour when dragged (probably only when shift-drag subtrees is enabled)
  * TODO=P4: Disable Close Tabs Above/Below on first/last tab respectively
- * TODO=P4: Use existing tab duplication code in Fx3 rather than reimplementing
+ * TODO=P4: Use existing tab duplication code in Fx3+ rather than reimplementing
  * TODO=P4: Fisheye vertical tabs, c.f. https://addons.mozilla.org/en-US/firefox/addon/4845 (horizontal fisheye tabs)   
  * TODO=P4: Fix mouse rocker back/forward on linux (where context menu is onmousedown)
  * TODO=P4: Mark group start/end with /--|---|--\ for colorblind people
@@ -723,16 +724,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     // This gets called for new browser windows, once the DOM tree is loaded
     this.onDOMContentLoaded = function onDOMContentLoaded(event) {
         if (event.originalTarget != document)
-            return; // Sometimes in Fx3 there's a random HTMLDocument that fires a DOMContentLoaded before the main window does
+            return; // Sometimes in Fx3+ there's a random HTMLDocument that fires a DOMContentLoaded before the main window does
         
         window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded, false);
         
         // Find what version of Firefox we're using TODO=P4: Do this in a less hacky way. Or better still, just drop support for Fx2
         _isFx2 = !(_isFx3 = (document.getElementById("browser-stack") == null));
         
-        // Check compatibility with existing addons
-        if (_isFx3 && _prefs.getBoolPref("checkCompatibility")) { // extensions.enabledItems only exists in Fx3+
-            // TODO=P3: Only check this on first loaded window; future windows should follow what the first window did
+        // Check compatibility with existing addons (only in Fx3+, as extensions.enabledItems doesn't exist before that)
+        if (_prefs.getBoolPref("checkCompatibility")
+            && gPrefService.getPrefType("extensions.enabledItems") == gPrefService.PREF_STRING)
+        {
+            // TODO=P3: Only check compatibility on first loaded window; future windows should follow what the first window did
             var incompatible = [
                 { id: "{dc572301-7619-498c-a57d-39143191b318}", name: "Tab Mix Plus" }
                 // TODO: Before adding more extensions here, change the neverCheckCompatibility pref so it's per extension instead of being global
@@ -1069,543 +1072,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         //tk.addMethodHook([methodname, null, /\{([^]*)\}$/, '{' + startcode + '$&' + endcode + '}']);
         tk.addMethodHook([methodname, null, '{', '{' + startcode, /\}$/, endcode + '}']);
     };
-
-    //!!}##########################
-    //!!{--- Sessions/Closed Windows
-    //!!|##########################
-    
-    /*!! // (ENTIRELY) COMMENTED OUT, SINCE UPDATE OF "SESSION MANAGER" EXTENSION MAKES THIS OBSOLETE, T O D Os have spaces so they aren't found
-    
-    // T O D O: TEST, TEST, TEST
-    // T O D O: Add a keyboard shortcut for Undo Close Window? https://bugzilla.mozilla.org/show_bug.cgi?id=344736 https://bugzilla.mozilla.org/show_bug.cgi?id=357235 https://bugzilla.mozilla.org/show_bug.cgi?id=344140
-    // T O D O: ability to delete sessions
-    // T O D O: require browser.sessionstore.enabled = true
-    
-    /// Globals:
-    var _sessionFile; // Don't use this directly
-    
-    var _sessionData; // Don't use this directly, use tk.get/setSessionData (below) instead
-    this.getSessionData = function getSessionData() {
-        if (!_sessionData)
-            _os.notifyObservers(window, "tabkit:init-my-session-data", null);
-        
-        if (!_sessionData) {
-            _sessionData = eval(tk.readFile(_sessionFile));
-            if (_sessionData === null) {
-                tk.log("Note: failed to read tabkitsessions.json (this is *normal* if this is the first time you use Tab Kit)");
-                _sessionData = {
-                    sessions: {},
-                    windows: []
-                };
-                _requestSessionSave(); // Just so we don't keep bugging them about having no sessions
-            }
-        }
-        return _sessionData;
-    };
-    this.setSessionData = function setSessionData(sessions) {
-        _saveOnNextSessionUpdate = true;
-        
-        // Broadcast new session data to all windows (including this one)
-        _os.notifyObservers(null, "tabkit:update-session-data", uneval(sessions));
-        
-        return sessions;
-    };
-    this._initSessionData = function _initSessionData(sessions) {
-        // Must only be used in response to a tabkit:init-my-session-data
-        if (!_sessionData)
-            _sessionData = sessions;
-    }
-    
-    var _saveOnNextSessionUpdate = false;
-    var _sessionSaveInterval = 1000; // T O D O: pref // T O D O: check always saves on quit // per window
-    var _lastSessionSave = 0;
-    var _sessionSavePending = false;
-
-    /// Initialisation:
-    this.initSessionManager = function initSessionManager(event) {
-        _sessionFile = tk.getFile("tabkitsessions.json");
-
-        if (!_prefs.getBoolPref("keepClosedWindows")) {
-            var sessions = tk.getSessionData();
-            if (sessions.windows !== []) {
-                sessions.windows = [];
-                tk.setSessionData(sessions);
-            }
-        }
-
-        tk.sessionObserver.register();
-        window.addEventListener("unload", function() { tk.sessionObserver.unregister(); }, false);
-        
-        //window.addEventListener("beforeunload", function() { tk.backupWindowState(); }, false); // Pre closingWindow
-        
-        document.getElementById("goPopup").addEventListener("popupshowing", tk.sessions_updateGoMenu, false);
-        
-        tk.addPrefListener("maxRecentWindows", _boundRecentWindows);
-
-        //{ Old testing code
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //~ if (_prefs.prefHasUserValue("log")) _prefs.setCharPref("log", "\n\n\n" + _prefs.getCharPref("log"));
-        //~ 
-        //~ var observer = {
-            //~ observe: function(aSubject, aTopic, aData) {
-                //~ var winType = (typeof aSubject == "object" && aSubject && "document" in aSubject) ? aSubject.document.documentElement.getAttribute("windowtype") : "";
-                //~ var log = aSubject + ":" + winType + "; " + aTopic + "; " + aData;
-                //~ try { log += "\n" + _prefs.getCharPref("log"); } catch(ex) {}
-                //~ _prefs.setCharPref("log", log);
-                //~ tk.log(log);
-            //~ }
-        //~ };
-        //~ 
-        //~ window.addEventListener("DOMWindowClose", function(event) { observer.observe("<event>", "DOMWindowClose", prettyPrint(event.target)); }, false);
-        //~ window.addEventListener("DOMWindowClosed", function(event) { observer.observe("<event>", "DOMWindowClosed", prettyPrint(event.target)); }, false);
-        //~ window.addEventListener("unload", function(event) { observer.observe("<event>", "unload", prettyPrint(event.target)); }, false);
-        //~ window.addEventListener("beforeunload", function(event) { observer.observe("<event>", "beforeunload", prettyPrint(event.target)); }, false);
-        //~ 
-        //~ _os.addObserver(observer, "domwindowopened", false);
-        //~ _os.addObserver(observer, "domwindowclosed", false);
-        //~ _os.addObserver(observer, "quit-application-requested", false);
-        //~ _os.addObserver(observer, "quit-application-granted", false);
-        //~ _os.addObserver(observer, "quit-application", false);
-        //~ _os.addObserver(observer, "xpcom-shutdown", false);
-        //~ 
-        //~ window.addEventListener("unload", function() {
-            //~ _os.removeObserver(observer, "domwindowopened");
-            //~ _os.removeObserver(observer, "domwindowclosed");
-            //~ _os.removeObserver(observer, "quit-application-requested");
-            //~ _os.removeObserver(observer, "quit-application-granted");
-            //~ _os.removeObserver(observer, "quit-application");
-            //~ _os.removeObserver(observer, "xpcom-shutdown");
-        //~ }, false);
-
-        //~ case "domwindowopened":
-            //~ aSubject.addEventListener("load", onWindowLoad_window, false); //.document.documentElement.getAttribute("windowtype") == "navigator:browser"
-            //~ break;
-        //~ case "domwindowclosed":
-            //~ onWindowClose(aSubject, gQuitRequest && gQuitRequest > Date.now() - 3000);
-            //~ break;
-        //~ case "quit-application-requested":
-            //~ forEachBrowserWindow(collectWindowData);
-            //~ gDirty = {};
-            //~ gQuitRequest = Date.now();
-            //~ break;
-        //~ case "quit-application-granted":
-            //~ gLoadState = STATE_QUITTING;
-            //~ break;
-        //~ case "quit-application":
-            //~ if (aData == "restart")
-            //~ {
-                //~ gPrefBranch.setBoolPref("resume_session_once", true);
-            //~ }
-            //~ gLoadState = STATE_QUITTING;
-            //~ this.uninit();
-            //~ break;
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //} End old testing code
-    };
-    if (_ss)
-        this.initListeners.push(this.initSessionManager);
-
-    this.postInitSessionManager = function postInitSessionManager() {
-        if (_prefs.prefHasUserValue("nextwindow")) {
-            _ss.setWindowState(window, _prefs.getCharPref("nextwindow"), true);
-            _prefs.clearUserPref("nextwindow");
-        }
-    };
-    if (_ss)
-        this.postInitListeners.push(this.postInitSessionManager);
-
-    /// Method hooks
-    // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
-    if (_ss)
-        tk.earlyMethodHooks.push([
-            'closeWindow',
-            null,
-            'window.close();',
-            'tabkit.closingWindow(); $&'
-        ]);
-    
-    /// Observer
-    // Warning: there will be one of these per currently open window, don't do things several times!
-    this.sessionObserver = {
-        register: function() {
-            //_os.addObserver(this, "domwindowclosed", false); // Pre closingWindow
-            _os.addObserver(this, "tabkit:update-session-data", false);
-            _os.addObserver(this, "tabkit:init-my-session-data", false);
-            _os.addObserver(this, "browser:purge-session-history", false);
-            _os.addObserver(this, "quit-application-granted", false);
-        },
-
-        observe: function _observeSession(aSubject, aTopic, aData) {
-            switch (aTopic) {
-            //{ Pre closingWindow
-            //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            //~ case "domwindowclosed":
-                //~ if (aSubject.document.documentElement.getAttribute("windowtype") != "navigator:browser")
-                    //~ return;
-
-                //~ // I can't just do _ss.getWindowState(aSubject); because _ss voids the window on domwindowclosed
-                //~ // See Firefox Bug 360408: [SessionStore] Add 'Recently Closed Windows'/'Undo Close Window' (or make API easier on extensions)
-                //~ if (!"tkt_lastSaved" in aSubject || aSubject.tkt_lastSaved === undefined) {
-                    //~ if (!"tkt_savedState" in aSubject) {
-                        //~ tk.dump("No state backup for closed browser window!");
-                    //~ }
-                    //~ return;
-                //~ }
-                //~ if (Date.now() - aSubject.tkt_lastSaved > 3000) {
-                    //~ tk.log("Whoah, this state backup is ancient: " + (Date.now() - aSubject.tkt_lastSaved) + "ms!");
-                //~ }
-                //~ delete aSubject.tkt_lastSaved; // Stop windows' observers from firing
-                //~ var state = aSubject.tkt_savedState;
-
-                //~ if (!aSubject.content.document.title) {
-                    //~ if (aSubject.content.location.href.length > 40) {
-                        //~ var title = aSubject.content.location.href.substring(0, 18) + "...";
-                    //~ }
-                    //~ else {
-                        //~ var title = aSubject.content.location.href;
-                    //~ }
-                //~ }
-                //~ else if (aSubject.content.document.title.length > 40) {
-                    //~ var title = aSubject.content.document.title.substring(0,37) + "...";
-                //~ }
-                //~ else {
-                    //~ var title = aSubject.content.document.title;
-                //~ }
-                //~ var name = "[ " + aSubject._tabs.length + " tabs - " + tk.getPrettyDateTime() + " ] " + title;
-
-                //~ // Now let each window add this to their list of recently closed windows
-                //~ _os.notifyObservers(aSubject, "tabkit:add-recent-window", uneval([name, state]));
-                //~ break;
-            //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            //} End pre closingWindow
-            case "tabkit:update-session-data":
-                _sessionData = eval(aData);
-                if (_saveOnNextSessionUpdate) {
-                    _saveOnNextSessionUpdate = false;
-                    _requestSessionSave();
-                }
-                break;
-            case "tabkit:init-my-session-data":
-                if (_sessionData)
-                    aSubject.tabkit._initSessionData(tk.getSessionData());
-                break;
-            case "browser:purge-session-history":
-                tk.setSessionData({
-                    sessions: {},
-                    windows: []
-                });
-                break;
-            case "quit-application-granted":
-                tk.saveAllWindowsSession("[ Closed browser: " + tk.getPrettyDateTime() + " ]"); // T O D O : check this always works
-                this.unregister();
-                break;
-            }
-        },
-
-        unregister: function() {
-            try {
-                //_os.removeObserver(this, "domwindowclosed"); // Pre closingWindow
-                _os.removeObserver(this, "tabkit:update-session-data");
-                _os.removeObserver(this, "tabkit:init-my-session-data");
-                _os.removeObserver(this, "browser:purge-session-history");
-                _os.removeObserver(this, "quit-application-granted");
-            }
-            catch (ex) {
-                // They've already been removed
-            }
-        }
-    };
-
-    /// 'Event' Handlers:
-    this.sessions_updateGoMenu = function sessions_updateGoMenu(event) {
-        document.getElementById("menu_tabkit-recentwindows-menu").hidden = (_prefs.getIntPref("maxRecentWindows") == 0);
-        document.getElementById("menu_tabkit-recentwindows-menu").setAttribute("disabled", tk.getSessionData().windows.length == 0);
-    };
-    
-    this.updateSessionsMenu = function updateSessionsMenu(event, popup) {
-        if (event.target != event.currentTarget) return;
-
-        //var startSeparator = document.getElementById("menu_tabkit-sessions-startList");
-        var endSeparator = document.getElementById("menu_tabkit-sessions-endList");
-
-        //{ Old code
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //~ var i = 0;
-        //~ var destroy = false;
-        //~ while (i < popup.childNodes.length) {
-            //~ var item = popup.childNodes[i];
-            //~ if (item == endSeparator)
-                //~ break;
-
-            //~ if (destroy) {
-                //~ i--;
-                //~ goMenu.removeChild(item);
-            //~ }
-
-            //~ if (item == startSeparator)
-                //~ destroy = true;
-
-            //~ i++;
-        //~ }
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //} End old code
-
-        var oldSessions = popup.getElementsByAttribute("isSession", "true");
-        for (var i = oldSessions.length - 1; i >= 0; i--) {
-            popup.removeChild(oldSessions[i]);
-        }
-
-        var newSessions = tk.getSortedSessionNames();
-
-        var index = 1;
-        for each (var sessionName in newSessions) {
-            var menuitem = document.createElementNS(XUL_NS, "menuitem");
-            if (index <= 10) {
-                menuitem.setAttribute("label", (index % 10) + ") " + sessionName);
-                menuitem.setAttribute("accesskey", (index % 10));
-            }
-            else {
-                menuitem.setAttribute("label", sessionName);
-            }
-            //menuitem.statusText = url;
-            menuitem.setAttribute("isSession", "true");
-            menuitem.setAttribute("oncommand", "tabkit.restoreSession(\""+sessionName+"\");");
-            
-            popup.insertBefore(menuitem, endSeparator);
-
-            index++;
-        }
-
-        endSeparator.hidden = (index == 1);
-    };
-    this.updateRecentWindowsMenu = function updateRecentWindowsMenu(event, popup) {
-        if (event.target != event.currentTarget) return;
-
-        var endSeparator = document.getElementById("menu_tabkit-recentwindows-endList");
-
-        var oldWindows = popup.getElementsByAttribute("isRecentWindow", "true");
-        for (var i = oldWindows.length - 1; i >= 0; i--) {
-            popup.removeChild(oldWindows[i]);
-        }
-        
-        var newWindows = tk.getSessionData().windows;
-
-        var index = 1;
-        for each (var recentWin in newWindows) {
-            var name = recentWin[0];
-            var menuitem = document.createElementNS(XUL_NS, "menuitem");
-            if (index <= 10) {
-                menuitem.setAttribute("label", (index % 10) + ") " + name);
-                menuitem.setAttribute("accesskey", (index % 10));
-            }
-            else {
-                menuitem.setAttribute("label", "   " + name);
-            }
-            //menuitem.statusText = urls;
-            menuitem.setAttribute("isRecentWindow", "true");
-            menuitem.setAttribute("oncommand", "tabkit.restoreRecentWindow(" + uneval(recentWin) + ");");
-
-            popup.insertBefore(menuitem, endSeparator);
-
-            index++;
-        }
-    };
-
-    this.closingWindow = function closingWindow() { // T O D O: Check this always triggers!
-        try {
-            if (_prefs.getIntPref("maxRecentWindows") == 0)
-                return;
-            
-            var title = window.content.document.title ? window.content.document.title : window.content.location.href;
-            if (title.length > 40)
-                title = title.substring(0, 37) + "...";
-            var name = "[ " + _tabs.length + " tabs - " + tk.getPrettyDateTime() + " ] " + title;
-            
-            var state = _ss.getWindowState(window);
-            
-            // Now let each window add this to their list of recently closed windows
-            tk.addWindow([name, state]);
-        }
-        catch (ex) {
-            // We absolutely mustn't block closeWindow!
-            tk.dump("closingWindow failed: \n" + ex, ex);
-        }
-    };
-    
-    //{ Pre closingWindow
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~ this.backupWindowState = function backupWindowState(event) {
-        //~ window.tkt_savedState = _ss.getWindowState(window);
-        //~ window.tkt_lastSaved = Date.now();
-    //~ };
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //} End pre closingWindow
-    
-    /// Private Methods:
-    function _requestSessionSave() {
-        if (_sessionSavePending)
-            return;
-        
-        var timeSinceLastSave = Date.now() - _lastSessionSave;
-        if (timeSinceLastSave > _sessionSaveInterval) {
-            // Make sessions file slightly more human readable
-            var sessionStr = uneval(tk.getSessionData()).replace(/ ('(\\'|[^'])*':\{state:)/g, "\n\n$1").replace(/ ("(\\"|[^"])*":\{state:)/g, "\n\n$1");
-            
-            tk.writeFile(sessionStr, _sessionFile);
-            
-            _lastSessionSave = Date.now();
-        }
-        else {
-            _sessionSavePending = true;
-            window.setTimeout(function() { _sessionSavePending = false; _requestSessionSave(); }, _sessionSaveInterval - timeSinceLastSave + 1); // + 1 just to make sure timeSinceLastSave > _sessionSaveInterval
-        }
-    }
-
-    function _boundRecentWindows(arg) {
-        // See similar code under addWindow
-        var sessionData = tk.getSessionData();
-        var maxWindows = _prefs.getIntPref("maxRecentWindows");
-        while (sessionData.windows.length > maxWindows && maxWindows >= 0)
-            sessionData.windows.pop();
-        tk.setSessionData(sessionData);
-    }
-    
-    function _compareSessionDates(a, b) {
-        return b.date - a.date; // Note that we want most recent first
-    }
-    
-    /// Methods:
-    this.addWindow = function addWindow(nameAndState) { //nameAndState = [name, state];
-        var sessionData = tk.getSessionData();
-
-        sessionData.windows.unshift(nameAndState);
-        
-        // Limit number of stored windows
-        var maxWindows = _prefs.getIntPref("maxRecentWindows");
-        while (sessionData.windows.length > maxWindows && maxWindows >= 0)
-            sessionData.windows.pop();
-
-        tk.setSessionData(sessionData);
-    };
-    this.removeWindow = function removeWindow(nameAndState) {
-        var sessionData = tk.getSessionData();
-
-        var index = sessionData.windows.indexOf(nameAndState);
-        if (index != -1) sessionData.windows.splice(index, 1);
-        else tk.dump("sessionData.windows didn't contain: " + uneval(nameAndState));
-
-        tk.setSessionData(sessionData);
-    };
-    
-    this.addSession = function addSession(name, value) {
-        var sessionData = tk.getSessionData();
-
-        sessionData.sessions[name] = { state: value, date: Date.now() };
-
-        tk.setSessionData(sessionData);
-    };
-    this.removeSession = function removeSession(name) {
-        var sessions = tk.getSessionData();
-
-        delete sessionData.sessions[name];
-
-        tk.setSessionData(sessions);
-    };
-
-    this.getSortedSessionNames = function getSortedSessionNames() {
-        var sessions = tk.getSessionData().sessions;
-
-        var sessionArray = [];
-        for (var sessionName in sessions) {
-            sessionArray.push({ name: sessionName, date: sessions[sessionName].date });
-        }
-        sessionArray.sort(_compareSessionDates);
-
-        var sessionNameArray = [];
-        for each (var session in sessionArray) {
-            sessionNameArray.push(session.name);
-        }
-        return sessionNameArray;
-    };
-
-    this.saveSingleWindowSession = function saveSingleWindowSession(sessionName, aWindow) {
-        if (!aWindow)
-            aWindow = window;
-        
-        if (!sessionName) {
-            // T O D O: pretty dialog letting you replace existing sessions, a la Session Manager
-            var defaultName = aWindow.content.document.title ? aWindow.content.document.title : aWindow.content.location.href;
-            if (defaultName.length > 52)
-                defaultName = defaultName.substring(0, 49) + "...";
-            defaultName += " (" + tk.getPrettyDate() + ")";
-            sessionName = prompt("What do you want to call this (single window) session?", defaultName);
-            if (!sessionName)
-                return; // The user must have clicked cancel
-        }
-
-        tk.addSession(sessionName, _ss.getWindowState(aWindow));
-    };
-    this.saveAllWindowsSession = function saveAllWindowsSession(sessionName) {
-        if (!sessionName) {
-            // T O D O: pretty dialog letting you replace existing sessions, a la Session Manager
-            var defaultName = window.content.document.title ? window.content.document.title : window.content.location.href;
-            if (defaultName.length > 52)
-                defaultName = defaultName.substring(0, 49) + "...";
-            defaultName += " (" + tk.getPrettyDate() + ")";
-            sessionName = prompt("What do you want to call this (multi window) session?", defaultName);
-            if (!sessionName)
-                return; // The user must have clicked cancel
-        }
-
-        var windows = _wm.getEnumerator("navigator:browser");
-        var state = [];
-
-        while (windows.hasMoreElements()) {
-            state.push(_ss.getWindowState(windows.getNext()));
-        }
-
-        tk.addSession(sessionName, state);
-    };
-
-    this.restoreSession = function restoreSession(name) {
-        var session = tk.getSessionData().sessions[name];
-        if (session) {
-            if (typeof session.state == "string") {
-                if (tk.windowIsHomeOrBlank()) {
-                    _ss.setWindowState(window, session.state, true);
-                }
-                else {
-                    _prefs.setCharPref("nextwindow", session.state);
-                    window.open("about:blank");
-                }
-            }
-            else for each (var win in session.state) {
-                _prefs.setCharPref("nextwindow", win);
-                window.open("about:blank"); // T O D O: test, apparently using about:blank might not work :s
-            }
-        }
-    };
-    
-    this.restoreRecentWindow = function restoreRecentWindow(recentWin, keepOpen) {
-        if (!keepOpen && tk.windowIsHomeOrBlank()) {
-            _ss.setWindowState(window, recentWin[1], true);
-        }
-        else {
-            _prefs.setCharPref("nextwindow", recentWin[1]);
-            window.open("about:blank"); // T O D O: test, apparently using about:blank might not work :-s
-        }
-        
-        tk.removeWindow(recentWin);
-    };
-    this.openAllRecentWindows = function openAllRecentWindows() {
-        var notFirst = false;
-        for (var i = tk.recentWindows.length - 1; i >= 0; --i) {
-            tk.restoreRecentWindow(tk.recentWindows[i], notFirst);
-            notFirst = true;
-        }
-    };
-
-    */
 
     //}##########################
     //{>>> Sorting & Grouping
