@@ -20,7 +20,7 @@ pref("extensions.tabkit.indentedTree", true);
 
 //--- Appearance ---
 pref("extensions.tabkit.highlightUnreadTabs", true);
-pref("extensions.tabkit.emphasizeCurrentTab", true);
+pref("extensions.tabkit.emphasizeCurrentTab", false);
 pref("extensions.tabkit.emphasizeProtectedTabs", true);
 
 //--- Advanced ---
