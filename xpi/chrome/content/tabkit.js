@@ -87,7 +87,7 @@
  * ---------------
  * I keep todo notes in the form TODO=Px where x is a priority betweeen 1 (highest) and 5 (lowest).
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
- * There are more todos in the source itself, search for "TODO=P"
+ * There are more todos in the source itself, search for: TODO=P
  
  * TODO=P2: Drop compatibility with Firefox 2
  
@@ -1045,7 +1045,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 var newCode = code.replace(hook[i++], hook[i++]);
                 if (newCode == code) {
                     if ((!_isFx2 || !tk.startsWith(hook[i-1], "/*[Fx3only]*/")) && (!_isFx3 || !tk.startsWith(hook[i-1], "/*[Fx2only]*/")))
-                        tk.log("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + hook[i - 2] + "\nwith:\n" + hook[i - 1]);
+                        tk.log("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + uneval(hook[i - 2]) + "\nwith:\n" + uneval(hook[i - 1]));
                 }
                 else {
                     code = newCode;
@@ -2247,120 +2247,122 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var tid = tab.getAttribute("tabid");
         var pid = tab.getAttribute("possibleparent");
         
-        // Choose next tab
-        // Note that this happens before pickNextIndex is called by removeTab
-        tk.chosenNextIndex = tk.chooseNextIndex(tab);
-        /*!! This approach was too slow, the tab would only change to the correct one after a noticeable pause
-        if (tab.selected
-            && tab.previousSibling && tab.nextSibling
-            && (!"owner" in tab
-                || !tab.owner
-                || !gPrefService.getBoolPref("browser.tabs.selectOwnerOnClose")))
-        {
-            var nextTab = tab.nextSibling;
-            switch (_prefs.getIntPref("customCloseOrder")) {
-            case 1: // G-Left
-                if (!gid || tab.previousSibling.getAttribute("groupid") == gid || tab.nextSibling.getAttribute("groupid") != gid)
-                    nextTab = tab.previousSibling;
-                // else nextTab = tab.nextSibling;
-                break;
-            case 2: // G-Right
-                if (gid && tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
-                    nextTab = tab.previousSibling;
-                // else nextTab = tab.nextSibling;
-                break;
-            case 3: // Left
-                nextTab = tab.previousSibling;
-                break;
-            case 4: // Right
-                // nextTab = tab.nextSibling;
-                break;
-            default: //case 0: // Auto
-                var prevByDefault = (tk.openRelativePosition == "left");
-                if (prevByDefault)
-                    nextTab = tab.previousSibling;
-                // else nextTab = tab.nextSibling;
-                if (!gid) {
-                    // Stick with the default
+        if (!("_blurTab" in gBrowser)) { // [Fx3.1b3-]
+            // Choose next tab
+            // Note that this happens before pickNextIndex is called by removeTab
+            tk.chosenNextTab = tk.chooseNextTab(tab);
+            /*!! This approach was too slow, the tab would only change to the correct one after a noticeable pause
+            if (tab.selected
+                && tab.previousSibling && tab.nextSibling
+                && (!"owner" in tab
+                    || !tab.owner
+                    || !gPrefService.getBoolPref("browser.tabs.selectOwnerOnClose")))
+            {
+                var nextTab = tab.nextSibling;
+                switch (_prefs.getIntPref("customCloseOrder")) {
+                case 1: // G-Left
+                    if (!gid || tab.previousSibling.getAttribute("groupid") == gid || tab.nextSibling.getAttribute("groupid") != gid)
+                        nextTab = tab.previousSibling;
+                    // else nextTab = tab.nextSibling;
                     break;
-                }
-                if (tab.nextSibling.getAttribute("groupid") != gid) {
-                    if (tab.previousSibling.getAttribute("groupid") != gid) {
-                        tk.dump("Why is there a singleton group at position " + tab._tPos + " ?!");
+                case 2: // G-Right
+                    if (gid && tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
+                        nextTab = tab.previousSibling;
+                    // else nextTab = tab.nextSibling;
+                    break;
+                case 3: // Left
+                    nextTab = tab.previousSibling;
+                    break;
+                case 4: // Right
+                    // nextTab = tab.nextSibling;
+                    break;
+                default: //case 0: // Auto
+                    var prevByDefault = (tk.openRelativePosition == "left");
+                    if (prevByDefault)
+                        nextTab = tab.previousSibling;
+                    // else nextTab = tab.nextSibling;
+                    if (!gid) {
                         // Stick with the default
+                        break;
                     }
-                    else {
-                        nextTab = tab.previousSibling;
-                    }
-                    break;
-                }
-                if (tab.previousSibling.getAttribute("groupid") != gid) {
-                    nextTab = tab.nextSibling;
-                    break;
-                }
-                if (gid.indexOf(":oG-") == -1 && gid.indexOf(":tmpOG-") == -1) {
-                    // Stick with the default
-                    break;
-                }
-                // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
-                var openerGroup = tab.getAttribute(tk.Groupings.opener);
-                if (tab.previousSibling.getAttribute(tk.Groupings.opener) == openerGroup) {
-                    if (tab.nextSibling.getAttribute(tk.Groupings.opener) != openerGroup) {
-                        nextTab = tab.previousSibling;
-                    }
-                    else {
-                        // Both siblings are in the same openerGroup, so choose based on possibleparents
-                        // (i.e. return to parent/sibling unless the default direction takes you to a sibling/child)
-                        if (!prevByDefault) {
-                            if (tab.nextSibling.getAttribute("possibleparent") == pid // sibling
-                                || tab.nextSibling.getAttribute("possibleparent") == tid) // child
-                            {
-                                nextTab = tab.nextSibling;
-                            }
-                            else {
-                                nextTab = tab.previousSibling;
-                            }
+                    if (tab.nextSibling.getAttribute("groupid") != gid) {
+                        if (tab.previousSibling.getAttribute("groupid") != gid) {
+                            tk.dump("Why is there a singleton group at position " + tab._tPos + " ?!");
+                            // Stick with the default
                         }
                         else {
-                            if (tab.previousSibling.getAttribute("possibleparent") == pid // sibling
-                                || tab.previousSibling.getAttribute("possibleparent") == tid) // child
-                            {
-                                nextTab = tab.previousSibling;
+                            nextTab = tab.previousSibling;
+                        }
+                        break;
+                    }
+                    if (tab.previousSibling.getAttribute("groupid") != gid) {
+                        nextTab = tab.nextSibling;
+                        break;
+                    }
+                    if (gid.indexOf(":oG-") == -1 && gid.indexOf(":tmpOG-") == -1) {
+                        // Stick with the default
+                        break;
+                    }
+                    // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
+                    var openerGroup = tab.getAttribute(tk.Groupings.opener);
+                    if (tab.previousSibling.getAttribute(tk.Groupings.opener) == openerGroup) {
+                        if (tab.nextSibling.getAttribute(tk.Groupings.opener) != openerGroup) {
+                            nextTab = tab.previousSibling;
+                        }
+                        else {
+                            // Both siblings are in the same openerGroup, so choose based on possibleparents
+                            // (i.e. return to parent/sibling unless the default direction takes you to a sibling/child)
+                            if (!prevByDefault) {
+                                if (tab.nextSibling.getAttribute("possibleparent") == pid // sibling
+                                    || tab.nextSibling.getAttribute("possibleparent") == tid) // child
+                                {
+                                    nextTab = tab.nextSibling;
+                                }
+                                else {
+                                    nextTab = tab.previousSibling;
+                                }
                             }
                             else {
-                                nextTab = tab.nextSibling;
+                                if (tab.previousSibling.getAttribute("possibleparent") == pid // sibling
+                                    || tab.previousSibling.getAttribute("possibleparent") == tid) // child
+                                {
+                                    nextTab = tab.previousSibling;
+                                }
+                                else {
+                                    nextTab = tab.nextSibling;
+                                }
                             }
                         }
+                        break;
                     }
-                    break;
-                }
-                if (tab.nextSibling.getAttribute(tk.Groupings.opener) == openerGroup) {
-                    var nextTab = tab.nextSibling;
-                    break;
-                }
-                // else stick with the default
-                
-                //~ var subtree = tk.groupScheme.origin ? tk.getSubtree(tab) : [tab];
-                //~ if (subtree.length > 1) {
-                    //~ var index = subtree.indexOf(tab);
-                    //~ if (index == 0)
-                        //~ var nextTab = tab.nextSibling; // Stay within the subtree
-                    //~ else if (index == subtree.length - 1)
-                        //~ var nextTab = tab.previousSibling; // Stay within the subtree
-                    //~ else if (Number(tab.nextSibling.getAttribute("subtreelevel")) < Number(tab.getAttribute("subtreelevel")))
+                    if (tab.nextSibling.getAttribute(tk.Groupings.opener) == openerGroup) {
+                        var nextTab = tab.nextSibling;
+                        break;
+                    }
+                    // else stick with the default
+                    
+                    //~ var subtree = tk.groupScheme.origin ? tk.getSubtree(tab) : [tab];
+                    //~ if (subtree.length > 1) {
+                        //~ var index = subtree.indexOf(tab);
+                        //~ if (index == 0)
+                            //~ var nextTab = tab.nextSibling; // Stay within the subtree
+                        //~ else if (index == subtree.length - 1)
+                            //~ var nextTab = tab.previousSibling; // Stay within the subtree
+                        //~ else if (Number(tab.nextSibling.getAttribute("subtreelevel")) < Number(tab.getAttribute("subtreelevel")))
+                            //~ var nextTab = tab.previousSibling;
+                        //~ else
+                            //~ var nextTab = tab.nextSibling;
+                    //~ }
+                    //~ else if (gid && tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
                         //~ var nextTab = tab.previousSibling;
                     //~ else
                         //~ var nextTab = tab.nextSibling;
-                //~ }
-                //~ else if (gid && tab.nextSibling.getAttribute("groupid") != gid && tab.previousSibling.getAttribute("groupid") == gid)
-                    //~ var nextTab = tab.previousSibling;
-                //~ else
-                    //~ var nextTab = tab.nextSibling;
+                }
+                
+                window.setTimeout(function __selectNextTab(nextTab) { gBrowser.selectedTab = nextTab; }, 0, nextTab);
             }
-            
-            window.setTimeout(function __selectNextTab(nextTab) { gBrowser.selectedTab = nextTab; }, 0, nextTab);
+            */
         }
-        */
         
         // Update possibleparents
         for (var i = 0; i < _tabs.length; i++) {
@@ -2644,79 +2646,119 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     
     // Tab close focus direction
-    this.earlyMethodHooks.push([
-        "gBrowser.removeTab",//{
-        null,
-        
-        /*!!'this.mTabContainer.removeChild(oldTab);',
-        'var gid = oldTab.getAttribute("groupid"); \
-        var tid = oldTab.getAttribute("tabid"); \
-        var pid = oldTab.getAttribute("possibleparent"); \
-        var openerGroup = oldTab.getAttribute(tabkit.Groupings.opener); \
-        $&',*/
-        
-        /newIndex = \(?index == l - 1\)? \? index - 1 : index;/,
-        'newIndex = tabkit.pickNextIndex(index, l - 1);', //!!, gid, tid, pid, openerGroup);'
-    ]);//}
+    if ("_blurTab" in gBrowser) { // [Fx3.5b4+]
+        this.earlyMethodHooks.push([
+            "gBrowser._blurTab",//{
+            null,
+            
+            'var tab = aTab;',
+            'tabkit.blurTab(aTab); return;'
+        ]);//}
+    }
+    else if ("_endRemoveTab" in gBrowser) { // [Fx3.1b3]
+        this.earlyMethodHooks.push([
+            "gBrowser._endRemoveTab",//{
+            null,
+            
+            'newIndex = index == length ? index - 1 : index;',
+            'newIndex = tabkit.pickNextIndex(index, length);'
+        ]);//}
+    }
+    else { // [Fx3-]
+    breakpoint(function(e){return eval(e);});
+        this.earlyMethodHooks.push([
+            "gBrowser.removeTab",//{
+            null,
+            
+            /newIndex = \(?index == l - 1\)? \? index - 1 : index;/,
+            'newIndex = tabkit.pickNextIndex(index, l - 1);'
+        ]);//}
+    }
     
-    this.chosenNextIndex = -1;
-    this.pickNextIndex = function pickNextIndex(index, tabCount) {
-        if (tk.chosenNextIndex != -1) {
-            return tk.chosenNextIndex;
+    this.chosenNextTab = null; // [Fx3.1b3-]
+    this.pickNextIndex = function pickNextIndex(index, tabCount) { // [Fx3.1b3-]
+        if (tk.chosenNextTab) {
+            var pos = tk.chosenNextTab._tPos;
+            return pos > index ? pos - 1 : pos; // This is before _tPos gets updated
         }
         else {
-            tk.dump("Hadn't chosen next index!");
+            tk.dump("Hadn't chosen next tab!");
             return index == tabCount ? index - 1 : index;
         }
     };
     
-    this.chooseNextIndex = function chooseNextIndex(tab) {
-        // Note that the tab still exists at this point (but won't by the time pickNextIndex is called)
-        var index = tab._tPos;
-        var gid = tab.getAttribute("groupid");
+    this.blurTab = function blurTab(tab) { // [Fx3.5b4+]
+        gBrowser.selectedTab = tk.chooseNextTab(tab);
+        /*!!
+        var tab = aTab;
+        
+        do {
+            tab = tab.nextSibling;
+        } while (tab && this._removingTabs.indexOf(tab) != -1);
+        
+        if (!tab) {
+            tab = aTab;
+            do {
+                tab = tab.previousSibling;
+            } while (tab && this._removingTabs.indexOf(tab) != -1);
+        }
+        
+        this.selectedTab = tab; 
+        */
+    }
+    
+    this.chooseNextTab = function chooseNextTab(tab) {
+        // Note that in Fx3.1b3- the tab still exists at this point (but won't by the time pickNextIndex is called)
         var prev = tab.previousSibling;
         var next = tab.nextSibling;
         
-        if (index == _tabs.length - 1)
-            return index - 1;
+        // _removingTabs is [Fx3.5+ (including 3.1b3)] (bug 462673)
+        while (prev && "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(prev) != -1)
+            prev = prev.previousSibling;
+        while (next && "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(next) != -1)
+            next = next.nextSibling;
         
-        if (index == 0)
-            return 0;
+        if (!next)
+            return prev; // returns null if !prev
+        
+        if (!prev)
+            return next;
+        
+        var gid = tab.getAttribute("groupid");
         
         switch (_prefs.getIntPref("customCloseOrder")) {
         case 1: // G-Left
             if (!gid || prev.getAttribute("groupid") == gid || next.getAttribute("groupid") != gid)
-                return index - 1;
+                return prev;
             else
-                return index;
+                return next;
         case 2: // G-Right
             if (gid && next.getAttribute("groupid") != gid && prev.getAttribute("groupid") == gid)
-                return index - 1;
+                return prev;
             else
-                return index;
+                return next;
         case 3: // Left
-            return index - 1;
+            return prev;
         case 4: // Right
-            return index;
+            return next;
         default: //case 0: // Auto // TODO=P4: Can I improve tree level in auto-sorted opener groups?
-            var defaultIndex = (tk.openRelativePosition == "left") ? index - 1 : index;
-            if (!gid) {
-                return defaultIndex;
-            }
+            var defaultTab = (tk.openRelativePosition == "left") ? prev : next;
+            if (!gid)
+                return defaultTab;
             if (next.getAttribute("groupid") != gid) {
                 if (prev.getAttribute("groupid") != gid) {
-                    tk.dump("Why was there a singleton group at position " + index + " ?!");
-                    return defaultIndex;
+                    tk.log("Might have been a singleton group at position " + tab._tPos + " ?");
+                    return defaultTab;
                 }
                 else {
-                    return index - 1;
+                    return prev;
                 }
             }
             if (prev.getAttribute("groupid") != gid) {
-                return index;
+                return next;
             }
             if (gid.indexOf(":oG-") == -1 && gid.indexOf(":tmpOG-") == -1) {
-                return defaultIndex;
+                return defaultTab;
             }
             // The tab and siblings share an opener based group, so see if we can use possibleparents to choose close order
             var tid = tab.getAttribute("tabid");
@@ -2724,37 +2766,37 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var openerGroup = tab.getAttribute(tk.Groupings.opener);
             if (prev.getAttribute(tk.Groupings.opener) == openerGroup) {
                 if (next.getAttribute(tk.Groupings.opener) != openerGroup) {
-                    return index - 1;
+                    return prev;
                 }
                 else {
                     // Both siblings are in the same openerGroup, so choose based on possibleparents
                     // (i.e. return to parent/sibling unless the default direction takes you to a sibling/child)
-                    if (defaultIndex == index) {
+                    if (defaultTab == next) {
                         if (next.getAttribute("possibleparent") == pid // sibling
                             || next.getAttribute("possibleparent") == tid) // child
                         {
-                            return index;
+                            return next;
                         }
                         else {
-                            return index - 1;
+                            return prev;
                         }
                     }
                     else {
                         if (prev.getAttribute("possibleparent") == pid // sibling
                             || prev.getAttribute("possibleparent") == tid) // child
                         {
-                            return index - 1;
+                            return prev;
                         }
                         else {
-                            return index;
+                            return next;
                         }
                     }
                 }
             }
             if (next.getAttribute(tk.Groupings.opener) == openerGroup) {
-                return index;
+                return next;
             }
-            return defaultIndex;
+            return defaultTab;
         }
     };
     
@@ -5214,9 +5256,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         gBrowser.mStrip.tkLastMouseover = Date.now(); // Prevent strict errors if we get a mouseout before our first mouseover
         gBrowser.mStrip.addEventListener("mouseover", tk.positionedTabbar_onMouseover, false);
         gBrowser.mStrip.addEventListener("mouseout", tk.positionedTabbar_onMouseout, false);
-        var splitter = document.getElementById("tabkit-splitter");
-        splitter.addEventListener("mouseover", tk.positionedTabbar_onMouseover, false);
-        splitter.addEventListener("mouseout", tk.positionedTabbar_onMouseout, false);
     };
     this.initListeners.push(this.initTabbarPosition);
 
@@ -5413,6 +5452,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 splitter.setAttribute("collapse", "before");
                 splitter.appendChild(document.createElementNS(XUL_NS, "grippy"));
                 gBrowser.mTabBox.insertBefore(splitter, gBrowser.mPanelContainer);
+                
+                splitter.addEventListener("mouseover", tk.positionedTabbar_onMouseover, false);
+                splitter.addEventListener("mouseout", tk.positionedTabbar_onMouseout, false);
                 
                 gBrowser.mStrip.width = _prefs.getIntPref("tabSidebarWidth");
                 for (var i = 0; i < _tabs.length; i++)
