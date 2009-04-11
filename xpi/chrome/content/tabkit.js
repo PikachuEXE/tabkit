@@ -89,9 +89,12 @@
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for: TODO=P
  
- * TODO=P2: Drop compatibility with Firefox 2
- 
  * TODO=P1: Fx3.5: Fix tab dragging
+ * TODO=P1: Fx3.5: Ctrl-clicked bookmarks aren't recognised
+ * TODO=P1: Fx3.5: BrowserLoadURL and nsContextMenu.prototype.viewImage don't replace correctly
+ * TODO=P1: Make groups not expand on single-click; make double-click-->collapse shortcut non-default
+ 
+ * TODO=P2: Drop compatibility with Firefox 2
  
  * TODO=P2: Prevent first group randomly collapsing and/or losing indents when restarting (and changing theme, but that's probably irrelevant)
  
@@ -2665,7 +2668,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         ]);//}
     }
     else { // [Fx3-]
-    breakpoint(function(e){return eval(e);});
         this.earlyMethodHooks.push([
             "gBrowser.removeTab",//{
             null,
@@ -4911,16 +4913,20 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             '$1 tabkit.addingTab("unrelated", null, true); $2 tabkit.addingTabOver();',
             */
         ]);//}
-        tk.addMethodHook([
-            'gBrowser.onDragOver',//{
-            null,
-            
-            'var isTabDrag = aDragSession.sourceNode.parentNode == this.mTabContainer;',
-            '/*[Fx2only]*/var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";',
-            
-            /var isTabDrag = aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer;/,
-            '/*[Fx3only]*/var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";'
-        ]);//}
+        if ("onDragOver" in gBrowser) { // [Fx3-]
+            tk.addMethodHook([
+                'gBrowser.onDragOver',//{
+                null,
+                
+                'var isTabDrag = aDragSession.sourceNode.parentNode == this.mTabContainer;',
+                '/*[Fx2only]*/var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";',
+                
+                /var isTabDrag = aDragSession\.sourceNode &&\s+aDragSession\.sourceNode\.parentNode == this\.mTabContainer;/,
+                '/*[Fx3only]*/var isTabDrag = aDragSession.sourceNode && aDragSession.sourceNode.localName == "tab";'
+                
+                // Not necessary in Fx3.5+
+            ]);//}
+        }
     };
     this.preInitListeners.push(this.preInitTabDragModifications);
     this.postInitTabDragModifications = function postInitTabDragModifications(event) { // TODO=P4: Test
@@ -5378,7 +5384,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (typeof pos != "number") pos = _prefs.getIntPref("tabbarPosition");
         
         if (_isFx3 && pos == tk.Positions.BOTTOM) {
-            _ps.alert(window, "Tab Kit", "Sorry, the tab bar cannot be shown at the bottom in Firefox 3.\nIt will be moved to the top."); // TODO=P3: Prevent tabbar at bottom from expanding when dragging tabs
+            _ps.alert(window, "Tab Kit", "Sorry, the tab bar cannot be shown at the bottom in Firefox 3+.\nIt will be moved to the top."); // TODO=P3: Prevent tabbar at bottom from expanding when dragging tabs, or just don't offer option
             _prefs.setIntPref("tabbarPosition", tk.Positions.TOP);
             return; // The pref listener will trigger moveTabbar again
             //pos = tk.Positions.TOP;
@@ -5729,61 +5735,102 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     ]);//}
     
     // TODO=P4: Prevent inappropriate indicator wrap around when dragging to end of row
-    this.lateMethodHooks.push([
-        "gBrowser.onDragOver",//{
-        null,
-        'ib.boxObject.x + ib.boxObject.width',
-        'gBrowser.boxObject.width',
-        
-        'ind.style.marginLeft = newMarginLeft + "px";',
-        '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
-            var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-            newMarginLeft = Math.floor(this.mStrip.width / 2); \
-            if (gBrowser.getAttribute("vertitabbar") == "reverse") \
-                newMarginLeft += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
-        } \
-        $&',
-        
-        'ind.style.marginRight = newMarginRight + "px";',
-        '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
-            var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-            newMarginRight = Math.floor(this.mStrip.width / 2); \
-            if (gBrowser.getAttribute("vertitabbar") == "reverse") \
-                newMarginRight += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
-        } \
-        $&',
-        
-        /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
-        '/*[Fx2only]*/$& \
-        if (newIndex == this.mTabs.length) \
-            ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
-        else \
-            ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";',
-        
-        'ind.style.MozMarginStart = newMargin + "px";',
-        '/*[Fx3only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
-            var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-            newMargin = Math.floor(this.mStrip.width / 2); \
-        } \
-        ib.style.display = "none"; \
-        $&',
-        // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
-        'ind.style.MozMarginStart = newMargin + "px";',
-        '/*[Fx3only]*/$& \
-        if (newIndex == this.mTabs.length) \
-            ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
-        else \
-            ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
-        ib.style.display = null;'
-    ]);//}
+    if ("_onDragOver" in gBrowser) { // [Fx3.5]
+        // These are the same changes as in Fx3
+        this.lateMethodHooks.push([
+            "gBrowser._onDragOver",//{
+            null,
+            'ib.boxObject.x + ib.boxObject.width',
+            'gBrowser.boxObject.width',
+            
+            'ind.style.MozMarginStart = newMargin + "px";',
+            'if (gBrowser.hasAttribute("vertitabbar")) { \
+                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                newMargin = Math.floor(this.mStrip.width / 2); \
+            } \
+            ib.style.display = "none"; \
+            $&',
+            // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
+            'ind.style.MozMarginStart = newMargin + "px";',
+            '$& \
+            if (newIndex == this.mTabs.length) \
+                ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+            else \
+                ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
+            ib.style.display = null;'
+        ]);//}
+    }
+    else { //if ("onDragOver" in gBrowser) [Fx3-]
+        this.lateMethodHooks.push([
+            "gBrowser.onDragOver",//{
+            null,
+            'ib.boxObject.x + ib.boxObject.width',
+            'gBrowser.boxObject.width',
+            
+            'ind.style.marginLeft = newMarginLeft + "px";',
+            '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
+                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                newMarginLeft = Math.floor(this.mStrip.width / 2); \
+                if (gBrowser.getAttribute("vertitabbar") == "reverse") \
+                    newMarginLeft += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
+            } \
+            $&',
+            
+            'ind.style.marginRight = newMarginRight + "px";',
+            '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
+                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                newMarginRight = Math.floor(this.mStrip.width / 2); \
+                if (gBrowser.getAttribute("vertitabbar") == "reverse") \
+                    newMarginRight += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
+            } \
+            $&',
+            
+            /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
+            '/*[Fx2only]*/$& \
+            if (newIndex == this.mTabs.length) \
+                ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+            else \
+                ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";',
+            
+            'ind.style.MozMarginStart = newMargin + "px";',
+            '/*[Fx3only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
+                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                newMargin = Math.floor(this.mStrip.width / 2); \
+            } \
+            ib.style.display = "none"; \
+            $&',
+            // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
+            'ind.style.MozMarginStart = newMargin + "px";',
+            '/*[Fx3only]*/$& \
+            if (newIndex == this.mTabs.length) \
+                ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+            else \
+                ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
+            ib.style.display = null;'
+        ]);//}
+    }
     
-    // canDrop override breaks multirow, but is only relevant for single row anyway (as multirow hides tabs-bottom), see https://bugzilla.mozilla.org/show_bug.cgi?id=333791#c38
-    this.lateMethodHooks.push([
-        "gBrowser.canDrop",//{
-        null,
-        '{',
-        '{ if (this.mTabContainer.getAttribute("multirow") == "true" || gBrowser.hasAttribute("vertitabbar")) return true;'
-    ]);//}
+    if ("_setEffectAllowedForDataTransfer" in gBrowser) { // [Fx3.5+]
+        this.lateMethodHooks.push([
+            "gBrowser._setEffectAllowedForDataTransfer",//{
+            null,
+            
+            /aEvent\.screenX\s*>=\s*sourceNode\.boxObject\.screenX\s*&&\s*aEvent\.screenX\s*<=\s*sourceNode\.boxObject\.screenX\s*\+\s*sourceNode\.boxObject\.width/,
+            '$& \
+             && aEvent.screenY >= sourceNode.boxObject.screenY \
+             && aEvent.screenY <= sourceNode.boxObject.screenY + sourceNode.boxObject.height'
+        ]);//}
+    }
+    else { //if ("canDrop" in gBrowser) [Fx3-]
+        // canDrop override breaks multirow, but is only relevant for single row anyway (as multirow hides tabs-bottom), see https://bugzilla.mozilla.org/show_bug.cgi?id=333791#c38
+        this.lateMethodHooks.push([
+            "gBrowser.canDrop",//{
+            null,
+            '{',
+            '{ if (this.mTabContainer.getAttribute("multirow") == "true" || gBrowser.hasAttribute("vertitabbar")) return true;'
+        ]);//}
+    }
+    
     /*!!
     // Prevent infinite recursion in _tabContainer.handleEvent and _tabstrip's underflow handler
     //~ this.earlyMethodHooks.push([
