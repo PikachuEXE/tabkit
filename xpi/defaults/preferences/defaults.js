@@ -40,7 +40,7 @@ pref("extensions.tabkit.gestures.rmbWheelTabSwitch", false);
 
 pref("extensions.tabkit.gestures.lmbRmbBackForward", true);
 
-pref("extensions.tabkit.doubleClickCollapseExpand", true);
+pref("extensions.tabkit.doubleClickCollapseExpand", false);
 
 //--- Tab Dragging---
 pref("extensions.tabkit.accelDragCopy", true);

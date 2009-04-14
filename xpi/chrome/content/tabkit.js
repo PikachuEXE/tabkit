@@ -91,8 +91,6 @@
  
  * TODO=P1: Fx3.5: Test subtree dragging
  * TODO=P1: Fx3.5: Ctrl-clicked bookmarks aren't recognised
- * TODO=P1: Fx3.5: BrowserLoadURL and nsContextMenu.prototype.viewImage don't replace correctly
- * TODO=P1: Make groups not expand on single-click; make double-click-->collapse shortcut non-default (but recommended); also prevent clash with tabclicking*
  * _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
  * Call keepGroupsTogether after groupTabsFromHereToCurrent
  * Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid)
@@ -1322,13 +1320,16 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.relatedTabSources = [
         'nsContextMenu.prototype.openLinkInTab',//{
         'nsContextMenu.prototype.openFrameInTab',
-        'nsContextMenu.prototype.viewImage',
         'nsContextMenu.prototype.viewBGImage',
         'nsContextMenu.prototype.addDictionaries'
         // And nsBrowserAccess.prototype.openURI if !isExternal
         // And <menuitem id="menu_HelpPopup_reportPhishingtoolmenu">
         // See also sourceTypes
     ];//}
+	if ('viewMedia' in nsContextMenu.prototype) // [Fx3.5+]
+		this.relatedTabSources.push('nsContextMenu.prototype.viewMedia');
+	else // [Fx3-]
+		this.relatedTabSources.push('nsContextMenu.prototype.viewImage');
     
     this.newTabSources = [
         // See sourceTypes
@@ -1838,10 +1839,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         { d: 5, n: "ondragdrop",            t: "newtab" }, //newTabButtonObserver.onDrop [[[1. loadOneTab 2. openNewTabWith 3.  4.  5. ondragdrop]]] // Could make unrelated if from a different window?
         { d: 4, n: "middleMousePaste",      t: "newtab" }, //middleMousePaste
-        { d: 4, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL [[[1. loadOneTab 2. openUILinkIn 3. openUILink 4. BrowserLoadURL 5. handleURLBarCommand 6. onclick]]]
+        { d: 4, n: "BrowserLoadURL",        t: "newtab" }, //[Fx3-] BrowserLoadURL [[[1. loadOneTab 2. openUILinkIn 3. openUILink 4. BrowserLoadURL 5. handleURLBarCommand 6. onclick]]]
+		{ d: 4, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. openUILinkIn 3. openUILink 4. handleCommand 5. onclick]]]
         { d: 2, n: "BrowserOpenTab",        t: "newtab" }, //BrowserOpenTab [[[1. loadOneTab 2. BrowserOpenTab 3. oncommand]]] // Amongst other traces
         { d: 2, n: "delayedOpenTab",        t: "newtab" }, //delayedOpenTab
-        { d: 2, n: "BrowserLoadURL",        t: "newtab" }, //BrowserLoadURL [[[1. loadOneTab 2. BrowserLoadURL 3. handleURLBarCommand 4.  5. anonymous 6. fireEvent 7. onTextEntered]]]
+        { d: 2, n: "BrowserLoadURL",        t: "newtab" }, //[Fx3-] BrowserLoadURL [[[1. loadOneTab 2. BrowserLoadURL 3. handleURLBarCommand 4.  5. anonymous 6. fireEvent 7. onTextEntered]]]
+		{ d: 2, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. handleCommand 3. anonymous 4. fireEvent 5. onTextEntered]]]
         { d: 3, n: "doSearch",              t: "newtab" }, //[Fx3only] BrowserSearch.searchBar.doSearch [[[1. loadOneTab 2. openUILinkIn 3. doSearch 4. handleSearchCommand 5. onTextEntered 6. handleEnter 7. onKeyPress]]] // (note: simple replacement wouldn't work if searchbar was added after opening window
         { d: 2, n: "doSearch",              t: "newtab" }, //[Fx2only] BrowserSearch.getSearchBar().doSearch [[[1. loadOneTab 2. doSearch 3. handleSearchCommand 4. onTextEntered 5. handleEnter 6. onKeyPress 7. onxblkeypress]]] // (note: simple replacement wouldn't work if searchbar was added after opening window
         { d: 1, n: "removeTab",             t: "newtab" }, //gBrowser.removeTab [[[1. removeTab 2. onTabClick 3. onclick]]]
@@ -1980,8 +1983,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 tk.updateAutoCollapse();
             // Else leave the last used group uncollapsed, so you can drag tabs into it, etc.
         }
-        else if (tab.hasAttribute("groupcollapsed")/*!! && tab.hidden*/) {
-            // Auto-expand groups when visited
+        else if (tab.hidden && tab.hasAttribute("groupcollapsed")) {
+            // Auto-expand groups when a hidden tab is accessed (note that normal methods of switching tabs skip these)
             tk.toggleGroupCollapsed(tab);
             /*!!
             // Keep selected tab as the visible tab of collapsed groups
@@ -2458,25 +2461,25 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.sortgroup_onDblclickTab = function sortgroup_onDblclickTab(event) {
         var tab = event.target;
         if (tab.localName == "tab") {
-            if (gBrowser.hasAttribute("vertitabbar")
-                && event.originalTarget.getAttribute('anonid') == 'close-button')
+            if (event.originalTarget.getAttribute('anonid') == 'close-button')
             {
-                if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) {
+                if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey
+				    && gBrowser.hasAttribute("vertitabbar")) {
                     // The user expected to close two tabs by clicking on a close button,
                     // then clicking on the close button of the tab below it (which will
                     // by now have risen up by one), so do this.
                     // Note: to avoid dataloss, we don't allow this when closing a group or subtree at a time
                     // TODO=P3: Test on Linux (where close tab might happen on mousedown instead of mouseup?)
                     gBrowser.removeTab(tab);
+					event.stopPropagation();
                 }
             }
             else if (tab.hasAttribute("groupid")
                      && _prefs.getBoolPref("doubleClickCollapseExpand"))
             {
                 tk.toggleGroupCollapsed(tab);
+				event.stopPropagation();
             }
-            
-            event.stopPropagation();
         }
     };
     /*!!this.sortgroup_onDblclickTab = function sortgroup_onDblclickTab(event) {
@@ -5579,12 +5582,22 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{=== New tabs by default
     //|##########################
     
-    this.earlyMethodHooks.push([
-        'BrowserLoadURL',//{
-        null,
-        'aTriggeringEvent.altKey',
-        '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
-    ]);//}
+	if ("BrowserLoadURL" in window) { // [Fx3-]
+		this.earlyMethodHooks.push([
+			'BrowserLoadURL',//{
+			null,
+			'aTriggeringEvent.altKey',
+			'(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
+		]);//}
+	}
+	else { // [Fx3.5+]
+		this.lateMethodHooks.push([
+			'gURLBar.handleCommand',//{
+			null,
+			'aTriggeringEvent.altKey',
+			'(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
+		]);//}
+	}
     
     //}##########################
     //{=== Tab Min Width
