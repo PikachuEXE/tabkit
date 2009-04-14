@@ -14,7 +14,7 @@ function Listener(dep) {
         for (var i = 2; i < dep.length; i++) {
             setDisabled(dep[i], disabled);
         }
-    }
+    };
 }
 
 function onLoad() {
