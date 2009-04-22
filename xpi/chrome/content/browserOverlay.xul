@@ -72,8 +72,8 @@
 	<command id="cmd_tabTree_newNavigatorTabGroup" oncommand="tabtree_tempParent = TABTREE_ROOT; BrowserOpenTab();"/>-->
 </commandset>
 
-<!--!!*-->
 <keyset id="mainKeyset">
+<!--!!*-->
 <!-- COMMENTED OUT, SINCE UPDATE OF "SESSION MANAGER" EXTENSION MAKES THIS OBSOLETE
 	<key id="key_tabkit-sessions-saveWindow" modifiers="accel shift" key="S" command="cmd_tabkit-sessions-saveWindow"/><!- - T O D O: check keys - ->
 	<key id="key_tabkit-sessions-saveAllWindows" modifiers="accel shift" key="A" command="cmd_tabkit-sessions-saveAllWindows"/><!- - T O D O: check keys - ->
@@ -87,8 +87,9 @@
 	<!--<key id="key_tabTree_mergeLeft" modifiers="accel shift" key="&tabTree.mergeLeft.commandkey;" oncommand="tabtree_mergeWithPrevious();"/>--><!--keycode="VK_COMMA"-->
 	<!--<key id="key_tabTree_mergeRight" modifiers="accel shift" key="&tabTree.mergeRight.commandkey;" oncommand="tabtree_mergeWithNext();"/>--><!--keycode="VK_PERIOD"-->
 	<!--<key id="key_tabTree_splitGroup" modifiers="accel shift" key="&tabTree.splitGroup.commandkey;" oncommand="tabtree_splitGroup();"/>--><!--keycode="VK_SLASH"-->
-</keyset>
 <!--*!!-->
+	<key id="key_tabkit-sortgroup-group-close" modifiers="alt shift" key="W" command="cmd_tabkit-sortgroup-group-close"/>
+</keyset>
 
 <!--!!*-->
 <menupopup id="menu_FilePopup">
@@ -195,7 +196,7 @@
 			<menuseparator/>
 			
 			<menuitem id="menu_tabkit-sortgroup-tab-caption" label="&tab.caption;" disabled="true"
-				style="font-size: 80%; background: inherit !important;"/>
+				style="font-size: 80%; background: inherit !important; -moz-appearance: none;"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-tab-newTabHere" label="&newTabHere.label;" accesskey="&newTabHere.accesskey;"
 				command="cmd_tabkit-sortgroup-tab-newTabHere"/>
@@ -211,7 +212,7 @@
 			<menuseparator groupsonly="true"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-group-caption" label="&group.caption;" disabled="true"
-				style="font-size: 80%; background: inherit !important;" groupsonly="true"/>
+				style="font-size: 80%; background: inherit !important; -moz-appearance: none;" groupsonly="true"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-group-collapse" label="&collapse.label;" accesskey="&collapse.accesskey;"
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true"/>
@@ -220,7 +221,8 @@
 			<menuitem id="menu_tabkit-sortgroup-group-bookmark" label="&bookmark.label;" accesskey="&bookmark.accesskey;"
 				command="cmd_tabkit-sortgroup-group-bookmark" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
-				command="cmd_tabkit-sortgroup-group-close" acceltext="&closeGroup.acceltext;" groupsonly="true"/>
+				command="cmd_tabkit-sortgroup-group-close" key="key_tabkit-sortgroup-group-close"
+				acceltext="&closeGroup.acceltext;" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-closeSubtree" label="&closeSubtree.label;" accesskey="&closeSubtree.accesskey;"
 				command="cmd_tabkit-sortgroup-group-closeSubtree" acceltext="&closeSubtree.acceltext;" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-ungroup" label="&ungroup.label;" accesskey="&ungroup.accesskey;"

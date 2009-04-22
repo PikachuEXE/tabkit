@@ -1,7 +1,7 @@
 //{ ### Tab Bar ###
 //--- Panels---
-pref("extensions.tabkit.tabbarPosition", 0); // 0: Top, 1: Left, 2: Right, 3: Bottom
-pref("extensions.tabkit.sidebarPosition", 1); // 0: Top, 1: Left, 2: Right, 3: Bottom
+pref("extensions.tabkit.tabbarPosition", 1); // 0: Top, 1: Left, 2: Right, 3: Bottom
+pref("extensions.tabkit.sidebarPosition", 2); // 0: Top, 1: Left, 2: Right, 3: Bottom
 
 //--- Horizontal Tab Bar --- (disable as appropriate)
 pref("extensions.tabkit.tabRows", 3); // 1 to disable
@@ -38,9 +38,11 @@ pref("extensions.tabkit.maxLightness", 80);
 pref("extensions.tabkit.gestures.tabWheelTabSwitch", true);
 pref("extensions.tabkit.gestures.rmbWheelTabSwitch", false);
 
+pref("extensions.tabkit.gestures.switchTabsOnHover", false);
+
 pref("extensions.tabkit.gestures.lmbRmbBackForward", true);
 
-pref("extensions.tabkit.doubleClickCollapseExpand", false);
+pref("extensions.tabkit.doubleClickCollapseExpand", true);
 
 //--- Tab Dragging---
 pref("extensions.tabkit.accelDragCopy", true);
@@ -64,7 +66,7 @@ pref("extensions.tabkit.autoGroupNewTabs", true);
 pref("extensions.tabkit.autoCollapse", false);
 
 //--- Positioning Tabs ---
-pref("extensions.tabkit.newTabPosition", 2); // 2: By last sort, 1: Next to current, 0: At far right
+pref("extensions.tabkit.newTabPosition", 1); // 2: By last sort, 1: Next to current, 0: At far right
     pref("extensions.tabkit.lastActiveSort", "origin"); // uri, lastLoaded, lastViewed, creation, origin or title
     pref("extensions.tabkit.openRelativePosition", "rightOfRecent"); // left, right, rightOfRecent or rightOfConsecutive
 
@@ -75,6 +77,14 @@ pref("extensions.tabkit.customCloseOrder", 2); // 0: Auto, 1: Group left, 2: Gro
 
 
 //{ ### Advanced ###
+//--- Open Tabs From: ---
+pref("extensions.tabkit.openTabsFrom.addressBar", false);
+//pref("browser.search.openintab", false);
+pref("extensions.tabkit.openTabsFrom.places", false);
+
+//--- Close Other Tabs ---
+pref("extensions.tabkit.closeBeforeAfterNotOther", true);
+
 //--- Tab Order ---
 pref("extensions.tabkit.autoSortOpenerGroups", true);
 pref("extensions.tabkit.autoSortDomainGroups", false);
@@ -84,20 +94,15 @@ pref("extensions.tabkit.bookmarkTabsAreRelated", false);
 pref("extensions.tabkit.historyTabsAreRelated", false);
 pref("extensions.tabkit.newTabsAreRelated", false);
 
-//--- Open Tabs From: ---
-pref("extensions.tabkit.openTabsFrom.addressBar", false);
-//pref("browser.search.openintab", false);
-
-//--- Misc ---
-pref("extensions.tabkit.closeBeforeAfterNotOther", true);
-
 //--- Reset ---
 //}
 
 
 //{ ### (Hidden) ###
+pref("extensions.tabkit.firstRunWizardDone", false); // TODO=P3: Add checkbox to re-enable
 pref("extensions.tabkit.checkCompatibility", true); // TODO=P3: Add checkbox to re-enable
 pref("extensions.tabkit.warnOnRegroup", true); // TODO=P3: Add checkbox to re-enable
+pref("extensions.tabkit.warnOnDoubleClickCollapse", true); // TODO=P3: Add checkbox to re-enable
 
 pref("extensions.tabkit.debug", false); // Enables error and warning messages
 pref("extensions.tabkit.debugMinorToo", false); // Enables debugging messages

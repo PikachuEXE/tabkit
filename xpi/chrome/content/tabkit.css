@@ -477,7 +477,8 @@ hbox					H #browser
 	/* note that min/max-height will be set to 24*rows too */
 }
 
-.tabbrowser-tabs[multirow] .tabbrowser-tab {
+.tabbrowser-tabs[multirow] .tabbrowser-tab,
+.tabbrowser-tabs[multirow] .tabs-newtab-button/*[sinceFx3.5]*/ {
 	min-height: 24px !important;
 	max-height: 24px !important;
 	/*!!max-height: none !important;

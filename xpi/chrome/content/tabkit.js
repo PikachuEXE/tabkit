@@ -18,8 +18,40 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/* Note on the source code
+ * -----------------------
+ * This code is split into sections, separated by "//|##########################".
+ * 
+ * The earlier sections, whose name is preceded by "//{### " provide services or abstraction
+ * functions for later sections.
+ * 
+ * The later sections, starting with "//{>>> " or "//{=== ", are where the important code is
+ * (especially the >>> ones). These code sections are designed to be largely independent of
+ * each other, and could often be removed without affecting the rest of the code.
+ *
+ * n.b. If you edit this in SciTE the //{ and //} cause the code to fold nicely.
+ */
+
 /* Changelog
  * ---------
+ * v0.5 (2009-04-tbc)
+ * - Made compatible with latest Firefox 3.5 betas; dropped compatibility with Firefox 2
+ * - Added First Run Wizard to help users choose between tab tree, multi-row tabs, or just normal tab positioning
+ * - Groups no longer expand on single-click - this just confused people. You now have to click the plus button, or double-click them, as before
+ * - Option to make bookmarks/history open in new tabs by default (under Advanced)
+ * - Option to switch tabs by hovering over them (under Controls)
+ * - Turned "Emphasize current tab in black" off by default for aesthetic reasons
+ * - Improved Open Selected Text Link url matching (now ignores closing brackets and punctuation)
+ * - Added Chinese Traditional (zh-TW) locale, thanks to Hugo Chen (needs updating slightly)
+ * - Added Russian (ru) locale, thanks to Timur Timirkhanov (needs updating slightly)
+ * - Now compatible with extensions like Tab Clicking Options (https://addons.mozilla.org/en-US/firefox/addon/260) that replace double-click functionality
+ * - Now detects tabs opened by the Mouseless Browsing extension
+ * - Performance: no longer loads main Javascript file in non-browser windows
+ * - When switching tabs, will no longer expand collapsed groups
+ * - Fix: Ctrl-clicked bookmarks now open in the right place
+ * - Fix: Prevent first group randomly collapsing and/or losing indents when restarting
+ * - Fix: Using Group Tabs From Here To Current in the middle of a group now always causes inner group to be ejected from outer group
+ * - Miscellaneous tweaks and fixes
  * v0.4.3 (2008-08-02)
  * - "Protect Tab" menuitem lets you mark tabs as protected, preventing them from being closed
  * - Options to make the address bar and/or search bar open into new tabs by default (press Alt to open in current tab)
@@ -69,53 +101,35 @@
  * - First public version.
  */
 
-/* Note on the source code
- * -----------------------
- * This code is split into sections, separated by "//|##########################".
- * 
- * The earlier sections, whose name is preceded by "//{### " provide services or abstraction
- * functions for later sections.
- * 
- * The later sections, starting with "//{>>> " or "//{=== ", are where the important code is
- * (especially the >>> ones). These code sections are designed to be largely independent of
- * each other, and could often be removed without affecting the rest of the code.
- *
- * n.b. If you edit this in SciTE the //{ and //} cause the code to fold nicely.
- */
-
 /* Rough Todo List
  * ---------------
  * I keep todo notes in the form TODO=Px where x is a priority betweeen 1 (highest) and 5 (lowest).
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for: TODO=P
  
- * TODO=P1: Fx3.5: Test subtree dragging
- * TODO=P1: Fx3.5: Ctrl-clicked bookmarks aren't recognised
- * _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
- * Call keepGroupsTogether after groupTabsFromHereToCurrent
- * Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid)
+ * TODO=P1: Update localisations (with English where necessary)
+ * TODO=P1: Reply to Mozillazine & comment on http://www.azarask.in/blog/post/firefoxnext-tabs-on-the-side/
+ * TODO=P3: Fx3.5: Occasional bugs with subtree dragging
+ * TODO=P2: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid)
+ * TODO=P3: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
  
  * TODO=P2: Drop compatibility with Firefox 2
  
- * TODO=P2: Prevent first group randomly collapsing and/or losing indents when restarting (and changing theme, but that's probably irrelevant)
- 
- * TODO=P3: Group Tabs From Here To Current in middle of group should cause inner group to be ejected from outer group
- 
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
  
+ * TODO=P3: Protect Tab could save tabs across sessions, like PermaTabs did, and/or lock navigation (no back/forward and links open in new tabs)
  * TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
  * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
- * TODO=P4: Cleverer Open Selected Text Link matching (e.g. ignore surrounding brackets)
- * TODO=P3: When automatically switching tab (e.g. chooseNextIndex), skip hidden tabs of collapsed groups [but maybe not if autocollapse is on]
  * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
+ * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab
  
- * TODO=P3: Open tabs from bookmarks, history, (groupmarks)
+ * TODO=P3: Make grouping bookmark groups optional?
  
  * TODO=P3: Colorpickers for unread/current/protected tab highlights, as in PermaTabs
  
  * TODO=P3: Document the fact that Close buttons: 'Show on all tabs' depends on tab clip width
  
- * TODO=P3: Add double-click to close tab option (and make sure doesn't conflict with Tab Clicking Options when disabled)
+ * TODO=P3: Add double-click to close tab option (less important now no longer conflicts with Tab Clicking Options)
  
  * TODO=P3: Use preventChangeOfAttributes to set vertical tabbar increment (though not pageincrement)
  * TODO=P3: Fx3+: Update Sorting & Grouping method hooks
@@ -147,12 +161,15 @@
  * TODO=P3: Fx3+: Bottom row of multirow tabs is 1px too tall
  * TODO=P3: Fx3.5: Scrollbars on bookmarks and all tabs menus causes all menus to randomly show scrollbars (both horiz and vert!)
  * TODO=P4: Fx2: Can't drag scrollbar slider on bookmarks menu without closing menu (works in Fx3+)
+ * TODO=P4: Look into possibility of displaying the sidebar beneath a vertical tab bar, so they share one column
  
  * TODO=P3: Implement lite version of LastTab Ctrl-Tab stack switching? No actually, since Ctrl-Tab is supposedly going to be incorporated into Fx3.5
  * TODO=P3: Multi-row on hover (for more than ~1 second)
  * TODO=P3: Multi-row: vertical splitter to adjust [max] no. of rows?
  * TODO=P3: Allow dragging into collapsed groups (especially with auto-collapse tabs), e.g. by temporarily expanding hovered-over groups (alternatively show a popup menu)
  * TODO=P3: BabelZilla
+ 
+ * TODO=P3: Fade old tabs with age, like Dao's Aging Tabs (https://addons.mozilla.org/en-US/firefox/addon/3542), or be compatible(!)
  * TODO=P3: (Re)implement tab scrollbar (though with centered tabs?)
  * TODO=P3: Collapsed group underline is invisible for the active tab when emphasizecurrent is on
  * TODO=P3: MTH-like ctrl/shift-click, and corresponding actions
@@ -185,13 +202,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     /// Private globals:
     const tk = this; // Functions passed as parameters lose their this, as do nested functions, and tabkit is a bit long(!), so store it in 'tk'
-
-    const PREF_BRANCH = "extensions.tabkit.";
-
+    
     const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-
+    
     const Cc = Components.classes;
     const Ci = Components.interfaces;
+    
+    const PREF_BRANCH = "extensions.tabkit.";
 
     //}##########################
     //{### Services
@@ -201,23 +218,23 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     if (typeof gPrefService == "undefined" || !gPrefService)
         gPrefService = Cc["@mozilla.org/preferences-service;1"].
                        getService(Ci.nsIPrefBranch);
-
+    
     /// Private globals:
     var _console = Cc["@mozilla.org/consoleservice;1"]
                    .getService(Ci.nsIConsoleService);
-
+    
     var _ds = Cc["@mozilla.org/file/directory_service;1"]
               .getService(Ci.nsIProperties);
     
     var _em = Cc["@mozilla.org/extensions/manager;1"]
               .getService(Ci.nsIExtensionManager)
-
+    
     var _ios = Cc["@mozilla.org/network/io-service;1"]
                .getService(Ci.nsIIOService);
-
+    
     var _os = Cc["@mozilla.org/observer-service;1"]
               .getService(Ci.nsIObserverService);
-
+    
     var _prefs = Cc["@mozilla.org/preferences-service;1"]
                  .getService(Ci.nsIPrefService)
                  .getBranch(PREF_BRANCH);
@@ -227,7 +244,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     var _sm = Cc["@mozilla.org/scriptsecuritymanager;1"]
               .getService(Ci.nsIScriptSecurityManager);
-
+    
     if ("@mozilla.org/browser/sessionstore;1" in Components.classes)
         var _ss = Cc["@mozilla.org/browser/sessionstore;1"]
                   .getService(Ci.nsISessionStore);
@@ -236,7 +253,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     var _sound = Cc["@mozilla.org/sound;1"]
                  .getService(Ci.nsISound);
-
+    
     var _wm = Cc["@mozilla.org/appshell/window-mediator;1"]
               .getService(Ci.nsIWindowMediator);
 
@@ -820,14 +837,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 return; // Cancel load if we haven't restarted
             }
         }
-
+        
+        // Run First Run Wizard if appropriate
+        if (!_prefs.getBoolPref("firstRunWizardDone")) {
+            var features = "chrome,dialog,modal,alwaysRaised,centerscreen,resizable=yes";
+            window.openDialog("chrome://tabkit/content/firstRunWizard.xul", "", features).focus();
+        }
+        
         // Run module early initialisation code (before any init* listeners, and before most extensions):
         for each (var listener in tk.preInitListeners) {
             tk.tryListener("DOMContentLoaded", listener, event);
         }
-        
-        // Run global init too
-        tk.onDOMContentLoaded_global(event);
     };
 
     // This gets called for new browser windows, once they've completely finished loading
@@ -892,27 +912,29 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{### Useful shortcuts
     //|##########################
 
-    // Only get these shortcuts for browser windows
+    /** // Only get these shortcuts for browser windows
     if (location == "chrome://browser/content/browser.xul") {
-    //!!if (typeof getBrowser() != "undefined") {
-        // Make sure we can use gBrowser from now on if this is a browser window
-        getBrowser();
-        
-        /// Private Globals:
-        var _tabContainer;
-        var _tabstrip;
-        var _tabInnerBox;
-        var _tabs;
-        
-        /// Initialisation:
-        this.preInitShortcuts = function preInitShortcuts(event) {
-            _tabContainer = gBrowser.mTabContainer;
-            _tabstrip = _tabContainer.mTabstrip;
-            _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
-            _tabs = gBrowser.mTabs
-        };
-        this.preInitListeners.push(this.preInitShortcuts);
-    }
+    //!!if (typeof getBrowser() != "undefined") {*/
+    
+    // Make sure we can use gBrowser from now on if this is a browser window
+    getBrowser();
+    
+    /// Private Globals:
+    var _tabContainer;
+    var _tabstrip;
+    var _tabInnerBox;
+    var _tabs;
+    
+    /// Initialisation:
+    this.preInitShortcuts = function preInitShortcuts(event) {
+        _tabContainer = gBrowser.mTabContainer;
+        _tabstrip = _tabContainer.mTabstrip;
+        _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
+        _tabs = gBrowser.mTabs
+    };
+    this.preInitListeners.push(this.preInitShortcuts);
+    
+    /**}*/
 
     //}##########################
     //{### Prefs Observers
@@ -1266,11 +1288,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         _tabContainer.addEventListener("TabSelect", tk.sortgroup_onTabSelect, true);
         gBrowser.addEventListener("DOMContentLoaded", tk.sortgroup_onTabLoading, true);
         gBrowser.addEventListener("load", tk.sortgroup_onTabLoaded, true);
+        // TODO=P3: See https://developer.mozilla.org/En/Listening_to_events_on_all_tabs for better ways to listen for tab loads in Fx3.5+
         // This is called just before the tab starts loading its content, use SSTabRestored for once that's finished
         document.addEventListener("SSTabRestoring", tk.sortgroup_onSSTabRestoring, false);
         _tabContainer.addEventListener("TabMove", tk.sortgroup_onTabMoved, false);
         _tabContainer.addEventListener("TabClose", tk.sortgroup_onTabRemoved, false);
         
+        gBrowser.mStrip.addEventListener("mousedown", tk.sortgroup_onTabMousedown, true);
         gBrowser.mStrip.addEventListener("click", tk.sortgroup_onClickTab, true);
         gBrowser.mStrip.addEventListener("dblclick", tk.sortgroup_onDblclickTab, true);
         //!!gBrowser.mStrip.addEventListener("mousedown", tk.sortgroup_onTabMousedown, true);
@@ -1326,10 +1350,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         // And <menuitem id="menu_HelpPopup_reportPhishingtoolmenu">
         // See also sourceTypes
     ];//}
-	if ('viewMedia' in nsContextMenu.prototype) // [Fx3.5+]
-		this.relatedTabSources.push('nsContextMenu.prototype.viewMedia');
-	else // [Fx3-]
-		this.relatedTabSources.push('nsContextMenu.prototype.viewImage');
+    if ('viewMedia' in nsContextMenu.prototype) // [Fx3.5+]
+        this.relatedTabSources.push('nsContextMenu.prototype.viewMedia');
+    else // [Fx3-]
+        this.relatedTabSources.push('nsContextMenu.prototype.viewImage');
     
     this.newTabSources = [
         // See sourceTypes
@@ -1410,46 +1434,23 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     this.preInitListeners.push(this.preInitSortingAndGroupingMethodHooks);
     
-    this.globalPreInitSortingAndGroupingMethodHooks = function globalPreInitSortingAndGroupingMethodHooks(event) {
-        if ("BookmarksCommand" in window) { // [Fx2only] // TODO=P4: Fx3: bookmarks are now unrelated - does that matter?
-            tk.wrapMethodCode(
-                'BookmarksCommand.openOneBookmark',
-                'var topWin; if (aTargetBrowser.indexOf("tab") != -1) topWin = getTopWin(); if (topWin && topWin.tabkit) topWin.tabkit.addingTab("bookmark"); try {',
-                '} finally { if (topWin && topWin.tabkit) topWin.tabkit.addingTabOver(); }'
-            );
-            
-            tk.addMethodHook([
-                'BookmarksCommand.openGroupBookmark',
-                null,
-                'if (aTargetBrowser == "current" || aTargetBrowser == "tab") {',
-                'if (aTargetBrowser == "current" || aTargetBrowser == "tab") { \
-                    var URIs = []; \
-                    while (containerChildren.hasMoreElements()) { \
-                       var res = containerChildren.getNext().QueryInterface(kRDFRSCIID); \
-                        var target = BMDS.GetTarget(res, urlArc, true); \
-                        if (target) \
-                            URIs.push(target.QueryInterface(kRDFLITIID).Value); \
-                    } \
-                    var browser = w.document.getElementById("content"); \
-                    var loadInBackground = PREF.getBoolPref("browser.tabs.loadBookmarksInBackground"); \
-                    var replace = (aTargetBrowser == "current"); \
-                    try { \
-                        w.tabkit.isBookmarkGroup = true; \
-                    } \
-                    catch (ex) {} \
-                    browser.loadTabs(URIs, loadInBackground, replace); \
-                } \
-                else if (false) {'
-            ]);
-        }
-    };
-    this.globalPreInitListeners.push(this.globalPreInitSortingAndGroupingMethodHooks);
+    // See globalPreInitSortingAndGroupingMethodHooks in tabkit-global.js
     
     this.postInitSortingAndGroupingMethodHooks = function postInitSortingAndGroupingMethodHooks(event) {
         if ("openSelectedLinks" in tk && tk.openSelectedLinks)
             tk.wrapMethodCode('tk.openSelectedLinks', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
         if ("openselectedlinks" in window && window.openselectedlinks && window.openselectedlinks.goCol) // [Fx2only] (or at least I haven't seen any updated versions of this)
             tk.wrapMethodCode('window.openselectedlinks.goCol', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
+        
+        // Give mlb_common.Utils.openUrlInNewTab a function name so it can be detected by sourceTypes!
+        if ("mlb_common" in window && "Utils" in mlb_common && "openUrlInNewTab" in mlb_common.Utils)
+            tk.addMethodHook([
+                'mlb_common.Utils.openUrlInNewTab',
+                null,
+                
+                'function (',
+                'function mlb_common_Utils_openUrlInNewTab('
+            ]);
     };
     this.postInitListeners.push(this.postInitSortingAndGroupingMethodHooks);
     
@@ -1830,21 +1831,24 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.sourceTypes = [ // TODO=P3: Store full stack signatures here (even if only the last element is used)
         { d: 5, n: "goup_up",               t: "related" }, //postInit: if ("goup_up" in window && window.goup_up) tk.wrapMethodCode('window.goup_up', 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
         { d: 4, n: "diggerLoadURL",         t: "related" }, //diggerLoadURL
+        { d: 3, n: "mlb_common_Utils_openUrlInNewTab", t: "related" }, //Mouseless Browsing mlb_common.Utils.openUrlInNewTab (but only after Tab Kit assigns a name to the function in postInitSortingAndGroupingMethodHooks!) [[[1. win_open 2. open 3. mlb_common_Utils_openUrlInNewTab 4.  5. ]]]
         { d: 3, n: "gotoHistoryIndex",      t: "related" }, //gotoHistoryIndex [[[1. loadOneTab 2. openUILinkIn 3. gotoHistoryIndex 4. anonymous 5. checkForMiddleClick 6. onclick]]]
         { d: 3, n: "BrowserBack",           t: "related" }, //BrowserBack [[[1. loadOneTab 2. openUILinkIn 3. BrowserBack 4. anonymous 5. checkForMiddleClick 6. onclick]]]
         { d: 3, n: "BrowserForward",        t: "related" }, //BrowserForward [[[1. loadOneTab 2. openUILinkIn 3. BrowserForward 4. anonymous 5. checkForMiddleClick 6. onclick]]]
+        { d: 3, n: "BrowserReloadOrDuplicate", t: "related" }, //BrowserReloadOrDuplicate [[[1. loadOneTab 2. openUILinkIn 3. BrowserReloadOrDuplicate 4. anonymous 5. checkForMiddleClick]]]]
         { d: 2, n: "BrowserSearch_search",  t: "related" }, //BrowserSearch.loadSearch
         { d: 3, n: "handleLinkClick",       t: "related" }, //handleLinkClick [[[1. loadOneTab 2. openNewTabWith 3. handleLinkClick 4. contentAreaClick 5. onclick]]]
         { d: 1, n: "webdeveloper_generateDocument", t: "related" }, //webdeveloper_generateDocument (WebDeveloper extension)
         
+        { d: 5, n: "BM_onCommand",          t: "newtab" }, //BM_onCommand [[[1. loadOneTab 2. openUILinkIn 3. PU_openNodeIn 4. PU_openNodeWithEvent 5. BM_onCommand]]]
         { d: 5, n: "ondragdrop",            t: "newtab" }, //newTabButtonObserver.onDrop [[[1. loadOneTab 2. openNewTabWith 3.  4.  5. ondragdrop]]] // Could make unrelated if from a different window?
         { d: 4, n: "middleMousePaste",      t: "newtab" }, //middleMousePaste
         { d: 4, n: "BrowserLoadURL",        t: "newtab" }, //[Fx3-] BrowserLoadURL [[[1. loadOneTab 2. openUILinkIn 3. openUILink 4. BrowserLoadURL 5. handleURLBarCommand 6. onclick]]]
-		{ d: 4, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. openUILinkIn 3. openUILink 4. handleCommand 5. onclick]]]
+        { d: 4, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. openUILinkIn 3. openUILink 4. handleCommand 5. onclick]]]
         { d: 2, n: "BrowserOpenTab",        t: "newtab" }, //BrowserOpenTab [[[1. loadOneTab 2. BrowserOpenTab 3. oncommand]]] // Amongst other traces
         { d: 2, n: "delayedOpenTab",        t: "newtab" }, //delayedOpenTab
         { d: 2, n: "BrowserLoadURL",        t: "newtab" }, //[Fx3-] BrowserLoadURL [[[1. loadOneTab 2. BrowserLoadURL 3. handleURLBarCommand 4.  5. anonymous 6. fireEvent 7. onTextEntered]]]
-		{ d: 2, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. handleCommand 3. anonymous 4. fireEvent 5. onTextEntered]]]
+        { d: 2, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. handleCommand 3. anonymous 4. fireEvent 5. onTextEntered]]]
         { d: 3, n: "doSearch",              t: "newtab" }, //[Fx3only] BrowserSearch.searchBar.doSearch [[[1. loadOneTab 2. openUILinkIn 3. doSearch 4. handleSearchCommand 5. onTextEntered 6. handleEnter 7. onKeyPress]]] // (note: simple replacement wouldn't work if searchbar was added after opening window
         { d: 2, n: "doSearch",              t: "newtab" }, //[Fx2only] BrowserSearch.getSearchBar().doSearch [[[1. loadOneTab 2. doSearch 3. handleSearchCommand 4. onTextEntered 5. handleEnter 6. onKeyPress 7. onxblkeypress]]] // (note: simple replacement wouldn't work if searchbar was added after opening window
         { d: 1, n: "removeTab",             t: "newtab" }, //gBrowser.removeTab [[[1. removeTab 2. onTabClick 3. onclick]]]
@@ -1948,8 +1952,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 //!!if ("breakpoint" in window)
                     //!!breakpoint(function(e){return eval(e);}, "No nextType for added tab: " + tid + "\n" + tk.quickStack() + "\n\n" + new Error().stack);
                 // TODO=P2: Make default nextType depend on whether the tab was opened in the foreground or background, for better compatibility with extensions that open tabs (this may have to be done by seeing if the tab gets selected...)
-                tk.nextType = "unrelated";
-                tk.dontMoveNextTab = true;
+                tk.nextType = "newtab";
+                //tk.nextType = "unrelated";
+                //tk.dontMoveNextTab = true;
             }
             
             tk.nextParent = gBrowser.selectedTab;
@@ -2011,6 +2016,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     // TODO=P3: Call updateAutoCollapse on restore if selected before the groupid is restored
     this.updateAutoCollapse = function updateAutoCollapse(group) {
+        if (!_prefs.getBoolPref("autoCollapse"))
+            return;
+        
         // Autocollapse inactive groups
         if (!group || !("length" in group)) {
             for each (var g in tk.getAllGroups())
@@ -2096,17 +2104,54 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
     };
 
+    var _sortgroup_onSSTabRestoring_timers = [];
     this.sortgroup_onSSTabRestoring = function sortgroup_onSSTabRestoring(event) {
         var tab = event.originalTarget;
+        
+        if ("__SS_data" in tab.linkedBrowser.parentNode && "attributes" in tab.linkedBrowser.parentNode.__SS_data) {
+            // Clean up the tab, in case it had data before being restored into
+            var attributes = tab.linkedBrowser.parentNode.__SS_data.attributes;
+            if (!("groupid" in attributes) && tab.hasAttribute("groupid"))
+                tk.removeGID(tab);
+            if (!("groupcollapsed" in attributes) && tab.hasAttribute("groupcollapsed")) {
+                tab.removeAttribute("groupcollapsed");
+                tab.hidden = false;
+            }
+            if (!("singletonid" in attributes) && tab.hasAttribute("singletonid"))
+                tab.removeAttribute("singletonid");
+            if (!("possibleparent" in attributes) && tab.hasAttribute("possibleparent"))
+                tab.removeAttribute("possibleparent");
+            if (!("outoforder" in attributes) && tab.hasAttribute("outoforder"))
+                tab.removeAttribute("outoforder");
+        }
         
         // Prevent restoring the lastViewedKey from overwriting the fact that the tab is currently being viewed
         if (tab.getAttribute("selected") == "true")
             tab.setAttribute(tk.Sorts.lastViewed, Date.now());
         
+        // Deal with duplicated tabs
+        if (arguments.callee.caller
+            && arguments.callee.caller.caller
+            && arguments.callee.caller.caller.caller
+            && arguments.callee.caller.caller.caller.name == "sss_duplicateTab")
+        {
+            tab.setAttribute("tabid", tk.generateId()); // Tab must have its own unique tabid
+            tk.removeGID(tab); // Let duplicateTab's caller worry about groups
+            return; // Don't call __sortgroup_onTabRestored (which might move the tab) - duplicating method must deal with this
+        }
+        
+        // Delay __sortgroup_onTabRestored timers until sortgroup_onSSTabRestoring stops getting called
+        for each (var lt in _sortgroup_onSSTabRestoring_timers) {
+            window.clearTimeout(lt.t);
+            lt.t = window.setTimeout(lt.l, 100);
+        }
+        
         // TODO=P4: Check tabs are restored correctly (and test groupcollapsed and hidden)
         // The timeout is because this might be the first tab of a group to be restored, and we'd rather not waste time marking it as a singleton then turning it back into a group (sss_restoreHistory calls itself with a timeout of 0 between each added tab)
         tab.groupNotChecked = true;
-        window.setTimeout(function __sortgroup_onTabRestored(tab) {
+        var listener = (function __sortgroup_onTabRestored() {
+            _sortgroup_onSSTabRestoring_timers.shift();
+            
             var gid = tab.getAttribute("groupid");
             if (!gid) {
                 gid = tab.getAttribute("singletonid");
@@ -2162,10 +2207,31 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     }*/
                     if (last) {
                         // Note: It might be better to properly merge it using insertTab (extend insertTab for origin to look for possibleparent and if not move to end, and take advantage of this in groupTabsBy too)
-                        if (last._tPos < tab._tPos)
-                            tk.moveAfter(tab, last);
-                        else
-                            tk.moveBefore(tab, last);
+                        if (last._tPos < tab._tPos) {
+                            var target = last;
+                            while (target.nextSibling
+                                   && target.nextSibling != tab
+                                   && target.nextSibling.getAttribute("groupid") == gid)
+                            {
+                                target = target.nextSibling;
+                            }
+                            if (target.nextSibling != tab)
+                                tk.moveAfter(tab, last);
+                        }
+                        else {
+                            // This bit is important! If we just move tab before last, then tab could be
+                            // wrongly moved after tabs in between, just because they happenned to get
+                            // restored later (e.g. if last was the selected tab so got restored first)
+                            var target = last;
+                            while (target.previousSibling
+                                   && target.previousSibling != tab
+                                   && target.previousSibling.getAttribute("groupid") == gid)
+                            {
+                                target = target.previousSibling;
+                            }
+                            if (target.previousSibling != tab)
+                                tk.moveBefore(tab, last);
+                        }
                         
                         if (last.hasAttribute("groupcollapsed")) {
                             tab.setAttribute("groupcollapsed", "true");
@@ -2224,10 +2290,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 tk.addingTabOver();
             }
             
+            tk.updateIndents();
+            
             delete tab.groupNotChecked;
-        }, 250, tab); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
-        
-        tk.updateIndents();
+        });
+        _sortgroup_onSSTabRestoring_timers.push({l:listener, t:window.setTimeout(listener, 100)}); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
     };
     
     this.sortgroup_onTabMoved = function sortgroup_onTabMoved(event) {
@@ -2399,8 +2466,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
         }
         
-        // Make sure collapsed groups don't get totally hidden!
         if (tab.hasAttribute("groupcollapsed") && !tab.hidden) {
+            // Make sure collapsed groups don't get totally hidden!
             window.setTimeout(function __uncollapseTab(gid, next, prev) {
                 if (gBrowser.selectedTab.getAttribute("groupid") != gid) {            
                     if (next && next.getAttribute("groupid") == gid)
@@ -2409,6 +2476,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         prev.hidden = false;
                 }
             }, 0, gid, tab.nextSibling, tab.previousSibling);
+            
+            /*!! // Closing a collapsed group's tab closes the entire group
+            for each (var t in tk.getGroupFromTab(contextTab))
+                if (t != tab)
+                    gBrowser.removeTab(tab);*/
         }
         
         /*!! // Move tab's children down a level
@@ -2438,17 +2510,32 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }, 0, scrollbar, curpos);*/
     };
 
-    this.sortgroup_onClickTab = function sortgroup_onClickTab(event) {
-        if (event.target.localName != "tab"
-            || !event.target.hasAttribute("groupid")
-            || event.altKey
-            || (event.button != 1
-                && event.originalTarget.getAttribute('anonid') != 'close-button'))
-        {
+    this.sortgroup_onTabMousedown = function sortgroup_onTabMousedown(event) {
+        if (event.target.localName != "tab")
             return;
-        }
         
-        if (navigator.platform.indexOf("Mac") == -1 ? event.ctrlKey : event.metaKey) {
+        if (event.target.hasAttribute("groupid")
+            && event.target.hasAttribute("groupcollapsed")
+            && event.originalTarget.className == "tab-icon-image"
+            && event.button == 0
+            && !event.ctrlKey && !event.shiftKey && !event.altKey)
+        {
+            tk.toggleGroupCollapsed(event.target);
+            
+            event.stopPropagation();
+            event.preventDefault();
+        }
+    };
+
+    this.sortgroup_onClickTab = function sortgroup_onClickTab(event) {
+        if (event.target.localName != "tab")
+            return;
+        
+        if (event.target.hasAttribute("groupid")
+            && (event.button == 1 || event.button == 0 && event.originalTarget.getAttribute('anonid') === 'close-button')
+            && !event.altKey
+            && navigator.platform.indexOf("Mac") == -1 ? event.ctrlKey : event.metaKey)
+        {
             if (event.shiftKey)
                 tk.closeSubtree(event.target);
             else
@@ -2464,21 +2551,42 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (event.originalTarget.getAttribute('anonid') == 'close-button')
             {
                 if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey
-				    && gBrowser.hasAttribute("vertitabbar")) {
+                    && gBrowser.hasAttribute("vertitabbar")) {
                     // The user expected to close two tabs by clicking on a close button,
                     // then clicking on the close button of the tab below it (which will
                     // by now have risen up by one), so do this.
                     // Note: to avoid dataloss, we don't allow this when closing a group or subtree at a time
                     // TODO=P3: Test on Linux (where close tab might happen on mousedown instead of mouseup?)
                     gBrowser.removeTab(tab);
-					event.stopPropagation();
+                    event.stopPropagation();
                 }
             }
             else if (tab.hasAttribute("groupid")
                      && _prefs.getBoolPref("doubleClickCollapseExpand"))
             {
+                // Warn novices about collapsing groups
+                if (!tab.hasAttribute("groupcollapsed") && _prefs.getBoolPref("warnOnDoubleClickCollapse")) {
+                    // Focus the window before prompting.
+                    // This will raise any minimized window, which will
+                    // make it obvious which window the prompt is for and will
+                    // solve the problem of windows "obscuring" the prompt.
+                    // See bug #350299 for more details
+                    window.focus();
+                    var check = { value: false };
+                    var strings = document.getElementById("bundle_tabkit");
+                    _ps.alertCheck(
+                        window, //aParent
+                        strings.getString("tab_kit"), //aDialogTitle
+                        strings.getString("doubleclickcollapse_warning"), //aText
+                        strings.getString("doubleclickcollapse_dont_mention_again"), //aCheckMsg
+                        check //aCheckState
+                    );
+                    if (check.value)
+                        _prefs.setBoolPref("warnOnDoubleClickCollapse", false);
+                }
+ 
                 tk.toggleGroupCollapsed(tab);
-				event.stopPropagation();
+                event.stopPropagation();
             }
         }
     };
@@ -2716,9 +2824,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     }
     
     this.chooseNextTab = function chooseNextTab(tab) {
-        // Note that in Fx3.1b3- the tab still exists at this point (but won't by the time pickNextIndex is called)
+        // Note that in Fx3.1b3- the tab still exists at this point, but won't by the time pickNextIndex is called
         var prev = tab.previousSibling;
         var next = tab.nextSibling;
+        var gid = tab.getAttribute("groupid");
         
         // _removingTabs is [Fx3.5+ (including 3.1b3)] (bug 462673)
         while (prev && "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(prev) != -1)
@@ -2726,13 +2835,24 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         while (next && "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(next) != -1)
             next = next.nextSibling;
         
+        // Skip hidden tabs unless they're in the same group (or there's no alternative tab)
+        var oldPrev = prev, oldNext = next;
+        while (prev && (prev.hidden && prev.getAttribute("groupid") != gid
+                        || "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(prev) != -1))
+            prev = prev.previousSibling;
+        while (next && (next.hidden && next.getAttribute("groupid") != gid
+                        || "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(next) != -1))
+            next = next.nextSibling;
+        if (!prev && !next) {
+            prev = oldPrev;
+            next = oldNext;
+        }
+        
         if (!next)
             return prev; // returns null if !prev
         
         if (!prev)
             return next;
-        
-        var gid = tab.getAttribute("groupid");
         
         switch (_prefs.getIntPref("customCloseOrder")) {
         case 1: // G-Left
@@ -2932,6 +3052,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var reallyRegroup = false;
         for (var i = start; i <= end; i++) {
             if (_tabs[i].hasAttribute("groupid")) {
+                reallyRegroup = true;
                 if (_prefs.getBoolPref("warnOnRegroup")) {
                     var warnOnRegroup = { value: true };
                     // Focus the window before prompting.
@@ -3301,7 +3422,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (t.getAttribute("tabid") == tid)
                 return t;
         }
-        throw new Error("Tab id not found: " + tid);
+        tk.debug("Tab id not found: " + tid + "\n" + tk.quickStack());
+        return null;
     };
 
     this.countGroups = function countGroups(gid) {
@@ -4950,9 +5072,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var copyOrFromAnotherWindow = (dropEffect == "copy" || draggedTab.parentNode != _tabContainer);
         
         // Move/copy the tab(s)
+        tabs.reverse();
+        var tabsReverse = tabs.slice(); // Copy
+        tabs.reverse();
         var newTabs = [];
         var tabIdMapping = {};
-        for each (var tab in tabs.reverse()) {
+        for each (var tab in tabsReverse) {
             if (copyOrFromAnotherWindow) {
                 // Tab was copied or from another window, so tab will be recreated instead of moved directly
                 
@@ -4968,9 +5093,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 newTabs.unshift(tk.addedTabs[0]);
                 
                 tk.addingTabOver();
-                
-                // Map tabids of original tabs to tabids of their clones
-                tabIdMapping[tab.getAttribute("tabid")] = newTabs[0].getAttribute("tabid");
             }
             else {
                 // Tab will be moved directly
@@ -4986,7 +5108,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             newTabs[0].originalTreeLevel = singleTab ? 0 : tab.treeLevel; // Save the treeLevels
         }
         if (dropEffect == "copy" && draggedTab.parentNode != _tabContainer)
-            gBrowser.selectedTab = newTabs[0]; // TODO=P2: Is this necessary?
+            gBrowser.selectedTab = newTabs[0]; // TODO=P3: Is this necessary?
         /*!!if (SINGLE_TAB) {
             draggedTab.originalTreeLevel = 0;
             // In case we changed newIndex in "Prevent accidentally dragging into ..." (plus saves recomputing it)
@@ -5008,7 +5130,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tk.addingTabOver();
         }
         else if (MOVE_WITHIN_WINDOW) {
-            for each (var tab in tabs.reverse()) {
+            for each (var tab in tabsReverse) {
                 tab.originalTreeLevel = tab.treeLevel; // Save the treeLevels before we move the tabs
                 tk.chosenNewIndex = newIndex;
                 aEvent.tab = tab;
@@ -5019,7 +5141,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var newTabs = [];
             var tabIdMapping = {};
             
-            for (var tab in tabs.reverse()) {
+            for (var tab in tabsReverse) {
                 tab.originalTreeLevel = tab.treeLevel; // Save the treeLevels before we copy/move the tabs
                 
                 tk.addingTab("unrelated", null, true);
@@ -5040,133 +5162,88 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 gBrowser.selectedTab = newTabs[0];
         }*/
         
-        // Group/indent the new/moved tabs
-        var nGid;
-        var app;
-        var draggedIntoGroup = (aGid && aGid == bGid);
-        if (draggedIntoGroup || dGid && (aGid == dGid || bGid == dGid)) {
-            if (/*!!dGid && (*/aGid == dGid || bGid == dGid/*!!)*/)
-                nGid = null; // We're in the same group we were before
-            else
-                nGid = aGid; // Copy enclosing groupid
+        window.setTimeout(function ___onDropCallback() { // TODO=P3: Waiting may actually be unnecessary
+            // This is now after the tabs have been restored
             
-            // Inherit enclosing indentation (possibleparent)
-            app = afterTab.getAttribute("possibleparent");
-            // But only if afterTab's possibleparent is in the same group as it
-            var parent = tk.getTabById(app);
-            if (!parent || parent.getAttribute("groupid") != aGid)
+            if (copyOrFromAnotherWindow)
+                for (var i = 0; i < newTabs.length; i++)
+                    // Map tabids of original tabs to tabids of their clones
+                    tabIdMapping[tabs[i].getAttribute("tabid")] = newTabs[i].getAttribute("tabid");
+            
+            // Group/indent the new/moved tabs
+            var nGid;
+            var app;
+            var draggedIntoGroup = (aGid && aGid == bGid);
+            if (draggedIntoGroup || dGid && (aGid == dGid || bGid == dGid)) {
+                if (/*!!dGid && (*/aGid == dGid || bGid == dGid/*!!)*/)
+                    nGid = dGid; // We're in the same group we were before
+                else
+                    nGid = aGid; // Copy enclosing groupid
+                
+                if (aGid) {
+                    // Inherit enclosing indentation (possibleparent)
+                    app = afterTab.getAttribute("possibleparent");
+                    // But only if afterTab's possibleparent is in the same group as it
+                    var parent = tk.getTabById(app);
+                    if (!parent || parent.getAttribute("groupid") != aGid)
+                        app = null;
+                }
+                else
+                    app = null;
+            }
+            else if (singleTab) {
+                if (newTabs[0].hasAttribute("groupid"))
+                    tk.removeGID(newTabs[0]);
+            }
+            else if (copyOrFromAnotherWindow /*&& !singleTab*/) {
+                // Create a new groupid
+                nGid = ":oG-copiedGroupOrSubtree-" + tk.generateId();
+                
                 app = null;
-        }
-        else if (singleTab) {
-            if (newTabs[0].hasAttribute("groupid"))
-                tk.removeGID(newTabs[0]);
-        }
-        else if (copyOrFromAnotherWindow /*&& !singleTab*/) {
-            // Create a new groupid
-            nGid = ":oG-copiedGroupOrSubtree-" + tk.generateId();
-            
-            app = null;
-        }
-        else {
-            if (shiftDragSubtree)
-                nGid = ":oG-draggedSubtree-" + tk.generateId(); // Maintain subtree by creating a new opener group // TODO=P5: No need if the subtree was the entire group
-            else
-                nGid = null; // Just keep existing groupid
-            
-            app = null;
-        }
-        for (var i = 0; i < newTabs.length; i++) {
-            var newTab = newTabs[i];
-            
-            // Apply nGid
-            if (nGid) {
-                tk.setGID(newTab, nGid);
-                if (draggedIntoGroup)
-                    newTab.setAttribute("outoforder", "true");
             }
-            
-            // Apply app, or copy from original if appropriate
-            if (app && newTab.originalTreeLevel <= newTabs[0].originalTreeLevel) {
-                // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc.
-                newTab.setAttribute("possibleparent", app);
+            else {
+                if (shiftDragSubtree)
+                    nGid = ":oG-draggedSubtree-" + tk.generateId(); // Maintain subtree by creating a new opener group // TODO=P5: No need if the subtree was the entire group
+                else
+                    nGid = null; // Just keep existing groupid
+                
+                app = null;
             }
-            else if (copyOrFromAnotherWindow && !singleTab) {
-                var tpp = tabs[i].getAttribute("possibleparent");
-                if (tpp in tabIdMapping)
-                    tpp = tabIdMapping[tpp];
-                newTab.setAttribute("possibleparent", tpp);
-                // n.b. duplicated [single] tabs have their possibleparent set to the original because of the tk.addingTab("related", ...) above
-            }
-        }
-        /*!!if (aGid && aGid == bGid) {
-            // Insert tab/subtree/group into group
-            for each (var tab in tabs) {
-                tk.setGID(tab, aGid);
-                tab.setAttribute("outoforder", "true");
-            }
-            // Inherit indentation
-            var app = afterTab.getAttribute("possibleparent");
-            // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-            var parent = tk.getTabById(app);
-            if (parent && parent.getAttribute("groupid") == aGid) {
-                for each (var tab in tabs) {
-                    if (tab.originalTreeLevel <= tabs[0].originalTreeLevel) { // Top level tabs only
-                        tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
-                    }
+            for (var i = 0; i < newTabs.length; i++) {
+                var newTab = newTabs[i];
+                
+                // Apply nGid
+                if (nGid) {
+                    tk.setGID(newTab, nGid);
+                    if (draggedIntoGroup)
+                        newTab.setAttribute("outoforder", "true");
+                }
+                
+                // Apply app, or copy from original if appropriate
+                if (app && newTab.originalTreeLevel <= newTabs[0].originalTreeLevel) {
+                    // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc.
+                    newTab.setAttribute("possibleparent", app);
+                }
+                else if (copyOrFromAnotherWindow && !singleTab) {
+                    var tpp = tabs[i].getAttribute("possibleparent");
+                    if (tpp in tabIdMapping)
+                        tpp = tabIdMapping[tpp];
+                    newTab.setAttribute("possibleparent", tpp);
+                    // n.b. duplicated [single] tabs have their possibleparent set to the original because of the tk.addingTab("related", ...) above
                 }
             }
-        }
-        else if (SINGLE_TAB) {
-            if (dGid && aGid != dGid && bGid != dGid)
-                tk.removeGID(draggedTab);
-        }
-        else if (((((aGid != dGid && bGid != dGid)))) && shiftDragSubtree) {
-            // Make the subtree into a new group
-            var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
-            for each (var tab in tabs)
-                tk.setGID(tab, newgid);
-        }
-        if (SINGLE_TAB) {
-            if (aGid && aGid == bGid) {
-                tk.setGID(draggedTab, aGid) // Join the group
-                draggedTab.setAttribute("outoforder", "true");
-                
-                var app = afterTab.getAttribute("possibleparent");
-                // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-                var parent = tk.getTabById(app);
-                if (parent && parent.getAttribute("groupid") == aGid)
-                    draggedTab.setAttribute("possibleparent", app);
-            }
-            else if (dGid && aGid != dGid && bGid != dGid) {
-                tk.removeGID(draggedTab);
-            }
-        }
-        else if (SINGLE_COPY) {
-            if (agid && agid == bgid) {
-                tk.setGID(newTab, agid);
-                newTab.setAttribute("outoforder", "true");
-                
-                var app = afterTab.getAttribute("possibleparent");
-                // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-                var parent = tk.getTabById(app);
-                if (parent && parent.getAttribute("groupid") == agid)
-                    newTab.setAttribute("possibleparent", app);
-                else
-                    newTab.setAttribute("possibleparent", oldTab.getAttribute("possibleparent"));
-            }
-        }
-        else if (MOVE_WITHIN_WINDOW) {
-            if (aGid && aGid == bGid) {
-                // Insert subtree/group into group
+            tk.updateIndents();
+            /*!!if (aGid && aGid == bGid) {
+                // Insert tab/subtree/group into group
                 for each (var tab in tabs) {
-                    tk.setGID(tab, agid);
+                    tk.setGID(tab, aGid);
                     tab.setAttribute("outoforder", "true");
                 }
                 // Inherit indentation
                 var app = afterTab.getAttribute("possibleparent");
                 // Only copy possibleparent if afterTab's possibleparent is in the same group as it
                 var parent = tk.getTabById(app);
-                if (parent && parent.getAttribute("groupid") == agid) {
+                if (parent && parent.getAttribute("groupid") == aGid) {
                     for each (var tab in tabs) {
                         if (tab.originalTreeLevel <= tabs[0].originalTreeLevel) { // Top level tabs only
                             tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
@@ -5174,88 +5251,147 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     }
                 }
             }
+            else if (SINGLE_TAB) {
+                if (dGid && aGid != dGid && bGid != dGid)
+                    tk.removeGID(draggedTab);
+            }
             else if (((((aGid != dGid && bGid != dGid)))) && shiftDragSubtree) {
                 // Make the subtree into a new group
                 var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
                 for each (var tab in tabs)
                     tk.setGID(tab, newgid);
             }
-        }
-        else if (COPY_OR_FROM_ANOTHER_WINDOW) {
-            // Inherit indentation
-            var app = null;
-            // Only inherit possibleparent if afterTab's group will enclose newTabs
-            if (aGid && aGid == bGid) {
-                app = afterTab.getAttribute("possibleparent");
-                // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-                var parent = tk.getTabById(app);
-                if (!parent || parent.getAttribute("groupid") != agid)
-                    app = null;
-            }
-            for (var i = 0; i < tabs.length; i++) {
-                if (app && tabs[i].originalTreeLevel <= tabs[0].originalTreeLevel) {
-                    newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
+            if (SINGLE_TAB) {
+                if (aGid && aGid == bGid) {
+                    tk.setGID(draggedTab, aGid) // Join the group
+                    draggedTab.setAttribute("outoforder", "true");
+                    
+                    var app = afterTab.getAttribute("possibleparent");
+                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                    var parent = tk.getTabById(app);
+                    if (parent && parent.getAttribute("groupid") == aGid)
+                        draggedTab.setAttribute("possibleparent", app);
                 }
-                else {
-                    var tpp = tabs[i].getAttribute("possibleparent");
-                    if (tpp in tabIdMapping)
-                        tpp = tabIdMapping[tpp];
-                    newTabs[i].setAttribute("possibleparent", tpp);
+                else if (dGid && aGid != dGid && bGid != dGid) {
+                    tk.removeGID(draggedTab);
                 }
             }
-            
-            // Do this afterwards so sortgroup_onTabRemoved doesn't mess up tabs we have yet to copy across
-            if (!copyNotMove) {
-                THIS SEEMS UNNECESSARY IF WE USE _ONDROP
-                var browser = oldTab.ownerDocument.defaultView.getBrowser();
-                for (var i = 0; i < tabs.length; i++)
-                    browser.removeTab(tabs[i]);
-            }
-            
-            // Copy enclosing groupid, or create a new one
-            var useEnclosing = (agid && agid == bgid);
-            var ngid = useEnclosing ? agid : ":oG-copiedGroupOrSubtree-" + tk.generateId());
-            if (ngid) {
-                for each (var newTab in newTabs) {
-                    tk.setGID(newTab, ngid);
-                    if (useEnclosing)
-                        newTab.setAttribute("outoforder", "true");
+            else if (SINGLE_COPY) {
+                if (agid && agid == bgid) {
+                    tk.setGID(newTab, agid);
+                    newTab.setAttribute("outoforder", "true");
+                    
+                    var app = afterTab.getAttribute("possibleparent");
+                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                    var parent = tk.getTabById(app);
+                    if (parent && parent.getAttribute("groupid") == agid)
+                        newTab.setAttribute("possibleparent", app);
+                    else
+                        newTab.setAttribute("possibleparent", oldTab.getAttribute("possibleparent"));
                 }
             }
-            // TODO=P3: Add an openerGroup to copied groups/subtrees
-            if (!copyNotMove)
-                window.focus();
-        }*/
-        
-        // Make sure the old group isn't now a singleton
-        if (singleTab) {
-            if (dGid) {
-                // TODO=P4: Refactor out into a checkIfSingleton method
-                if (dPrev && dPrev.getAttribute("groupid") == dGid) {
-                    if ((!dPrev.previousSibling || dPrev.previousSibling.getAttribute("groupid") != dGid)
-                        && (!dNext || dNext.getAttribute("groupid") != dGid))
-                    {
-                        tk.removeGID(dPrev, true);
+            else if (MOVE_WITHIN_WINDOW) {
+                if (aGid && aGid == bGid) {
+                    // Insert subtree/group into group
+                    for each (var tab in tabs) {
+                        tk.setGID(tab, agid);
+                        tab.setAttribute("outoforder", "true");
+                    }
+                    // Inherit indentation
+                    var app = afterTab.getAttribute("possibleparent");
+                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                    var parent = tk.getTabById(app);
+                    if (parent && parent.getAttribute("groupid") == agid) {
+                        for each (var tab in tabs) {
+                            if (tab.originalTreeLevel <= tabs[0].originalTreeLevel) { // Top level tabs only
+                                tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
+                            }
+                        }
                     }
                 }
-                else if (dNext && dNext.getAttribute("groupid") == dGid) {
-                    if (!dNext.nextSibling || dNext.nextSibling.getAttribute("groupid") != dGid)
-                        tk.removeGID(dNext, true);
+                else if (((((aGid != dGid && bGid != dGid)))) && shiftDragSubtree) {
+                    // Make the subtree into a new group
+                    var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
+                    for each (var tab in tabs)
+                        tk.setGID(tab, newgid);
                 }
             }
-        }
-        else if (!copyOrFromAnotherWindow) {
-            if (shiftDragSubtree) {
-                // Make sure old group isn't now a singleton
-                var group = tk.getGroupById(dGid);
-                if (group.length == 1)
-                    tk.removeGID(group[0], true);
+            else if (COPY_OR_FROM_ANOTHER_WINDOW) {
+                // Inherit indentation
+                var app = null;
+                // Only inherit possibleparent if afterTab's group will enclose newTabs
+                if (aGid && aGid == bGid) {
+                    app = afterTab.getAttribute("possibleparent");
+                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                    var parent = tk.getTabById(app);
+                    if (!parent || parent.getAttribute("groupid") != agid)
+                        app = null;
+                }
+                for (var i = 0; i < tabs.length; i++) {
+                    if (app && tabs[i].originalTreeLevel <= tabs[0].originalTreeLevel) {
+                        newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
+                    }
+                    else {
+                        var tpp = tabs[i].getAttribute("possibleparent");
+                        if (tpp in tabIdMapping)
+                            tpp = tabIdMapping[tpp];
+                        newTabs[i].setAttribute("possibleparent", tpp);
+                    }
+                }
+                
+                // Do this afterwards so sortgroup_onTabRemoved doesn't mess up tabs we have yet to copy across
+                if (!copyNotMove) {
+                    THIS SEEMS UNNECESSARY IF WE USE _ONDROP
+                    var browser = oldTab.ownerDocument.defaultView.getBrowser();
+                    for (var i = 0; i < tabs.length; i++)
+                        browser.removeTab(tabs[i]);
+                }
+                
+                // Copy enclosing groupid, or create a new one
+                var useEnclosing = (agid && agid == bgid);
+                var ngid = useEnclosing ? agid : ":oG-copiedGroupOrSubtree-" + tk.generateId());
+                if (ngid) {
+                    for each (var newTab in newTabs) {
+                        tk.setGID(newTab, ngid);
+                        if (useEnclosing)
+                            newTab.setAttribute("outoforder", "true");
+                    }
+                }
+                // TODO=P3: Add an openerGroup to copied groups/subtrees
+                if (!copyNotMove)
+                    window.focus();
+            }*/
+            
+            // Make sure the old group isn't now a singleton
+            if (singleTab) {
+                if (dGid) {
+                    // TODO=P4: Refactor out into a checkIfSingleton method
+                    if (dPrev && dPrev.getAttribute("groupid") == dGid) {
+                        if ((!dPrev.previousSibling || dPrev.previousSibling.getAttribute("groupid") != dGid)
+                            && (!dNext || dNext.getAttribute("groupid") != dGid))
+                        {
+                            tk.removeGID(dPrev, true);
+                        }
+                    }
+                    else if (dNext && dNext.getAttribute("groupid") == dGid) {
+                        if (!dNext.nextSibling || dNext.nextSibling.getAttribute("groupid") != dGid)
+                            tk.removeGID(dNext, true);
+                    }
+                }
             }
-        }
-        /*else if (copyOrFromAnotherWindow) {
-            if (shiftDragSubtree) {
-                // No need to worry about this, as no tabs are moved (they only get removed, so the TabClose listener sorts this out)
-        }*/
+            else if (!copyOrFromAnotherWindow) {
+                if (shiftDragSubtree) {
+                    // Make sure old group isn't now a singleton
+                    var group = tk.getGroupById(dGid);
+                    if (group.length == 1)
+                        tk.removeGID(group[0], true);
+                }
+            }
+            /*else if (copyOrFromAnotherWindow) {
+                if (shiftDragSubtree) {
+                    // No need to worry about this, as no tabs are moved (they only get removed, so the TabClose listener sorts this out)
+            }*/
+        }, 200);
     };
     
     this.chosenNewIndex = null;
@@ -5267,7 +5403,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             '{',
             '{ \
-            if (tabkit.chosenNewIndex) { \
+            if (typeof tk.chosenNewIndex == "number") { \
                 var newIndex = tabkit.chosenNewIndex; \
                 tabkit.chosenNewIndex = null; \
                 return newIndex; \
@@ -5582,22 +5718,24 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{=== New tabs by default
     //|##########################
     
-	if ("BrowserLoadURL" in window) { // [Fx3-]
-		this.earlyMethodHooks.push([
-			'BrowserLoadURL',//{
-			null,
-			'aTriggeringEvent.altKey',
-			'(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
-		]);//}
-	}
-	else { // [Fx3.5+]
-		this.lateMethodHooks.push([
-			'gURLBar.handleCommand',//{
-			null,
-			'aTriggeringEvent.altKey',
-			'(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
-		]);//}
-	}
+    // See globalPreInitNewTabsByDefault in tabkit-global.js
+    
+    if ("BrowserLoadURL" in window) { // [Fx3-]
+        this.earlyMethodHooks.push([
+            'BrowserLoadURL',//{
+            null,
+            'aTriggeringEvent.altKey',
+            '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
+        ]);//}
+    }
+    else { // [Fx3.5+]
+        this.lateMethodHooks.push([
+            'gURLBar.handleCommand',//{
+            null,
+            'aTriggeringEvent.altKey',
+            '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
+        ]);//}
+    }
     
     //}##########################
     //{=== Tab Min Width
@@ -6000,6 +6138,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 for (var i = 0; i < _tabs.length; i++)
                     if (_tabs[i].hidden)
                         visibleTabs--;
+                if (_tabs[_tabs.length-1].boxObject.nextSibling.className == "tabs-newtab-button")
+                    visibleTabs++; // Treat the new tab button as a tab for our purposes
                 var availWidth = _tabstrip._scrollbox.boxObject.width;
                 var tabsPerRow = Math.floor(availWidth / gPrefService.getIntPref("browser.tabs.tabMinWidth"));
                 var rows = Math.ceil(visibleTabs / tabsPerRow);
@@ -6034,7 +6174,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         scrollbar.setAttribute("pageincrement", 48);
                         scrollbar.addEventListener("DOMAttrModified", tk.preventChangeOfAttributes, true);
                         
-                        availWidth -= scrollbar.boxObject.width;
+                        availWidth -= Math.max(scrollbar.boxObject.width, 22);
                     }
                     catch (ex) {
                         tk.debug("Oops, the scrollbar hasn't been created yet... TODO-P6: use a timeout");
@@ -6333,6 +6473,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     var _mousedown = [false, undefined, false];
     var _preventContext = false;
     var _mouseScrollWrapCounter = 0;
+    var _hoverTab = null;
+    var _hoverTimer = null;
+    var _lastHover = 0;
 
     /// Initialisation:
     this.initMouseGestures = function initMouseGestures(event) {
@@ -6345,6 +6488,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         _tabInnerBox.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.mTabstripClosebutton.addEventListener("DOMMouseScroll", tk.onTabWheelGesture, true);
         _tabContainer.addEventListener("TabSelect", function(event) { _mouseScrollWrapCounter = 0; }, false);
+        _tabContainer.addEventListener("mouseover", tk.onTabHoverGesture, false);
+        _tabContainer.addEventListener("mouseout", tk.cancelTabHoverGesture, false);
         
         // Move Close Tab Before/After to the tab context menu (from the Tools menu)
         var tabContextMenu = gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0];
@@ -6468,6 +6613,31 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         else if (_prefs.getBoolPref("gestures.tabWheelTabSwitch")) {
             tk.scrollwheelTabSwitch(event);
         }
+    };
+    
+    this.onTabHoverGesture = function onTabHoverGesture(event) {
+        if (!event.isTrusted || event.target.localName != "tab" || !_prefs.getBoolPref("gestures.switchTabsOnHover"))
+            return;
+        
+        _hoverTab = event.target;
+        // Switch instantly if vertical tab bar, or less than 200ms since last switch, or to tabs next to current tab if less than 1s
+        var wait = 0;
+        if (!gBrowser.hasAttribute("vertitabbar")
+            && (Date.now() - _lastHover) < (Math.abs(_hoverTab._tPos - gBrowser.selectedTab._tPos) == 1 ? 1000 : 200))
+        {
+            wait = 200;
+        }
+        window.clearTimeout(_hoverTimer);
+        _hoverTimer = window.setTimeout(function __hoverSelectTab() {
+            gBrowser.selectedTab = _hoverTab;
+            _lastHover = Date.now();
+        }, wait);
+    };
+    this.cancelTabHoverGesture = function cancelTabHoverGesture(event) {
+        if (!event.isTrusted || event.target != _hoverTab)
+            return;
+        
+        window.clearTimeout(_hoverTimer);
     };
 
     /// Methods:
@@ -6698,7 +6868,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (selectedText == "")
             return uris;
         
-        var matches = selectedText.match(/[^\s,]+\:\/\/[^\s,]+|www[^\s,]+|[^\s,]+\.com[^\s,]*|[^\s,]+\.net[^\s,]*|[^\s,]+\.org[^\s,]*|[^\s,]+\.edu[^\s,]*|\d{1,3}\.\d{1,3}\.\{1,3}+\.\{1,3}+|[^\s,]+\.\S+\/[^\s,]*/igm); //TODO=P3: Reject brackets and punctuation before/after
+        // Using regex from http://www.regexguru.com/2008/11/detecting-urls-in-a-block-of-text/
+        // This matches anything starting with www., ftp., http://, https:// or ftp://
+        // and containing common URL characters, but the final character is restricted (for
+        // example URLs mustn't end in brackets, dots, or commas). It will however correctly
+        // recognise urls such as http://en.wikipedia.org/wiki/Rock_(disambiguation) by
+        // specifically permitting singly-nested matching brackets.
+        var matches = selectedText.match(/\b(?:(?:https?|ftp):\/\/|www\.|ftp\.)(?:\([-A-Z0-9+&@#\/%=~_|$?!:,.]*\)|[-A-Z0-9+&@#\/%=~_|$?!:,.])*(?:\([-A-Z0-9+&@#\/%=~_|$?!:,.]*\)|[A-Z0-9+&@#\/%=~_|$])/ig);
         if (matches != null) {
             for (var i = 0; i < matches.length; i++) {
                 var uri = matches[i];
@@ -6773,7 +6949,7 @@ if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpo
 
 
 // Move To Start/End:
-tabkit.moveTabOrGroupToStartOrEnd = function moveTabOrGroupToStartOrEnd(tab, isStart) { if (!tab) tab = gBrowser.selectedTab; var tabs = tab.hasAttribute("groupid") ? tabkit.getGroupFromTab(tab) : [ tab ]; for each (var t in (isStart ? tabs : tabs.reverse())) gBrowser.moveTabTo(t, (isStart ? _tabs.length - 1 : 0)); }; var menuseparator = document.createElementNS(XUL_NS, "menuseparator"); var menuitem1 = document.createElementNS(XUL_NS, "menuitem"); menuitem1.setAttribute("label", "Move To Start"); menuitem1.setAttribute("oncommand", "tabkit.moveTabOrGroupToStartOrEnd(gBrowser.mContextTab, false);"); var menuitem2 = document.createElementNS(XUL_NS, "menuitem"); menuitem2.setAttribute("label", "Move To End"); menuitem2.setAttribute("oncommand", "tabkit.moveTabOrGroupToStartOrEnd(gBrowser.mContextTab, true);"); var nodes = [ menuseparator, menuitem1, menuitem2 ]; for each (var node in nodes) gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0].appendChild(node);
+tabkit.moveTabOrGroupToStartOrEnd = function moveTabOrGroupToStartOrEnd(tab, isStart) { if (!tab) tab = gBrowser.selectedTab; var tabs = tab.hasAttribute("groupid") ? tabkit.getGroupFromTab(tab) : [ tab ]; if (isStart) tabs.reverse(); for each (var t in tabs) gBrowser.moveTabTo(t, (isStart ? _tabs.length - 1 : 0)); }; var menuseparator = document.createElementNS(XUL_NS, "menuseparator"); var menuitem1 = document.createElementNS(XUL_NS, "menuitem"); menuitem1.setAttribute("label", "Move To Start"); menuitem1.setAttribute("oncommand", "tabkit.moveTabOrGroupToStartOrEnd(gBrowser.mContextTab, false);"); var menuitem2 = document.createElementNS(XUL_NS, "menuitem"); menuitem2.setAttribute("label", "Move To End"); menuitem2.setAttribute("oncommand", "tabkit.moveTabOrGroupToStartOrEnd(gBrowser.mContextTab, true);"); var nodes = [ menuseparator, menuitem1, menuitem2 ]; for each (var node in nodes) gBrowser.mStrip.getElementsByAttribute("anonid", "tabContextMenu")[0].appendChild(node);
 
 
 

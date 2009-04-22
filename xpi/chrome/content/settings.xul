@@ -4,7 +4,7 @@
 <!DOCTYPE prefwindow SYSTEM "chrome://tabkit/locale/settings.dtd">
 
 <prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" id="tabkit-settings"
-		windowtype="mozilla:tabkitsettings" title="&options.title;" onload="onLoad();">
+		windowtype="mozilla:tabkitSettings" title="&options.title;" onload="onLoad();">
 	
 	<prefpane id="tabbar-pane" label="&tabbar.title;" image="chrome://tabkit/skin/prefs-tabbar.png">
 		<preferences>
@@ -176,6 +176,7 @@
 		<preferences>
 			<preference id="tabwheeltabswitch-pref" name="extensions.tabkit.gestures.tabWheelTabSwitch" type="bool"/>
 			<preference id="rmbwheeltabswitch-pref" name="extensions.tabkit.gestures.rmbWheelTabSwitch" type="bool"/>
+			<preference id="switchtabsonhover-pref" name="extensions.tabkit.gestures.switchTabsOnHover" type="bool"/>
 			<preference id="lmbrmbbackforward-pref" name="extensions.tabkit.gestures.lmbRmbBackForward" type="bool"/>
 			<preference id="doubleclickcollapseexpand-pref" name="extensions.tabkit.doubleClickCollapseExpand" type="bool"/>
 			
@@ -198,6 +199,8 @@
 				<checkbox id="rmbwheeltabswitch" label="&rmbWheelTabSwitch.label;"
 						accesskey="&rmbWheelTabSwitch.accesskey;" preference="rmbwheeltabswitch-pref"/>
 			</vbox>
+			<checkbox id="switchtabsonhover" label="&switchTabsOnHover.label;"
+					accesskey="&switchTabsOnHover.accesskey;" preference="switchtabsonhover-pref"/>
 			<checkbox id="lmbrmbbackforward" label="&lmbRmbBackForward.label;"
 					accesskey="&lmbRmbBackForward.accesskey;" preference="lmbrmbbackforward-pref"/>
 			<checkbox id="doubleclickcollapsecxpand" label="&doubleClickCollapseExpand.label;"
@@ -288,7 +291,7 @@
 				</menupopup>
 				</menulist>
 			</hbox>
-			<hbox class="indent" align="center">
+			<hbox align="center">
 				<label control="openrelativeposition" value="&openRelativePosition.label;" accesskey="&openRelativePosition.accesskey;"/>
 				<menulist id="openrelativeposition" preference="openrelativeposition-pref">
 				<menupopup>
@@ -323,6 +326,12 @@
 
 	<prefpane id="advanced-pane" label="&advanced.title;" image="chrome://tabkit/skin/prefs-advanced.png">
 		<preferences>
+			<preference id="opentabsfromaddressbar-pref" name="extensions.tabkit.openTabsFrom.addressBar" type="bool"/>
+			<preference id="opentabsfromsearchbar-pref" name="browser.search.openintab" type="bool"/>
+			<preference id="opentabsfromplaces-pref" name="extensions.tabkit.openTabsFrom.places" type="bool"/>
+			
+			<preference id="closebeforeafternotother-pref" name="extensions.tabkit.closeBeforeAfterNotOther" type="bool"/>
+			
 			<preference id="autosortopenergroups-pref" name="extensions.tabkit.autoSortOpenerGroups" type="bool"/>
 			<preference id="autosortdomaingroups-pref" name="extensions.tabkit.autoSortDomainGroups" type="bool"/>
 			
@@ -330,14 +339,25 @@
 			<preference id="historytabsarerelated-pref" name="extensions.tabkit.historyTabsAreRelated" type="bool"/>
 			<preference id="newtabsarerelated-pref" name="extensions.tabkit.newTabsAreRelated" type="bool"/>
 			
-			<preference id="opentabsfromaddressbar-pref" name="extensions.tabkit.openTabsFrom.addressBar" type="bool"/>
-			<preference id="opentabsfromsearchbar-pref" name="browser.search.openintab" type="bool"/>
-			
-			<preference id="closebeforeafternotother-pref" name="extensions.tabkit.closeBeforeAfterNotOther" type="bool"/>
-			
 			<!-- Hidden pref for resetAll -->
 			<preference id="tabsidebarwidth-pref" name="extensions.tabkit.tabSidebarWidth" type="int"/>
 		</preferences>
+		
+		<groupbox><caption label="&openTabsFrom.caption;"/>
+			<hbox>
+				<checkbox id="opentabsfromaddressbar" label="&addressBar.label;"
+						accesskey="&addressBar.accesskey;" preference="opentabsfromaddressbar-pref"/>
+				<checkbox id="opentabsfromsearchbar" label="&searchBar.label;"
+						accesskey="&searchBar.accesskey;" preference="opentabsfromsearchbar-pref"/>
+				<checkbox id="opentabsfromplaces" label="&places.label;"
+						accesskey="&places.accesskey;" preference="opentabsfromplaces-pref"/>
+			</hbox>
+		</groupbox>
+		
+		<groupbox><caption label="&closeOtherTabs.caption;"/>
+			<checkbox id="closebeforeafternotother" label="&closeBeforeAfterNotOther.label;"
+					accesskey="&closeBeforeAfterNotOther.accesskey;" preference="closebeforeafternotother-pref"/>
+		</groupbox>
 		
 		<groupbox><caption label="&tabOrder.caption;"/>
 			<checkbox id="autosortopenergroups" label="&autoSortOpenerGroups.label;"
@@ -353,20 +373,6 @@
 					accesskey="&historyTabsAreRelated.accesskey;" preference="historytabsarerelated-pref"/>
 			<checkbox id="newtabsarerelated" label="&newTabsAreRelated.label;"
 					accesskey="&newTabsAreRelated.accesskey;" preference="newtabsarerelated-pref"/>
-		</groupbox>
-		
-		<groupbox><caption label="&openTabsFrom.caption;"/>
-			<hbox>
-				<checkbox id="opentabsfromaddressbar" label="&addressBar.label;"
-						accesskey="&addressBar.accesskey;" preference="opentabsfromaddressbar-pref"/>
-				<checkbox id="opentabsfromsearchbar" label="&searchBar.label;"
-						accesskey="&searchBar.accesskey;" preference="opentabsfromsearchbar-pref"/>
-			</hbox>
-		</groupbox>
-		
-		<groupbox><caption label="&misc.caption;"/>
-			<checkbox id="closebeforeafternotother" label="&closeBeforeAfterNotOther.label;"
-					accesskey="&closeBeforeAfterNotOther.accesskey;" preference="closebeforeafternotother-pref"/>
 		</groupbox>
 		
 		<groupbox><caption label="&reset.caption;"/>

@@ -89,8 +89,11 @@ function disableAll() {
     document.getElementById("multiplerows").checked = false;
     toggleMultipleRows();
 
+    document.getElementById("tabbarposition-pref").value = 0;
+    document.getElementById("sidebarposition-pref").value = 1;
+	
     document.getElementById("highlightunreadtabs-pref").value = false;
-    document.getElementById("emphasizecurrenttab-pref").value = false;
+    document.getElementById("emphasizeprotectedtabs-pref").value = false;
     document.getElementById("forcethemecompatibility-pref").value = 0;
 
     document.getElementById("tabwheeltabswitch-pref").value = false;
