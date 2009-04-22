@@ -34,7 +34,7 @@
 
 /* Changelog
  * ---------
- * v0.5 (2009-04-22)
+ * v0.5.1 (2009-04-22)
  * - Made compatible with latest Firefox 3.5 betas; dropped compatibility with Firefox 2
  * - Added First Run Wizard to help users choose between tab tree, multi-row tabs, or just normal tab positioning
  * - Groups no longer expand on single-click - this just confused people. You now have to click the plus button, or double-click them, as before
@@ -115,6 +115,8 @@
  
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
  
+ * TODO=P3: Add "Tab Kit Options" button to Firefox Options -> Tabs, like Tab Mix Plus does
+ * TODO=P3: Ability to Save/Restore Groups (a bit like session manager does for windows) [see also http://www.visibotech.com/toomanytabs/]
  * TODO=P3: Protect Tab could save tabs across sessions, like PermaTabs did, and/or lock navigation (no back/forward and links open in new tabs)
  * TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
  * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
@@ -687,9 +689,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     // USAGE: this.*InitListeners.push(this.*Init*);
 
     /// Globals:
-    this.globalPreInitListeners = [
-    ];
-
     this.preInitListeners = [
     ];
 
@@ -715,31 +714,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
     /// Event Listeners:
-    /* This gets called from:
-     * chrome://browser/content/bookmarks/bookmarksManager.xul,
-     * chrome://browser/content/bookmarks/bookmarksPanel.xul and
-     * chrome://browser/content/history/history-panel.xul
-     */
-    this.onDOMContentLoaded_global = function onDOMContentLoaded_global(event) {
-        if (event.originalTarget != document)
-            return;
-        
-        try {
-            window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded_global, false);
-        }
-        catch (ex) {
-            // This is a browser window, it wasn't set
-        }
-        
-        // Find what version of Firefox we're using TODO=P4: Do this in a less hacky way. Or better still, just drop support for Fx2
-        _isFx2 = !(_isFx3 = (document.getElementById("browser-stack") == null));
-
-        // Run module global early initialisation code (before any init* listeners, and before most extensions):
-        for each (var listener in tk.globalPreInitListeners) {
-            tk.tryListener("DOMContentLoaded_global", listener, event);
-        }
-    };
-
     // This gets called for new browser windows, once the DOM tree is loaded
     this.onDOMContentLoaded = function onDOMContentLoaded(event) {
         if (event.originalTarget != document)
@@ -910,9 +884,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{### Useful shortcuts
     //|##########################
 
-    /** // Only get these shortcuts for browser windows
+    /**
+    // Only get these shortcuts for browser windows
     if (location == "chrome://browser/content/browser.xul") {
-    //!!if (typeof getBrowser() != "undefined") {*/
+    //!!if (typeof getBrowser() != "undefined") {
+    */
     
     // Make sure we can use gBrowser from now on if this is a browser window
     getBrowser();
@@ -932,7 +908,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     this.preInitListeners.push(this.preInitShortcuts);
     
-    /**}*/
+    /**
+    }
+    */
 
     //}##########################
     //{### Prefs Observers
