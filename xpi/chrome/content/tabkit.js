@@ -34,7 +34,7 @@
 
 /* Changelog
  * ---------
- * v0.5 (2009-04-tbc)
+ * v0.5 (2009-04-22)
  * - Made compatible with latest Firefox 3.5 betas; dropped compatibility with Firefox 2
  * - Added First Run Wizard to help users choose between tab tree, multi-row tabs, or just normal tab positioning
  * - Groups no longer expand on single-click - this just confused people. You now have to click the plus button, or double-click them, as before
@@ -42,8 +42,8 @@
  * - Option to switch tabs by hovering over them (under Controls)
  * - Turned "Emphasize current tab in black" off by default for aesthetic reasons
  * - Improved Open Selected Text Link url matching (now ignores closing brackets and punctuation)
- * - Added Chinese Traditional (zh-TW) locale, thanks to Hugo Chen (needs updating slightly)
- * - Added Russian (ru) locale, thanks to Timur Timirkhanov (needs updating slightly)
+ * - Added Chinese Traditional (zh-TW) locale, thanks to Hugo Chen (though needs updating slightly)
+ * - Added Russian (ru) locale, thanks to Timur Timirkhanov (though needs updating slightly)
  * - Now compatible with extensions like Tab Clicking Options (https://addons.mozilla.org/en-US/firefox/addon/260) that replace double-click functionality
  * - Now detects tabs opened by the Mouseless Browsing extension
  * - Performance: no longer loads main Javascript file in non-browser windows
@@ -107,13 +107,11 @@
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for: TODO=P
  
- * TODO=P1: Update localisations (with English where necessary)
- * TODO=P1: Reply to Mozillazine & comment on http://www.azarask.in/blog/post/firefoxnext-tabs-on-the-side/
+ * TODO=P2: Ask translators to update their translations
+ * TODO=P2: Reply to Mozillazine & comment on http://www.azarask.in/blog/post/firefoxnext-tabs-on-the-side/
  * TODO=P3: Fx3.5: Occasional bugs with subtree dragging
- * TODO=P2: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid)
+ * TODO=P3: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
  * TODO=P3: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
- 
- * TODO=P2: Drop compatibility with Firefox 2
  
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
  
