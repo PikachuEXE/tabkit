@@ -22,9 +22,10 @@
 <!ENTITY groupByOpener.accesskey "P">
 <!ENTITY ungroupAll.label "解散所有群組">
 <!ENTITY ungroupAll.accesskey "U">
-<!ENTITY options.label "選項...">
-<!ENTITY options.accesskey "O">
-<!ENTITY lastSort.label "依照最後排序">
+
+<!ENTITY newTabs.label "New Tabs...">
+<!ENTITY newTabs.accesskey "N">
+<!ENTITY lastSort.label "Are Ordered By Last Sort">
 <!ENTITY lastSort.accesskey "S">
 <!ENTITY nextToCurrent.label "於目前分頁右方">
 <!ENTITY nextToCurrent.accesskey "C">
@@ -33,6 +34,9 @@
 <!ENTITY autoGroup.label "依最後群組方式群組">
 <!ENTITY autoGroup.accesskey "G">
 
+<!ENTITY options.label "選項...">
+<!ENTITY options.accesskey "O">
+
 <!ENTITY tab.caption "目前分頁:">
 <!ENTITY newTabHere.label "新增分頁">
 <!ENTITY newTabHere.accesskey "N">
@@ -40,6 +44,8 @@
 <!ENTITY duplicateTab.accesskey "D">
 <!ENTITY makeGroup.label "群組此分頁與目前分頁">
 <!ENTITY makeGroup.accesskey "T">
+<!ENTITY toggleProtected.label "Protect Tab">
+<!ENTITY toggleProtected.accesskey "P">
 <!ENTITY toggleUnread.label "標記為未讀">
 <!ENTITY toggleUnread.accesskey "R">
 
@@ -52,7 +58,9 @@
 <!ENTITY bookmark.accesskey "B">
 <!ENTITY closeGroup.label "關閉群組">
 <!ENTITY closeGroup.accesskey "G">
-<!ENTITY closeGroup.acceltext "Ctrl+Middleclick">
+<!ENTITY closeGroup.modifiers "alt shift">
+<!ENTITY closeGroup.key "W">
+<!ENTITY closeGroup.acceltext "Alt+Shift+W; Ctrl+Middleclick">
 <!ENTITY closeSubtree.label "關閉子樹">
 <!ENTITY closeSubtree.accesskey "S">
 <!ENTITY closeSubtree.acceltext "Ctrl+Shift+Middleclick">

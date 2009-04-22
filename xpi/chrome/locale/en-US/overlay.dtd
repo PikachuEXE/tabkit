@@ -58,6 +58,8 @@
 <!ENTITY bookmark.accesskey "B">
 <!ENTITY closeGroup.label "Close Group">
 <!ENTITY closeGroup.accesskey "G">
+<!ENTITY closeGroup.modifiers "alt shift">
+<!ENTITY closeGroup.key "W">
 <!ENTITY closeGroup.acceltext "Alt+Shift+W; Ctrl+Middleclick">
 <!ENTITY closeSubtree.label "Close Subtree">
 <!ENTITY closeSubtree.accesskey "S">

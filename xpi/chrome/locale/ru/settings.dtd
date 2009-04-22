@@ -89,6 +89,8 @@
 <!ENTITY tabWheelTabSwitch.accesskey "в">
 <!ENTITY rmbWheelTabSwitch.label "когда зажата правая кнопка мыши">
 <!ENTITY rmbWheelTabSwitch.accesskey "р">
+<!ENTITY switchTabsOnHover.label "Switch tabs by hovering over them">
+<!ENTITY switchTabsOnHover.accesskey "H">
 <!ENTITY lmbRmbBackForward.label "Использовать щелчок левой кнопкой при зажатой правой для перехода назад по истории и наоборот">
 <!ENTITY lmbRmbBackForward.accesskey "л">
 <!ENTITY doubleClickCollapseExpand.label "Двойной щелчок на группе сворачивает/разворачивает её">
@@ -157,6 +159,18 @@
 
 <!ENTITY advanced.title "Дополнительные">
 
+<!ENTITY openTabsFrom.caption "По умолчанию, открывать новые вкладки из:">
+<!ENTITY addressBar.label "Строки адреса">
+<!ENTITY addressBar.accesskey "а">
+<!ENTITY searchBar.label "Строки поиска">
+<!ENTITY searchBar.accesskey "п">
+<!ENTITY places.label "Bookmarks and history">
+<!ENTITY places.accesskey "K">
+
+<!ENTITY closeOtherTabs.caption "Прочие">
+<!ENTITY closeBeforeAfterNotOther.label "Заменять 'Закрыть другие вкладки' пунктами 'Закрыть вкладки слева' и 'Закрыть вкладки справа'">
+<!ENTITY closeBeforeAfterNotOther.accesskey "м">
+
 <!ENTITY tabOrder.caption "Сортировка вкладок">
 <!ENTITY autoSortOpenerGroups.label "Автоматически сортировать вкладки, сгруппированные по вкладке-предку">
 <!ENTITY autoSortOpenerGroups.accesskey "в">
@@ -170,16 +184,6 @@
 <!ENTITY historyTabsAreRelated.accesskey "и">
 <!ENTITY newTabsAreRelated.label "Считать новые пустые относящимися к текущей вкладке">
 <!ENTITY newTabsAreRelated.accesskey "н">
-
-<!ENTITY openTabsFrom.caption "По умолчанию, открывать новые вкладки из:">
-<!ENTITY addressBar.label "Строки адреса">
-<!ENTITY addressBar.accesskey "а">
-<!ENTITY searchBar.label "Строки поиска">
-<!ENTITY searchBar.accesskey "п">
-
-<!ENTITY misc.caption "Прочие">
-<!ENTITY closeBeforeAfterNotOther.label "Заменять 'Закрыть другие вкладки' пунктами 'Закрыть вкладки слева' и 'Закрыть вкладки справа'">
-<!ENTITY closeBeforeAfterNotOther.accesskey "м">
 
 <!ENTITY reset.caption "Сброс">
 <!ENTITY resetAll.label "Сбросить все настроки">

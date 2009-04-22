@@ -58,7 +58,9 @@
 <!ENTITY bookmark.accesskey "B">
 <!ENTITY closeGroup.label "关闭编组">
 <!ENTITY closeGroup.accesskey "G">
-<!ENTITY closeGroup.acceltext "Ctrl+单击中键">
+<!ENTITY closeGroup.modifiers "alt shift">
+<!ENTITY closeGroup.key "W">
+<!ENTITY closeGroup.acceltext "Alt+Shift+W; Ctrl+单击中键">
 <!ENTITY closeSubtree.label "关闭子树">
 <!ENTITY closeSubtree.accesskey "S">
 <!ENTITY closeSubtree.acceltext "Ctrl+Shift+单击中键">

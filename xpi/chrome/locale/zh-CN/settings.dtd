@@ -89,6 +89,8 @@
 <!ENTITY tabWheelTabSwitch.accesskey "T">
 <!ENTITY rmbWheelTabSwitch.label "当按住了鼠标右键时">
 <!ENTITY rmbWheelTabSwitch.accesskey "R">
+<!ENTITY switchTabsOnHover.label "Switch tabs by hovering over them">
+<!ENTITY switchTabsOnHover.accesskey "H">
 <!ENTITY lmbRmbBackForward.label "按住鼠标右键并单击左键, 以及 按住左键单击右键 执行与 后退/前进 按钮相同的动作">
 <!ENTITY lmbRmbBackForward.accesskey "L">
 <!ENTITY doubleClickCollapseExpand.label "在标签编组上的双击动作收缩/展开该标签编组">
@@ -98,8 +100,8 @@
 <!ENTITY accelDragCopy.label "按住 Ctrl 键 (在 Mac 机上是 Cmd 键) 时拖拽, 将复制该标签页, 而非移动其标签位置">
 <!ENTITY accelDragCopy.accesskey "C">
 <!ENTITY shiftDragGroups.label "按住 Shift 键时拖拽则一齐拖拽整个编组">
-<!ENTITY shiftDragGroups.accesskey "H">
-<!ENTITY shiftDragSubtrees.label "但在树状模式时, shift-拖拽 操作的对象应该是整个子树/分支, 而非编组">
+<!ENTITY shiftDragGroups.accesskey "G">
+<!ENTITY shiftDragSubtrees.label "但在树状模式时, shift-拖拽 操作的对象应该是整个子树/分支, 而非编组 (experimental!)">
 <!ENTITY shiftDragSubtrees.accesskey "I">
 
 <!ENTITY scrolling.caption "滚动">
@@ -157,6 +159,18 @@
 
 <!ENTITY advanced.title "高级">
 
+<!ENTITY openTabsFrom.caption "默认打开标签页的位置:">
+<!ENTITY addressBar.label "地址栏">
+<!ENTITY addressBar.accesskey "A">
+<!ENTITY searchBar.label "搜索栏">
+<!ENTITY searchBar.accesskey "S">
+<!ENTITY places.label "Bookmarks and history">
+<!ENTITY places.accesskey "K">
+
+<!ENTITY closeOtherTabs.caption "其它">
+<!ENTITY closeBeforeAfterNotOther.label "用 '关闭前/后所有标签页' 两项取代 '关闭其它标签页' 的菜单项">
+<!ENTITY closeBeforeAfterNotOther.accesskey "C">
+
 <!ENTITY tabOrder.caption "标签页顺序">
 <!ENTITY autoSortOpenerGroups.label "自动排序按打开位置编组的标签页(根据祖先)">
 <!ENTITY autoSortOpenerGroups.accesskey "O">
@@ -170,16 +184,6 @@
 <!ENTITY historyTabsAreRelated.accesskey "H">
 <!ENTITY newTabsAreRelated.label "把新建的标签页作为与当前标签页相关来对待">
 <!ENTITY newTabsAreRelated.accesskey "N">
-
-<!ENTITY openTabsFrom.caption "默认打开标签页的位置:">
-<!ENTITY addressBar.label "地址栏">
-<!ENTITY addressBar.accesskey "A">
-<!ENTITY searchBar.label "搜索栏">
-<!ENTITY searchBar.accesskey "S">
-
-<!ENTITY misc.caption "其它">
-<!ENTITY closeBeforeAfterNotOther.label "用 '关闭前/后所有标签页' 两项取代 '关闭其它标签页' 的菜单项">
-<!ENTITY closeBeforeAfterNotOther.accesskey "C">
 
 <!ENTITY reset.caption "重置">
 <!ENTITY resetAll.label "重置所有选项为默认值">

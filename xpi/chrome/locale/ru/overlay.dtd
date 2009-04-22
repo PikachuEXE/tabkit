@@ -1,77 +1,79 @@
 <!ENTITY tabcontextmenu.label "Tab Kit">
 <!ENTITY tabcontextmenu.accesskey "K">
 
-<!ENTITY global.label "Îáùèå äåéñòâèÿ">
-<!ENTITY global.accesskey "Î">
+<!ENTITY global.label "ÐžÐ±Ñ‰Ð¸Ðµ Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ">
+<!ENTITY global.accesskey "Ðž">
 
-<!ENTITY sortByUri.label "Ñîðòèðîâàòü âêëàäêè ïî àäðåñó">
-<!ENTITY sortByUri.accesskey "à">
-<!ENTITY sortByLastLoaded.label "Ñîðòèðîâàòü âêëàäêè ïî ïîñëåäíåé çàãðóçêå">
-<!ENTITY sortByLastLoaded.accesskey "ç">
-<!ENTITY sortByLastViewed.label "Ñîðòèðîâàòü âêëàäêè ïî ïîñëåäíåìó ïðîñìîòðó">
-<!ENTITY sortByLastViewed.accesskey "ï">
-<!ENTITY sortByCreation.label "Ñîðòèðîâàòü âêëàäêè ïî ïîðÿäêó ñîçäàíèÿ">
-<!ENTITY sortByCreation.accesskey "ñ">
-<!ENTITY sortByOrigin.label "Ñîðòèðîâàòü âêëàäêè ïî ïðîèñõîæäåíèþ">
-<!ENTITY sortByOrigin.accesskey "æ">
-<!ENTITY sortByTitle.label "Ñîðòèðîâàòü âêëàäêè ïî çàãîëîâêó ñòðàíèöû">
-<!ENTITY sortByTitle.accesskey "ã">
-<!ENTITY groupByDomain.label "Ãðóïïèðîâàòü âêëàäêè ïî äîìåíó">
-<!ENTITY groupByDomain.accesskey "ä">
-<!ENTITY groupByOpener.label "Ãðóïïèðîâàòü âêëàäêè ïî âêëàäêå-ïðåäêó">
-<!ENTITY groupByOpener.accesskey "â">
-<!ENTITY ungroupAll.label "Ðàçãðóïïèðîâàòü âñå âêëàäêè">
-<!ENTITY ungroupAll.accesskey "Ð">
+<!ENTITY sortByUri.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð°Ð´Ñ€ÐµÑÑƒ">
+<!ENTITY sortByUri.accesskey "Ð°">
+<!ENTITY sortByLastLoaded.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ¹ Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐµ">
+<!ENTITY sortByLastLoaded.accesskey "Ð·">
+<!ENTITY sortByLastViewed.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ¼Ñƒ Ð¿Ñ€Ð¾ÑÐ¼Ð¾Ñ‚Ñ€Ñƒ">
+<!ENTITY sortByLastViewed.accesskey "Ð¿">
+<!ENTITY sortByCreation.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð¿Ð¾Ñ€ÑÐ´ÐºÑƒ ÑÐ¾Ð·Ð´Ð°Ð½Ð¸Ñ">
+<!ENTITY sortByCreation.accesskey "Ñ">
+<!ENTITY sortByOrigin.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð¿Ñ€Ð¾Ð¸ÑÑ…Ð¾Ð¶Ð´ÐµÐ½Ð¸ÑŽ">
+<!ENTITY sortByOrigin.accesskey "Ð¶">
+<!ENTITY sortByTitle.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð·Ð°Ð³Ð¾Ð»Ð¾Ð²ÐºÑƒ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñ‹">
+<!ENTITY sortByTitle.accesskey "Ð³">
+<!ENTITY groupByDomain.label "Ð“Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð´Ð¾Ð¼ÐµÐ½Ñƒ">
+<!ENTITY groupByDomain.accesskey "Ð´">
+<!ENTITY groupByOpener.label "Ð“Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¿Ð¾ Ð²ÐºÐ»Ð°Ð´ÐºÐµ-Ð¿Ñ€ÐµÐ´ÐºÑƒ">
+<!ENTITY groupByOpener.accesskey "Ð²">
+<!ENTITY ungroupAll.label "Ð Ð°Ð·Ð³Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÑÐµ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸">
+<!ENTITY ungroupAll.accesskey "Ð ">
 
-<!ENTITY newTabs.label "Íîâûå âêëàäêè...">
-<!ENTITY newTabs.accesskey "â">
-<!ENTITY lastSort.label "Ñîðòèðóþòñÿ ïî ïîñëåäíåìó ïðàâèëó">
-<!ENTITY lastSort.accesskey "Ñ">
-<!ENTITY nextToCurrent.label "Îòêðûâàþòñÿ ðÿäîì ñ òåêóùåé âêëàäêîé">
-<!ENTITY nextToCurrent.accesskey "ò">
-<!ENTITY farRight.label "Îòêðûâàþòñÿ â ïðàâîì êîíöå ïàíåëè âêëàäîê">
-<!ENTITY farRight.accesskey "ï">
-<!ENTITY autoGroup.label "Ãðóïïèðóþòñÿ ïî ïîñëåäíåìó ïðàâèëó">
-<!ENTITY autoGroup.accesskey "Ã">
+<!ENTITY newTabs.label "ÐÐ¾Ð²Ñ‹Ðµ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸...">
+<!ENTITY newTabs.accesskey "Ð²">
+<!ENTITY lastSort.label "Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€ÑƒÑŽÑ‚ÑÑ Ð¿Ð¾ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ¼Ñƒ Ð¿Ñ€Ð°Ð²Ð¸Ð»Ñƒ">
+<!ENTITY lastSort.accesskey "Ð¡">
+<!ENTITY nextToCurrent.label "ÐžÑ‚ÐºÑ€Ñ‹Ð²Ð°ÑŽÑ‚ÑÑ Ñ€ÑÐ´Ð¾Ð¼ Ñ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ¹ Ð²ÐºÐ»Ð°Ð´ÐºÐ¾Ð¹">
+<!ENTITY nextToCurrent.accesskey "Ñ‚">
+<!ENTITY farRight.label "ÐžÑ‚ÐºÑ€Ñ‹Ð²Ð°ÑŽÑ‚ÑÑ Ð² Ð¿Ñ€Ð°Ð²Ð¾Ð¼ ÐºÐ¾Ð½Ñ†Ðµ Ð¿Ð°Ð½ÐµÐ»Ð¸ Ð²ÐºÐ»Ð°Ð´Ð¾Ðº">
+<!ENTITY farRight.accesskey "Ð¿">
+<!ENTITY autoGroup.label "Ð“Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€ÑƒÑŽÑ‚ÑÑ Ð¿Ð¾ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ¼Ñƒ Ð¿Ñ€Ð°Ð²Ð¸Ð»Ñƒ">
+<!ENTITY autoGroup.accesskey "Ð“">
 
-<!ENTITY options.label "Íàñòðîéêè">
-<!ENTITY options.accesskey "Í">
+<!ENTITY options.label "ÐÐ°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸">
+<!ENTITY options.accesskey "Ð">
 
-<!ENTITY tab.caption "Ýòà âêëàäêà:">
-<!ENTITY newTabHere.label "Îòêðûòü íîâóþ âêëàäêó òóò">
-<!ENTITY newTabHere.accesskey "í">
-<!ENTITY duplicateTab.label "Ñîçäàòü êîïèþ âêëàäêè">
-<!ENTITY duplicateTab.accesskey "ê">
-<!ENTITY makeGroup.label "Ñãðóïïèðîâàòü âêëàäêè îò ýòîé äî òåêóùåé">
-<!ENTITY makeGroup.accesskey "ã">
-<!ENTITY toggleProtected.label "Çàùèòèòü âêëàäêó">
-<!ENTITY toggleProtected.accesskey "ç">
-<!ENTITY toggleUnread.label "Ïîìåòèòü êàê ïðî÷èòàííóþ">
-<!ENTITY toggleUnread.accesskey "Ï">
+<!ENTITY tab.caption "Ð­Ñ‚Ð° Ð²ÐºÐ»Ð°Ð´ÐºÐ°:">
+<!ENTITY newTabHere.label "ÐžÑ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ð½Ð¾Ð²ÑƒÑŽ Ð²ÐºÐ»Ð°Ð´ÐºÑƒ Ñ‚ÑƒÑ‚">
+<!ENTITY newTabHere.accesskey "Ð½">
+<!ENTITY duplicateTab.label "Ð¡Ð¾Ð·Ð´Ð°Ñ‚ÑŒ ÐºÐ¾Ð¿Ð¸ÑŽ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸">
+<!ENTITY duplicateTab.accesskey "Ðº">
+<!ENTITY makeGroup.label "Ð¡Ð³Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ Ð¾Ñ‚ ÑÑ‚Ð¾Ð¹ Ð´Ð¾ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ¹">
+<!ENTITY makeGroup.accesskey "Ð³">
+<!ENTITY toggleProtected.label "Ð—Ð°Ñ‰Ð¸Ñ‚Ð¸Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÑƒ">
+<!ENTITY toggleProtected.accesskey "Ð·">
+<!ENTITY toggleUnread.label "ÐŸÐ¾Ð¼ÐµÑ‚Ð¸Ñ‚ÑŒ ÐºÐ°Ðº Ð¿Ñ€Ð¾Ñ‡Ð¸Ñ‚Ð°Ð½Ð½ÑƒÑŽ">
+<!ENTITY toggleUnread.accesskey "ÐŸ">
 
-<!ENTITY group.caption "Ýòà ãðóïïà:">
-<!ENTITY collapse.label "Ñâåðíóòü ãðóïïó">
-<!ENTITY collapse.accesskey "Ñ">
-<!ENTITY expand.label "Ðàçâåðíóòü ãðóïïó">
-<!ENTITY expand.accesskey "Ð">
-<!ENTITY bookmark.label "Äîáàâèòü ãðóïïó â çàêëàäêè">
-<!ENTITY bookmark.accesskey "Ä">
-<!ENTITY closeGroup.label "Çàêðûòü ãðóïïó">
-<!ENTITY closeGroup.accesskey "Ç">
-<!ENTITY closeGroup.acceltext "Ctrl+Middleclick">
-<!ENTITY closeSubtree.label "Çàêðûòü ïîääåðåâî">
-<!ENTITY closeSubtree.accesskey "ï">
+<!ENTITY group.caption "Ð­Ñ‚Ð° Ð³Ñ€ÑƒÐ¿Ð¿Ð°:">
+<!ENTITY collapse.label "Ð¡Ð²ÐµÑ€Ð½ÑƒÑ‚ÑŒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ">
+<!ENTITY collapse.accesskey "Ð¡">
+<!ENTITY expand.label "Ð Ð°Ð·Ð²ÐµÑ€Ð½ÑƒÑ‚ÑŒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ">
+<!ENTITY expand.accesskey "Ð ">
+<!ENTITY bookmark.label "Ð”Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ Ð² Ð·Ð°ÐºÐ»Ð°Ð´ÐºÐ¸">
+<!ENTITY bookmark.accesskey "Ð”">
+<!ENTITY closeGroup.label "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ">
+<!ENTITY closeGroup.accesskey "Ð—">
+<!ENTITY closeGroup.modifiers "alt shift">
+<!ENTITY closeGroup.key "W">
+<!ENTITY closeGroup.acceltext "Alt+Shift+W; Ctrl+Middleclick">
+<!ENTITY closeSubtree.label "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð¿Ð¾Ð´Ð´ÐµÑ€ÐµÐ²Ð¾">
+<!ENTITY closeSubtree.accesskey "Ð¿">
 <!ENTITY closeSubtree.acceltext "Ctrl+Shift+Middleclick">
-<!ENTITY ungroup.label "Ðàçãðóïïèðîâàòü ãðóïïó">
-<!ENTITY ungroup.accesskey "ã">
+<!ENTITY ungroup.label "Ð Ð°Ð·Ð³Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ">
+<!ENTITY ungroup.accesskey "Ð³">
 
-<!ENTITY selection.caption "Âûäåëåííûå âêëàäêè:">
+<!ENTITY selection.caption "Ð’Ñ‹Ð´ÐµÐ»ÐµÐ½Ð½Ñ‹Ðµ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸:">
 
-<!ENTITY closeTabsToLeft.label "Çàêðûòü âêëàäêè ñëåâà">
-<!ENTITY closeTabsToLeft.accesskey "ë">
-<!ENTITY closeTabsToRight.label "Çàêðûòü âêëàäêè ñïðàâà">
-<!ENTITY closeTabsToRight.accesskey "ï">
-<!ENTITY closeTabsAbove.label "Çàêðûòü âêëàäêè ñâåðõó">
-<!ENTITY closeTabsAbove.accesskey "â">
-<!ENTITY closeTabsBelow.label "Çàêðûòü âêëàäêè ñíèçó">
-<!ENTITY closeTabsBelow.accesskey "í">
+<!ENTITY closeTabsToLeft.label "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ ÑÐ»ÐµÐ²Ð°">
+<!ENTITY closeTabsToLeft.accesskey "Ð»">
+<!ENTITY closeTabsToRight.label "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ ÑÐ¿Ñ€Ð°Ð²Ð°">
+<!ENTITY closeTabsToRight.accesskey "Ð¿">
+<!ENTITY closeTabsAbove.label "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ ÑÐ²ÐµÑ€Ñ…Ñƒ">
+<!ENTITY closeTabsAbove.accesskey "Ð²">
+<!ENTITY closeTabsBelow.label "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð²ÐºÐ»Ð°Ð´ÐºÐ¸ ÑÐ½Ð¸Ð·Ñƒ">
+<!ENTITY closeTabsBelow.accesskey "Ð½">

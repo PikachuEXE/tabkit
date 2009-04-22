@@ -52,13 +52,28 @@
 <!ENTITY highlightUnreadTabs.accesskey "H">
 <!ENTITY emphasizeCurrentTab.label "強調當前的分頁">
 <!ENTITY emphasizeCurrentTab.accesskey "E">
+<!ENTITY emphasizeProtectedTabs.label "Emphasize protected tabs in green">
+<!ENTITY emphasizeProtectedTabs.accesskey "P">
 
-<!ENTITY advanced.caption "進階">
+<!ENTITY coloring.caption "Tab Coloring">
+<!ENTITY forceThemeCompatibility.label "Theme compatibility:">
+<!ENTITY forceThemeCompatibility.accesskey "T">
+<!ENTITY forceThemeCompatibility.never.label "Never override themes">
+<!ENTITY forceThemeCompatibility.auto.label "Auto-detect (recommended)">
+<!ENTITY forceThemeCompatibility.always.label "Always override themes">
 <!ENTITY colorTabNotLabel.label "分頁著色:">
 <!ENTITY colorTabNotLabel.accesskey "T">
-<!ENTITY colorTabNotLabel.auto.label "自動偵測佈景主題">
-<!ENTITY colorTabNotLabel.false.label "如以高亮度顯示色彩將會依照分類群組及分頁區分">
 <!ENTITY colorTabNotLabel.true.label "如以高亮度顯示色彩將會依照分頁群組和分類區分">
+<!ENTITY colorTabNotLabel.false.label "如以高亮度顯示色彩將會依照分類群組及分頁區分">
+<!ENTITY minSaturation.label "Group saturation - Min:">
+<!ENTITY minSaturation.accesskey "S">
+<!ENTITY maxSaturation.label "Max:">
+<!ENTITY maxSaturation.accesskey "M">
+<!ENTITY minLightness.label "Group lightness - Min:">
+<!ENTITY minLightness.accesskey "L">
+<!ENTITY maxLightness.label "Max:">
+<!ENTITY maxLightness.accesskey "M">
+<!ENTITY hue.label "The hue is picked automatically, so as to be distinct from nearby groups">
 
 <!ENTITY openSelectedLinks.caption "開啟所選擇的連結">
 <!ENTITY openSelectedLinks.label "從頁面內容選單中所選取的連結開啟在的新分頁 (包括文字連結)">
@@ -74,6 +89,8 @@
 <!ENTITY tabWheelTabSwitch.accesskey "T">
 <!ENTITY rmbWheelTabSwitch.label "當按住滑鼠右鍵時">
 <!ENTITY rmbWheelTabSwitch.accesskey "R">
+<!ENTITY switchTabsOnHover.label "Switch tabs by hovering over them">
+<!ENTITY switchTabsOnHover.accesskey "H">
 <!ENTITY lmbRmbBackForward.label "按住滑鼠左鍵一會再按右鍵即可到下一頁，反之亦然">
 <!ENTITY lmbRmbBackForward.accesskey "L">
 <!ENTITY doubleClickCollapseExpand.label "在分頁群組上雙擊可 摺疊/展開 它">
@@ -142,24 +159,31 @@
 
 <!ENTITY advanced.title "進階">
 
+<!ENTITY openTabsFrom.caption "Open Tabs By Default From:">
+<!ENTITY addressBar.label "Address bar">
+<!ENTITY addressBar.accesskey "A">
+<!ENTITY searchBar.label "Search bar">
+<!ENTITY searchBar.accesskey "S">
+<!ENTITY places.label "Bookmarks and history">
+<!ENTITY places.accesskey "K">
+
+<!ENTITY closeOtherTabs.caption "雜項">
+<!ENTITY closeBeforeAfterNotOther.label "用關閉之左分頁及關閉之右分頁來取代「關閉其它分頁」">
+<!ENTITY closeBeforeAfterNotOther.accesskey "C">
+
 <!ENTITY tabOrder.caption "分頁規則">
-<!ENTITY autoSortDomainGroups.label "自動依網域名稱排序分頁">
-<!ENTITY autoSortDomainGroups.accesskey "D">
 <!ENTITY autoSortOpenerGroups.label "自動依開啟者排序分頁">
 <!ENTITY autoSortOpenerGroups.accesskey "O">
+<!ENTITY autoSortDomainGroups.label "自動依網域名稱排序分頁">
+<!ENTITY autoSortDomainGroups.accesskey "D">
 
-<!ENTITY typesOfTab.caption "分頁類型">
-<!ENTITY whenGroupingByOpener.label "當群組分頁由開啟者開啟時...">
+<!ENTITY whenGroupingByOpener.caption "當群組分頁由開啟者開啟時...">
 <!ENTITY bookmarkTabsAreRelated.label "將書籤視為關連到當前的分頁">
 <!ENTITY bookmarkTabsAreRelated.accesskey "B">
 <!ENTITY historyTabsAreRelated.label "將歷史視為關連到當前的分頁">
 <!ENTITY historyTabsAreRelated.accesskey "H">
 <!ENTITY newTabsAreRelated.label "將新開的空白分頁視為關連到當前的分頁">
 <!ENTITY newTabsAreRelated.accesskey "N">
-
-<!ENTITY misc.caption "雜項">
-<!ENTITY closeBeforeAfterNotOther.label "用關閉之左分頁及關閉之右分頁來取代「關閉其它分頁」">
-<!ENTITY closeBeforeAfterNotOther.accesskey "C">
 
 <!ENTITY reset.caption "重新設定">
 <!ENTITY resetAll.label "將所有選項設回預設值">
