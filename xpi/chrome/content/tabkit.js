@@ -34,7 +34,7 @@
 
 /* Changelog
  * ---------
- * v0.5.1 (2009-04-22)
+ * v0.5.2 (2009-04-23)
  * - Made compatible with latest Firefox 3.5 betas; dropped compatibility with Firefox 2
  * - Added First Run Wizard to help users choose between tab tree, multi-row tabs, or just normal tab positioning
  * - Groups no longer expand on single-click - this just confused people. You now have to click the plus button, or double-click them, as before
