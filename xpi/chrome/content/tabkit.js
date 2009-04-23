@@ -52,6 +52,7 @@
  * - Fix: Prevent first group randomly collapsing and/or losing indents when restarting
  * - Fix: Using Group Tabs From Here To Current in the middle of a group now always causes inner group to be ejected from outer group
  * - Miscellaneous tweaks and fixes
+ * - Minor version updates: 0.5.1 fixes a bug that prevented 0.5 from working on most systems; 0.5.2 improves Ubuntu compatibility and makes First Run Wizard fit smaller screens
  * v0.4.3 (2008-08-02)
  * - "Protect Tab" menuitem lets you mark tabs as protected, preventing them from being closed
  * - Options to make the address bar and/or search bar open into new tabs by default (press Alt to open in current tab)
