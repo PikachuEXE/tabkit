@@ -338,6 +338,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             /**!!*/
         }
     };
+    
+    this.assert = function assert(test, message) {
+        if (!test)
+            tk.dump("Assertion Failure! " + (message ? message : ""));
+    };
 
 
     this.startsWith = function startsWith(str, start) {
@@ -884,15 +889,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{### Useful shortcuts
     //|##########################
 
-    /**
-    // Only get these shortcuts for browser windows
-    if (location == "chrome://browser/content/browser.xul") {
-    //!!if (typeof getBrowser() != "undefined") {
-    */
-    
-    // Make sure we can use gBrowser from now on if this is a browser window
-    getBrowser();
-    
     /// Private Globals:
     var _tabContainer;
     var _tabstrip;
@@ -901,16 +897,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     /// Initialisation:
     this.preInitShortcuts = function preInitShortcuts(event) {
+        tk.assert(window.location == "chrome://browser/content/browser.xul", "preInitShortcuts should only be run in browser windows, as tabkit.js is only loaded into browser.xul");
+        
+        // Make sure we can use gBrowser from now on if this is a browser window
+        getBrowser();
+        tk.assert(gBrowser, "gBrowser must not be null after preInitShortcuts!");
+        
         _tabContainer = gBrowser.mTabContainer;
         _tabstrip = _tabContainer.mTabstrip;
         _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
         _tabs = gBrowser.mTabs
     };
     this.preInitListeners.push(this.preInitShortcuts);
-    
-    /**
-    }
-    */
 
     //}##########################
     //{### Prefs Observers
@@ -1317,32 +1315,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.addedTabs = [];
     
     /// Method Hooks (for group by opener):
-    this.relatedTabSources = [
-        'nsContextMenu.prototype.openLinkInTab',//{
-        'nsContextMenu.prototype.openFrameInTab',
-        'nsContextMenu.prototype.viewBGImage',
-        'nsContextMenu.prototype.addDictionaries'
-        // And nsBrowserAccess.prototype.openURI if !isExternal
-        // And <menuitem id="menu_HelpPopup_reportPhishingtoolmenu">
-        // See also sourceTypes
-    ];//}
-    if ('viewMedia' in nsContextMenu.prototype) // [Fx3.5+]
-        this.relatedTabSources.push('nsContextMenu.prototype.viewMedia');
-    else // [Fx3-]
-        this.relatedTabSources.push('nsContextMenu.prototype.viewImage');
-    
-    this.newTabSources = [
-        // See sourceTypes
-    ];
-    
-    this.unrelatedTabSources = [
-        'BrowserSearch.loadAddEngines'//{
-        // Should add extensions.js->openURL too, but unrelated is the default after all...
-        // See also sourceTypes
-    ];//}
-    
     this.preInitSortingAndGroupingMethodHooks = function preInitSortingAndGroupingMethodHooks(event) {
-        // Calculate a stack in addTab, since event listeners can't get to it anymore due to https://bugzilla.mozilla.org/show_bug.cgi?id=390488
+        // Calculate a stack in addTab, since event listeners can't get to it anymore due to https://bugzilla.mozilla.org/show_bug.cgi?id=390488 (fixed now, but kept this way for compatibility)
         tk.addMethodHook([
             'gBrowser.addTab',
             null,
@@ -1364,9 +1338,43 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             $&'
         ]);
         
+        var relatedTabSources = [
+            'nsContextMenu.prototype.openLinkInTab',//{
+            'nsContextMenu.prototype.openFrameInTab',
+            'nsContextMenu.prototype.viewBGImage',
+            'nsContextMenu.prototype.addDictionaries'
+            // And nsBrowserAccess.prototype.openURI if !isExternal
+            // And <menuitem id="menu_HelpPopup_reportPhishingtoolmenu">
+            // See also sourceTypes
+        ];//}
+        if ('viewMedia' in nsContextMenu.prototype) // [Fx3.5+]
+            relatedTabSources.push('nsContextMenu.prototype.viewMedia');
+        else // [Fx3-]
+            relatedTabSources.push('nsContextMenu.prototype.viewImage');
+        
+        var newTabSources = [
+            // See sourceTypes
+        ];
+        
+        var unrelatedTabSources = [
+            'BrowserSearch.loadAddEngines'//{
+            // Should add extensions.js->openURL too, but unrelated is the default after all...
+            // See also sourceTypes
+        ];//}
+        
         // Process all simple related tab sources:
-        for each (var s in tk.relatedTabSources) {
+        for each (var s in relatedTabSources) {
             tk.wrapMethodCode(s, 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
+        }
+        
+        // Process all simple new tab sources:
+        for each (var s in newTabSources) {
+            tk.wrapMethodCode(s, 'tabkit.addingTab("newtab"); try {', '} finally { tabkit.addingTabOver(); }');
+        }
+        
+        // Process all simple unrelated tab sources:
+        for each (var s in unrelatedTabSources) {
+            tk.wrapMethodCode(s, 'tabkit.addingTab("unrelated"); try {', '} finally { tabkit.addingTabOver(); }');
         }
         
         // And a sometimes related, sometimes unrelated tab source:
@@ -1380,16 +1388,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var reportPhishing = document.getElementById("menu_HelpPopup_reportPhishingtoolmenu");
         if (reportPhishing)
             reportPhishing.setAttribute("oncommand", 'tabkit.addingTab("related"); try {' + reportPhishing.getAttribute("oncommand") + '} finally { tabkit.addingTabOver(); }');
-        
-        // Process all simple new tab sources:
-        for each (var s in tk.newTabSources) {
-            tk.wrapMethodCode(s, 'tabkit.addingTab("newtab"); try {', '} finally { tabkit.addingTabOver(); }');
-        }
-        
-        // Process all simple unrelated tab sources:
-        for each (var s in tk.unrelatedTabSources) {
-            tk.wrapMethodCode(s, 'tabkit.addingTab("unrelated"); try {', '} finally { tabkit.addingTabOver(); }');
-        }
         
         // And an attribute based history tab source:
         var goMenu = document.getElementById("history-menu");
@@ -2739,33 +2737,36 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     
     // Tab close focus direction
-    if ("_blurTab" in gBrowser) { // [Fx3.5b4+]
-        this.earlyMethodHooks.push([
-            "gBrowser._blurTab",//{
-            null,
-            
-            'var tab = aTab;',
-            'tabkit.blurTab(aTab); return;'
-        ]);//}
-    }
-    else if ("_endRemoveTab" in gBrowser) { // [Fx3.1b3]
-        this.earlyMethodHooks.push([
-            "gBrowser._endRemoveTab",//{
-            null,
-            
-            'newIndex = index == length ? index - 1 : index;',
-            'newIndex = tabkit.pickNextIndex(index, length);'
-        ]);//}
-    }
-    else { // [Fx3-]
-        this.earlyMethodHooks.push([
-            "gBrowser.removeTab",//{
-            null,
-            
-            /newIndex = \(?index == l - 1\)? \? index - 1 : index;/,
-            'newIndex = tabkit.pickNextIndex(index, l - 1);'
-        ]);//}
-    }
+    this.preInitBlurTabModifications = function preInitBlurTabModifications(event) {
+        if ("_blurTab" in gBrowser) { // [Fx3.5b4+]
+            tk.addMethodHook([
+                "gBrowser._blurTab",//{
+                null,
+                
+                'var tab = aTab;',
+                'tabkit.blurTab(aTab); return;'
+            ]);//}
+        }
+        else if ("_endRemoveTab" in gBrowser) { // [Fx3.1b3]
+            tk.addMethodHook([
+                "gBrowser._endRemoveTab",//{
+                null,
+                
+                'newIndex = index == length ? index - 1 : index;',
+                'newIndex = tabkit.pickNextIndex(index, length);'
+            ]);//}
+        }
+        else { // [Fx3-]
+            tk.addMethodHook([
+                "gBrowser.removeTab",//{
+                null,
+                
+                /newIndex = \(?index == l - 1\)? \? index - 1 : index;/,
+                'newIndex = tabkit.pickNextIndex(index, l - 1);'
+            ]);//}
+        }
+    };
+    this.preInitListeners.push(this.preInitBlurTabModifications);
     
     this.chosenNextTab = null; // [Fx3.1b3-]
     this.pickNextIndex = function pickNextIndex(index, tabCount) { // [Fx3.1b3-]
@@ -2797,7 +2798,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         this.selectedTab = tab; 
         */
-    }
+    };
     
     this.chooseNextTab = function chooseNextTab(tab) {
         // Note that in Fx3.1b3- the tab still exists at this point, but won't by the time pickNextIndex is called
@@ -3223,7 +3224,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (Number(a.getAttribute(tk.Sorts.creation)) > Number(b.getAttribute(tk.Sorts.creation)))
             return 1;
         return 0;
-    }
+    };
     this.compareTabViewed = function compareTabViewed(a, b) {
         return Number(a.getAttribute(tk.Sorts.lastViewed)) - Number(b.getAttribute(tk.Sorts.lastViewed));
         /*!!
@@ -5678,7 +5679,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var isProtected = tab.getAttribute("protected") == "true";
         document.getElementById("menu_tabkit-tab-toggleProtected").setAttribute("checked", isProtected);
         tk.context_closeTab.setAttribute('disabled', isProtected);
-    }
+    };
 
     this.toggleProtected = function toggleProtected(contextTab) {
         if (!contextTab)
@@ -5696,22 +5697,25 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     // See globalPreInitNewTabsByDefault in tabkit-global.js
     
-    if ("BrowserLoadURL" in window) { // [Fx3-]
-        this.earlyMethodHooks.push([
-            'BrowserLoadURL',//{
-            null,
-            'aTriggeringEvent.altKey',
-            '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
-        ]);//}
-    }
-    else { // [Fx3.5+]
-        this.lateMethodHooks.push([
-            'gURLBar.handleCommand',//{
-            null,
-            'aTriggeringEvent.altKey',
-            '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
-        ]);//}
-    }
+    this.postInitNewTabsByDefault = function postInitNewTabsByDefault(event) {
+        if ("BrowserLoadURL" in window) { // [Fx3-]
+            tk.addMethodHook([
+                'BrowserLoadURL',//{
+                null,
+                'aTriggeringEvent.altKey',
+                '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
+            ]);//}
+        }
+        else { // [Fx3.5+]
+            tk.addMethodHook([
+                'gURLBar.handleCommand',//{
+                null,
+                'aTriggeringEvent.altKey',
+                '(aTriggeringEvent.altKey ^ gPrefService.getBoolPref("extensions.tabkit.openTabsFrom.addressBar"))'
+            ]);//}
+        }
+    };
+    this.postInitListeners.push(this.postInitNewTabsByDefault);
     
     //}##########################
     //{=== Tab Min Width
@@ -6032,8 +6036,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         */
         //!! 
         //!! Prevent infinite recursions!
-        _tabstrip.addEventListener("overflow", _preventMultiRowFlowEvent, true);
-        _tabstrip.addEventListener("underflow", _preventMultiRowFlowEvent, true);
+        _tabstrip.addEventListener("overflow", tk._preventMultiRowFlowEvent, true);
+        _tabstrip.addEventListener("underflow", tk._preventMultiRowFlowEvent, true);
         
         tk.addPrefListener("tabRows", tk.updateMultiRowTabs);
         tk.addPrefListener("tabbarPosition", tk.updateMultiRowTabs);
@@ -6256,101 +6260,104 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     ]);//}
     
     // TODO=P4: Prevent inappropriate indicator wrap around when dragging to end of row
-    if ("_onDragOver" in gBrowser) { // [Fx3.5]
-        // These are the same changes as in Fx3
-        this.lateMethodHooks.push([
-            "gBrowser._onDragOver",//{
-            null,
-            'ib.boxObject.x + ib.boxObject.width',
-            'gBrowser.boxObject.width',
-            
-            'ind.style.MozMarginStart = newMargin + "px";',
-            'if (gBrowser.hasAttribute("vertitabbar")) { \
-                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-                newMargin = Math.floor(this.mStrip.width / 2); \
-            } \
-            ib.style.display = "none"; \
-            $&',
-            // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
-            'ind.style.MozMarginStart = newMargin + "px";',
-            '$& \
-            if (newIndex == this.mTabs.length) \
-                ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
-            else \
-                ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
-            ib.style.display = null;'
-        ]);//}
-    }
-    else { //if ("onDragOver" in gBrowser) [Fx3-]
-        this.lateMethodHooks.push([
-            "gBrowser.onDragOver",//{
-            null,
-            'ib.boxObject.x + ib.boxObject.width',
-            'gBrowser.boxObject.width',
-            
-            'ind.style.marginLeft = newMarginLeft + "px";',
-            '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
-                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-                newMarginLeft = Math.floor(this.mStrip.width / 2); \
-                if (gBrowser.getAttribute("vertitabbar") == "reverse") \
-                    newMarginLeft += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
-            } \
-            $&',
-            
-            'ind.style.marginRight = newMarginRight + "px";',
-            '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
-                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-                newMarginRight = Math.floor(this.mStrip.width / 2); \
-                if (gBrowser.getAttribute("vertitabbar") == "reverse") \
-                    newMarginRight += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
-            } \
-            $&',
-            
-            /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
-            '/*[Fx2only]*/$& \
-            if (newIndex == this.mTabs.length) \
-                ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
-            else \
-                ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";',
-            
-            'ind.style.MozMarginStart = newMargin + "px";',
-            '/*[Fx3only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
-                var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
-                newMargin = Math.floor(this.mStrip.width / 2); \
-            } \
-            ib.style.display = "none"; \
-            $&',
-            // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
-            'ind.style.MozMarginStart = newMargin + "px";',
-            '/*[Fx3only]*/$& \
-            if (newIndex == this.mTabs.length) \
-                ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
-            else \
-                ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
-            ib.style.display = null;'
-        ]);//}
-    }
-    
-    if ("_setEffectAllowedForDataTransfer" in gBrowser) { // [Fx3.5+]
-        this.lateMethodHooks.push([
-            "gBrowser._setEffectAllowedForDataTransfer",//{
-            null,
-            
-            /aEvent\.screenX\s*>=\s*sourceNode\.boxObject\.screenX\s*&&\s*aEvent\.screenX\s*<=\s*sourceNode\.boxObject\.screenX\s*\+\s*sourceNode\.boxObject\.width/,
-            '$& \
-             && aEvent.screenY >= sourceNode.boxObject.screenY \
-             && aEvent.screenY <= sourceNode.boxObject.screenY + sourceNode.boxObject.height'
-        ]);//}
-    }
-    else { //if ("canDrop" in gBrowser) [Fx3-]
-        // canDrop override breaks multirow, but is only relevant for single row anyway (as multirow hides tabs-bottom), see https://bugzilla.mozilla.org/show_bug.cgi?id=333791#c38
-        this.lateMethodHooks.push([
-            "gBrowser.canDrop",//{
-            null,
-            '{',
-            '{ if (this.mTabContainer.getAttribute("multirow") == "true" || gBrowser.hasAttribute("vertitabbar")) return true;'
-        ]);//}
-    }
+    this.postInitTabDragIndicator = function postInitTabDragIndicator(event) {
+        if ("_onDragOver" in gBrowser) { // [Fx3.5]
+            // These are the same changes as in Fx3
+            tk.addMethodHook([
+                "gBrowser._onDragOver",//{
+                null,
+                'ib.boxObject.x + ib.boxObject.width',
+                'gBrowser.boxObject.width',
+                
+                'ind.style.MozMarginStart = newMargin + "px";',
+                'if (gBrowser.hasAttribute("vertitabbar")) { \
+                    var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                    newMargin = Math.floor(this.mStrip.width / 2); \
+                } \
+                ib.style.display = "none"; \
+                $&',
+                // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
+                'ind.style.MozMarginStart = newMargin + "px";',
+                '$& \
+                if (newIndex == this.mTabs.length) \
+                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+                else \
+                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
+                ib.style.display = null;'
+            ]);//}
+        }
+        else { //if ("onDragOver" in gBrowser) [Fx3-]
+            tk.addMethodHook([
+                "gBrowser.onDragOver",//{
+                null,
+                'ib.boxObject.x + ib.boxObject.width',
+                'gBrowser.boxObject.width',
+                
+                'ind.style.marginLeft = newMarginLeft + "px";',
+                '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
+                    var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                    newMarginLeft = Math.floor(this.mStrip.width / 2); \
+                    if (gBrowser.getAttribute("vertitabbar") == "reverse") \
+                        newMarginLeft += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
+                } \
+                $&',
+                
+                'ind.style.marginRight = newMarginRight + "px";',
+                '/*[Fx2only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
+                    var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                    newMarginRight = Math.floor(this.mStrip.width / 2); \
+                    if (gBrowser.getAttribute("vertitabbar") == "reverse") \
+                        newMarginRight += this.mTabs[targetIndex].linkedBrowser.boxObject.width; \
+                } \
+                $&',
+                
+                /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
+                '/*[Fx2only]*/$& \
+                if (newIndex == this.mTabs.length) \
+                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+                else \
+                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";',
+                
+                'ind.style.MozMarginStart = newMargin + "px";',
+                '/*[Fx3only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
+                    var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
+                    newMargin = Math.floor(this.mStrip.width / 2); \
+                } \
+                ib.style.display = "none"; \
+                $&',
+                // Note: we set it to display:none before moving it because otherwise Fx3 forgot to repaint over the old location!
+                'ind.style.MozMarginStart = newMargin + "px";',
+                '/*[Fx3only]*/$& \
+                if (newIndex == this.mTabs.length) \
+                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+                else \
+                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
+                ib.style.display = null;'
+            ]);//}
+        }
+        
+        if ("_setEffectAllowedForDataTransfer" in gBrowser) { // [Fx3.5+]
+            tk.addMethodHook([
+                "gBrowser._setEffectAllowedForDataTransfer",//{
+                null,
+                
+                /aEvent\.screenX\s*>=\s*sourceNode\.boxObject\.screenX\s*&&\s*aEvent\.screenX\s*<=\s*sourceNode\.boxObject\.screenX\s*\+\s*sourceNode\.boxObject\.width/,
+                '$& \
+                 && aEvent.screenY >= sourceNode.boxObject.screenY \
+                 && aEvent.screenY <= sourceNode.boxObject.screenY + sourceNode.boxObject.height'
+            ]);//}
+        }
+        else { //if ("canDrop" in gBrowser) [Fx3-]
+            // canDrop override breaks multirow, but is only relevant for single row anyway (as multirow hides tabs-bottom), see https://bugzilla.mozilla.org/show_bug.cgi?id=333791#c38
+            tk.addMethodHook([
+                "gBrowser.canDrop",//{
+                null,
+                '{',
+                '{ if (this.mTabContainer.getAttribute("multirow") == "true" || gBrowser.hasAttribute("vertitabbar")) return true;'
+            ]);//}
+        }
+    };
+    this.postInitListeners.push(this.postInitTabDragIndicator);
     
     /*!!
     // Prevent infinite recursion in _tabContainer.handleEvent and _tabstrip's underflow handler
@@ -6403,12 +6410,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     ]);*/
 
     /// Private Methods
-    function _preventMultiRowFlowEvent(event) {
+    this._preventMultiRowFlowEvent = function _preventMultiRowFlowEvent(event) {
         if (_tabContainer.hasAttribute("multirow")) {
             event.preventDefault();
             event.stopPropagation();
         }
-    }
+    };
 
     //}##########################
     //{=== Highlight unread tabs

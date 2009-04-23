@@ -1,6 +1,6 @@
 // Called once when the dialog displays
 function onLoad() {
-    // Unused
+    window.focus();
 }
 
 // Called once if and only if the user clicks OK

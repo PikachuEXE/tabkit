@@ -16,7 +16,7 @@
 	
 	<description style="max-width: 550px;">&layoutChoice.desc;</description>
 	
-	<radiogroup>
+	<radiogroup flex="1" style="overflow-y: auto;">
 		<radio id="treeTabs" label="&treeTabs.label;" selected="true"/>
 		<label control="treeTabs" value="&treeTabs.desc;"/>
 		<label control="treeTabs"><image src="chrome://tabkit/skin/treeTabs.png" style="width: 413px; border: 1px solid black;"/></label>
