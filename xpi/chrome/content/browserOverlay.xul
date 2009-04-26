@@ -196,7 +196,7 @@
 			<menuseparator/>
 			
 			<menuitem id="menu_tabkit-sortgroup-tab-caption" label="&tab.caption;" disabled="true"
-				style="font-size: 80%; background: inherit !important; -moz-appearance: none;"/>
+				style="font-size: 80%; background: none !important; -moz-appearance: none;"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-tab-newTabHere" label="&newTabHere.label;" accesskey="&newTabHere.accesskey;"
 				command="cmd_tabkit-sortgroup-tab-newTabHere"/>
@@ -212,7 +212,7 @@
 			<menuseparator groupsonly="true"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-group-caption" label="&group.caption;" disabled="true"
-				style="font-size: 80%; background: inherit !important; -moz-appearance: none;" groupsonly="true"/>
+				style="font-size: 80%; background: none !important; -moz-appearance: none;" groupsonly="true"/>
 			
 			<menuitem id="menu_tabkit-sortgroup-group-collapse" label="&collapse.label;" accesskey="&collapse.accesskey;"
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true"/>

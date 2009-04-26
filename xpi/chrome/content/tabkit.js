@@ -564,7 +564,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
 
     // TODO=P4: scrollOneExtra should also apply with a single-row horizontal tab bar
-    // TODO=P4: Could always keep selected tab in centre of tabbar instead (whether horizontal or vertical?)
+    // TODO=P3: Could always keep selected tab in centre of tabbar instead (whether horizontal or vertical?)
     this.scrollToElement = function scrollToElement(overflowPane, element) { // TODO-P6: cleanup code? [based on toomanytabs]
         var scrollbar = overflowPane.mVerticalScrollbar;
         if (!scrollbar) {
@@ -5821,7 +5821,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     this.positionedTabbar_onResize = function positionedTabbar_onResize(event) {
         var width = parseInt(gBrowser.mStrip.width);
-        _prefs.setIntPref("tabSidebarWidth", Math.min(width, 576));
+        _prefs.setIntPref("tabSidebarWidth", Math.min(width, 576)); // Upper limit on default width so can't be wider than maximised browser window, even on 800x600 screen
     };
     this.positionedTabbar_onMouseover = function positionedTabbar_onMouseover(event) {
         var splitter = document.getElementById("tabkit-splitter");
@@ -5831,12 +5831,15 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         // Increment counter, so __collapse can tell if there has been a mouseover since the timer was started
         gBrowser.mStrip.tkLastMouseover = (gBrowser.mStrip.tkLastMouseover || 0) + 1;
         
-        // Ensure tab bar has sensible width if we're showing it on hover (this
-        // way it's ok to collapse it by dragging the splitter to zero width)
-        if (parseInt(gBrowser.mStrip.width) < 100)
-            gBrowser.mStrip.width = 200;
-        
-        gBrowser.mStrip.removeAttribute("collapsed");
+        if (gBrowser.mStrip.hasAttribute("collapsed")) {
+            // Ensure tab bar has sensible width if we're showing it on hover (this
+            // way it's ok to collapse it by dragging the splitter to zero width)
+            if (parseInt(gBrowser.mStrip.width) < 100)
+                gBrowser.mStrip.width = 200;
+            
+            // Show tab bar
+            gBrowser.mStrip.removeAttribute("collapsed");
+        }
     };
     this.positionedTabbar_onMouseout = function positionedTabbar_onMouseout(event) {
         var splitter = document.getElementById("tabkit-splitter");
@@ -6119,7 +6122,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 for (var i = 0; i < _tabs.length; i++)
                     if (_tabs[i].hidden)
                         visibleTabs--;
-                if (_tabs[_tabs.length-1].boxObject.nextSibling.className == "tabs-newtab-button")
+                var newTabButton = _tabs[_tabs.length-1].boxObject.nextSibling; // [Fx3.5+]
+                if (newTabButton && newTabButton.className == "tabs-newtab-button")
                     visibleTabs++; // Treat the new tab button as a tab for our purposes
                 var availWidth = _tabstrip._scrollbox.boxObject.width;
                 var tabsPerRow = Math.floor(availWidth / gPrefService.getIntPref("browser.tabs.tabMinWidth"));
