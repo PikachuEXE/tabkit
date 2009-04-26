@@ -34,7 +34,7 @@
 
 /* Changelog
  * ---------
- * v0.5.2 (2009-04-23)
+ * v0.5.3 (2009-04-26)
  * - Made compatible with latest Firefox 3.5 betas; dropped compatibility with Firefox 2
  * - Added First Run Wizard to help users choose between tab tree, multi-row tabs, or just normal tab positioning
  * - Groups no longer expand on single-click - this just confused people. You now have to click the plus button, or double-click them, as before
@@ -52,7 +52,7 @@
  * - Fix: Prevent first group randomly collapsing and/or losing indents when restarting
  * - Fix: Using Group Tabs From Here To Current in the middle of a group now always causes inner group to be ejected from outer group
  * - Miscellaneous tweaks and fixes
- * - Minor version updates: 0.5.1 fixes a bug that prevented 0.5 from working on most systems; 0.5.2 improves Ubuntu compatibility and makes First Run Wizard fit smaller screens
+ * - Minor version updates: 0.5.1 fixes a bug that prevented 0.5 from working on most systems; 0.5.2 improves Ubuntu compatibility and makes First Run Wizard fit smaller screens; 0.5.3 fixes multi-row tabs on Firefox 3, and makes the tab bar remember scroll position if collapsed while vertical
  * v0.4.3 (2008-08-02)
  * - "Protect Tab" menuitem lets you mark tabs as protected, preventing them from being closed
  * - Options to make the address bar and/or search bar open into new tabs by default (press Alt to open in current tab)
@@ -5786,6 +5786,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         gBrowser.mStrip.tkLastMouseover = Date.now(); // Prevent strict errors if we get a mouseout before our first mouseover
         gBrowser.mStrip.addEventListener("mouseover", tk.positionedTabbar_onMouseover, false);
         gBrowser.mStrip.addEventListener("mouseout", tk.positionedTabbar_onMouseout, false);
+        gBrowser.mStrip.addEventListener("DOMAttrModified", tk.positionedTabbar_onToggleCollapse, true);
     };
     this.initListeners.push(this.initTabbarPosition);
 
@@ -5854,6 +5855,29 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 gBrowser.mStrip.setAttribute("collapsed", "true");
             }
         }, 333, gBrowser.mStrip.tkLastMouseover);
+    };
+    this.positionedTabbar_onToggleCollapse = function positionedTabbar_onToggleCollapse(event) {
+        if (event.attrName != "collapsed")
+            return;
+        
+        if (event.attrChange == MutationEvent.ADDITION) {
+            var curpos = parseInt(_tabInnerBox.mVerticalScrollbar.getAttribute("curpos"));
+            // It returns 0 when collapsed, so don't restore this (and it will
+            // default to 0 when re-expanded anyway, so we don't need to restore it)
+            if (!isNaN(curpos) && curpos > 0)
+                gBrowser.mStrip.tkScrollPos = curpos;
+        }
+        else if (event.attrChange == MutationEvent.REMOVAL) {
+            window.setTimeout(function __restoreScrollPosition() {
+                if ("tkScrollPos" in gBrowser.mStrip && _tabInnerBox.mVerticalScrollbar) {
+                    // Restore the old scroll position, as collapsing the tab bar will have reset it
+                    _tabInnerBox.mVerticalScrollbar.setAttribute("curpos", gBrowser.mStrip.tkScrollPos);
+                    delete gBrowser.mStrip.tkScrollPos;
+                }
+                //!!else tk.scrollToElement(_tabInnerBox, gBrowser.selectedTab); // At least make sure selected tab is still visible
+            }, 50); // TODO: Find more reliable way of setting this than 50 ms timeout...
+        }
+        // Ignore event.attrChange == MutationEvent.MODIFICATION
     };
 
     /// Methods:
