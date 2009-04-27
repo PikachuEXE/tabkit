@@ -34,7 +34,17 @@
 
 /* Changelog
  * ---------
+ * v0.5.4 (2009-04-27)
+ * - Added activation delay to switch tabs on hover functionality (by fixing typo)
  * v0.5.3 (2009-04-26)
+ * - Fixed multi-row tabs on Firefox 3
+ * - Made the tab bar remember scroll position if collapsed while vertical
+ * v0.5.2 (2009-04-23)
+ * - Improved Ubuntu compatibility
+ * - Made First Run Wizard fit smaller screens
+ * v0.5.1 (2009-04-22)
+ * - Fixed a bug that prevented 0.5 from working on most systems
+ * v0.5 (2009-04-22)
  * - Made compatible with latest Firefox 3.5 betas; dropped compatibility with Firefox 2
  * - Added First Run Wizard to help users choose between tab tree, multi-row tabs, or just normal tab positioning
  * - Groups no longer expand on single-click - this just confused people. You now have to click the plus button, or double-click them, as before
@@ -52,7 +62,6 @@
  * - Fix: Prevent first group randomly collapsing and/or losing indents when restarting
  * - Fix: Using Group Tabs From Here To Current in the middle of a group now always causes inner group to be ejected from outer group
  * - Miscellaneous tweaks and fixes
- * - Minor version updates: 0.5.1 fixes a bug that prevented 0.5 from working on most systems; 0.5.2 improves Ubuntu compatibility and makes First Run Wizard fit smaller screens; 0.5.3 fixes multi-row tabs on Firefox 3, and makes the tab bar remember scroll position if collapsed while vertical
  * v0.4.3 (2008-08-02)
  * - "Protect Tab" menuitem lets you mark tabs as protected, preventing them from being closed
  * - Options to make the address bar and/or search bar open into new tabs by default (press Alt to open in current tab)
@@ -6635,7 +6644,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         // Switch instantly if vertical tab bar, or less than 200ms since last switch, or to tabs next to current tab if less than 1s
         var wait = 0;
         if (!gBrowser.hasAttribute("vertitabbar")
-            && (Date.now() - _lastHover) < (Math.abs(_hoverTab._tPos - gBrowser.selectedTab._tPos) == 1 ? 1000 : 200))
+            && (Date.now() - _lastHover) > (Math.abs(_hoverTab._tPos - gBrowser.selectedTab._tPos) == 1 ? 1000 : 200))
         {
             wait = 200;
         }
