@@ -34,6 +34,8 @@
 
 /* Changelog
  * ---------
+ * v0.5.5 (2009-04-27)
+ * - Fixed typo affecting closing tabs in Firefox 3.5b4
  * v0.5.4 (2009-04-27)
  * - Added activation delay to switch tabs on hover functionality (by fixing typo)
  * v0.5.3 (2009-04-26)
@@ -2816,19 +2818,19 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var next = tab.nextSibling;
         var gid = tab.getAttribute("groupid");
         
-        // _removingTabs is [Fx3.5+ (including 3.1b3)] (bug 462673)
-        while (prev && "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(prev) != -1)
+        // _removingTabs is [Fx3.5+ (not including 3.1b3)] (bug 462673)
+        while (prev && "_removingTabs" in gBrowser && gBrowser._removingTabs.indexOf(prev) != -1)
             prev = prev.previousSibling;
-        while (next && "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(next) != -1)
+        while (next && "_removingTabs" in gBrowser && gBrowser._removingTabs.indexOf(next) != -1)
             next = next.nextSibling;
         
         // Skip hidden tabs unless they're in the same group (or there's no alternative tab)
         var oldPrev = prev, oldNext = next;
         while (prev && (prev.hidden && prev.getAttribute("groupid") != gid
-                        || "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(prev) != -1))
+                        || "_removingTabs" in gBrowser && gBrowser._removingTabs.indexOf(prev) != -1))
             prev = prev.previousSibling;
         while (next && (next.hidden && next.getAttribute("groupid") != gid
-                        || "_removingTabs" in gBrowser && gBrowser.removingTabs.indexOf(next) != -1))
+                        || "_removingTabs" in gBrowser && gBrowser._removingTabs.indexOf(next) != -1))
             next = next.nextSibling;
         if (!prev && !next) {
             prev = oldPrev;
