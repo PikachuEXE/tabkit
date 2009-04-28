@@ -61,9 +61,9 @@
 <!ENTITY closeGroup.modifiers "alt shift">
 <!ENTITY closeGroup.key "W">
 <!ENTITY closeGroup.acceltext "Alt+Shift+W; Ctrl+Middleclick">
-<!ENTITY closeSubtree.label "Close Subtree">
-<!ENTITY closeSubtree.accesskey "S">
-<!ENTITY closeSubtree.acceltext "Ctrl+Shift+Middleclick">
+<!ENTITY closeChildren.label "Close Children">
+<!ENTITY closeChildren.accesskey "S">
+<!ENTITY closeChildren.acceltext "Ctrl+Shift+Middleclick">
 <!ENTITY ungroup.label "Ungroup Group">
 <!ENTITY ungroup.accesskey "U">
 

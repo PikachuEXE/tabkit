@@ -34,6 +34,8 @@
 
 /* Changelog
  * ---------
+ * v0.5.6 (tbc)
+ * - Changed Close Subtree to more versatile Close Children
  * v0.5.5 (2009-04-27)
  * - Fixed typo affecting closing tabs in Firefox 3.5b4
  * v0.5.4 (2009-04-27)
@@ -2523,7 +2525,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             && navigator.platform.indexOf("Mac") == -1 ? event.ctrlKey : event.metaKey)
         {
             if (event.shiftKey)
-                tk.closeSubtree(event.target);
+                tk.closeChildren(event.target);
             else
                 tk.closeGroup(event.target);
             
@@ -2668,9 +2670,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             groupsOnly[i].hidden = !isGroup;
         }
         var couldBeSubtree = (isGroup && tk.subtreesEnabled());
-        document.getElementById("menu_tabkit-sortgroup-group-closeSubtree").hidden = !couldBeSubtree;
+        document.getElementById("menu_tabkit-sortgroup-group-closeChildren").hidden = !couldBeSubtree;
         var isSubtree = (couldBeSubtree && tk.getSubtreeFromTab(contextTab).length > 1);
-        document.getElementById("cmd_tabkit-sortgroup-group-closeSubtree").setAttribute("disabled", !isSubtree);
+        document.getElementById("cmd_tabkit-sortgroup-group-closeChildren").setAttribute("disabled", !isSubtree);
         
         /*!!**/
         // Show/hide items that only apply to multiple selected tabs
@@ -3214,11 +3216,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         for each (var tab in tk.getGroupFromTab(contextTab))
             gBrowser.removeTab(tab);
     };
-    this.closeSubtree = function closeSubtree(contextTab) {
+    this.closeChildren = function closeChildren(contextTab) {
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
         for each (var tab in tk.getSubtreeFromTab(contextTab))
-            gBrowser.removeTab(tab);
+            if (tab != contextTab) // Don't close parent
+                gBrowser.removeTab(tab);
     };
     this.ungroupGroup = function ungroupGroup(contextTab) {
         if (!contextTab)

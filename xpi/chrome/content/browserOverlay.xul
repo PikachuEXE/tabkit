@@ -62,7 +62,7 @@
 	<command id="cmd_tabkit-sortgroup-group-collapseExpand" oncommand="tabkit.toggleGroupCollapsed(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-bookmark" oncommand="tabkit.bookmarkGroup(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-close" oncommand="tabkit.closeGroup(gBrowser.mContextTab);"/>
-	<command id="cmd_tabkit-sortgroup-group-closeSubtree" oncommand="tabkit.closeSubtree(gBrowser.mContextTab);"/>
+	<command id="cmd_tabkit-sortgroup-group-closeChildren" oncommand="tabkit.closeChildren(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-ungroup" oncommand="tabkit.ungroupGroup(gBrowser.mContextTab);"/>
 	
 	<command id="cmd_tabkit-options" oncommand="tabkit.openOptions();"/>
@@ -223,8 +223,8 @@
 			<menuitem id="menu_tabkit-sortgroup-group-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
 				command="cmd_tabkit-sortgroup-group-close" key="key_tabkit-sortgroup-group-close"
 				acceltext="&closeGroup.acceltext;" groupsonly="true"/>
-			<menuitem id="menu_tabkit-sortgroup-group-closeSubtree" label="&closeSubtree.label;" accesskey="&closeSubtree.accesskey;"
-				command="cmd_tabkit-sortgroup-group-closeSubtree" acceltext="&closeSubtree.acceltext;" groupsonly="true"/>
+			<menuitem id="menu_tabkit-sortgroup-group-closeChildren" label="&closeChildren.label;" accesskey="&closeChildren.accesskey;"
+				command="cmd_tabkit-sortgroup-group-closeChildren" acceltext="&closeChildren.acceltext;" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-ungroup" label="&ungroup.label;" accesskey="&ungroup.accesskey;"
 				command="cmd_tabkit-sortgroup-group-ungroup" groupsonly="true"/>
 			<!--!!*-->

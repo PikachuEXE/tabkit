@@ -61,9 +61,9 @@
 <!ENTITY closeGroup.modifiers "alt shift">
 <!ENTITY closeGroup.key "W">
 <!ENTITY closeGroup.acceltext "Alt+Shift+W; Ctrl+单击中键">
-<!ENTITY closeSubtree.label "关闭子树">
-<!ENTITY closeSubtree.accesskey "S">
-<!ENTITY closeSubtree.acceltext "Ctrl+Shift+单击中键">
+<!ENTITY closeChildren.label "Close Children">
+<!ENTITY closeChildren.accesskey "S">
+<!ENTITY closeChildren.acceltext "Ctrl+Shift+单击中键">
 <!ENTITY ungroup.label "取消编组">
 <!ENTITY ungroup.accesskey "U">
 
