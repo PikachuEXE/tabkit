@@ -517,3 +517,11 @@ hbox					H #browser
 #main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > .autorepeatbutton-down {
 	display: none !important;
 }
+
+/******************************************************************
+ * Make personas look better with vertical tab bar, in particular *
+ ******************************************************************/
+
+window[persona] {
+	background-repeat: repeat-y !important;
+}
