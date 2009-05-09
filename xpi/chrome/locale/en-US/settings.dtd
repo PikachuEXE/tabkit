@@ -119,7 +119,7 @@
 <!ENTITY lastActiveGrouping.label "Active grouping*:">
 <!ENTITY lastActiveGrouping.accesskey "G">
 <!ENTITY lastActiveGrouping.domain.label "by domain">
-<!ENTITY lastActiveGrouping.opener.label "by opener">
+<!ENTITY lastActiveGrouping.opener.label "by opener (recommended)">
 <!ENTITY autoCollapse.label "Automatically collapse inactive groups">
 <!ENTITY autoCollapse.accesskey "U">
 

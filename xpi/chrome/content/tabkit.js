@@ -36,6 +36,9 @@
  * ---------
  * v0.5.6 (tbc)
  * - Changed Close Subtree to more versatile Close Children
+ * - Added compatibility with Snap Links Plus (so tabs it opens are grouped)
+ * - Make background repeat when using Personas with vertical tab bar
+ * - Make multiple tabs (like the homepage) open in the same place the equivalent single tab would have opened
  * v0.5.5 (2009-04-27)
  * - Fixed typo affecting closing tabs in Firefox 3.5b4
  * v0.5.4 (2009-04-27)
@@ -122,20 +125,35 @@
  * There are more todos in the source itself, search for: TODO=P
  
  * TODO=P2: Ask translators to update their translations
- * TODO=P2: Reply to Mozillazine & comment on http://www.azarask.in/blog/post/firefoxnext-tabs-on-the-side/
+ * TODO=P2: Comment on http://www.azarask.in/blog/post/firefoxnext-tabs-on-the-side/
+ * TODO=P2: Bug: Drag child tab of parent-child group onto bottom half of parent tab (such that it wouldn't move!), and it'll lose its indent and the parent will be degrouped (but not the dragged tab!)
  * TODO=P3: Fx3.5: Occasional bugs with subtree dragging
  * TODO=P3: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
  * TODO=P3: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
  
- * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
+ Groups as persistent selections:
+ * TODO=P3: Make Ctrl+Click tab add any tab to the current group (moving it adjacent to the group if necessary, and creating a new group if the current tab was ungrouped), unless the clicked tab was already in the current group, in which case it is removed from the group (and moved out of the group if not already on the edge).
+ * TODO=P3: Make Shift+Click tab make a group from all tabs between the current and clicked tab inclusive (if the current tab was already in a group, any group tabs that aren't between the current and clicked tabs will stay in their old group instead of joining the new group). Then allow removing Group Tabs From Here To Current menuitem.
+ * TODO=P3: Document both the above in First Run Wizard.
  
- * TODO=P3: Add "Tab Kit Options" button to Firefox Options -> Tabs, like Tab Mix Plus does
- * TODO=P3: Ability to Save/Restore Groups (a bit like session manager does for windows) [see also http://www.visibotech.com/toomanytabs/]
- * TODO=P3: Protect Tab could save tabs across sessions, like PermaTabs did, and/or lock navigation (no back/forward and links open in new tabs)
- * TODO=P3: Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]
+ * TODO=P3: Refactor context menu. Move Global Actions into Tools, This Tab items into top level context menu, and This Group can stay as the submenu.
+ * TODO=P3: Make context menu New Tab become New Tab Here, replacing that option, except when right-clicking empty parts of tab bar.
+ * TODO=P3: Add Tab Bar Position to Global Actions (now in Tools), and other extremely common options. Also menuitem for Help and/or re-run First Run Wizard.
+ * TODO=P3: Add Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]to This Group submenu.
+ * Add Close Other Tabs (not in this group) to This Group submenu.
+ 
+ * TODO=P3: Ability to Save/Restore Groups (a bit like session manager does for windows) [see also http://www.visibotech.com/toomanytabs/]. Just add a dropdown button with: Store Away Current Tab/Group <sep> Store Away Current Window <sep> <list of saved tab/groups> (clicking opens then removes entry) <sep> Recently restored entries >> <sep> (gray comment:) Shift+click to delete an entry (without opening it). Auto-suggest title from TLDs, date & tab count. Sort by most recent and/or alphabetic (if alphabetic default put date at beginning of title suggestion).
+ 
  * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
  * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
  * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab
+ * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
+ 
+ * TODO=P3: Add Shortcuts dialog or options tab, with a 3/4 column table letting you 1) toggle whether things show in the tab context menu 2) allow setting keyboard shortcuts (with defaults of some kind (perhaps Alt+Shift ones) 3) ideally allow customisation of tab clicking options (assumes that context menu options correspond with possible commands). This could also take over letting people show Close Other Tabs and/or Close Left/Right tabs.
+ 
+ * TODO=P3: Reset background tabs as unread when their title changes (due to a load, or incoming Gmail message)
+ * TODO=P3: Add "Tab Kit Options" button to Firefox Options -> Tabs, like Tab Mix Plus does (less important once Global Actions moved to Tools).
+ * TODO=P3: Protect Tab could save tabs across sessions, like PermaTabs did, and/or lock navigation (no back/forward and links open in new tabs)
  
  * TODO=P3: Make grouping bookmark groups optional?
  
@@ -1820,6 +1838,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         { d: 5, n: "goup_up",               t: "related" }, //postInit: if ("goup_up" in window && window.goup_up) tk.wrapMethodCode('window.goup_up', 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
         { d: 4, n: "diggerLoadURL",         t: "related" }, //diggerLoadURL
         { d: 3, n: "mlb_common_Utils_openUrlInNewTab", t: "related" }, //Mouseless Browsing mlb_common.Utils.openUrlInNewTab (but only after Tab Kit assigns a name to the function in postInitSortingAndGroupingMethodHooks!) [[[1. win_open 2. open 3. mlb_common_Utils_openUrlInNewTab 4.  5. ]]]
+        { d: 3, n: "activateLinks",         t: "related" }, //Snap Links Plus [[[1. openTabs 2. executeAction 3. activateLinks 4. eventMouseUp]]]
         { d: 3, n: "gotoHistoryIndex",      t: "related" }, //gotoHistoryIndex [[[1. loadOneTab 2. openUILinkIn 3. gotoHistoryIndex 4. anonymous 5. checkForMiddleClick 6. onclick]]]
         { d: 3, n: "BrowserBack",           t: "related" }, //BrowserBack [[[1. loadOneTab 2. openUILinkIn 3. BrowserBack 4. anonymous 5. checkForMiddleClick 6. onclick]]]
         { d: 3, n: "BrowserForward",        t: "related" }, //BrowserForward [[[1. loadOneTab 2. openUILinkIn 3. BrowserForward 4. anonymous 5. checkForMiddleClick 6. onclick]]]
@@ -1871,7 +1890,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             // A quick hack to avoid code duplication: we use addingTabOver to position
             // the first tab, then we can treat the rest as a loadOneOrMoreURIs
             if (tk.nextType == "loadTabs" && tk.addedTabs.length == 1) {
-                tk.nextType = tk.isBookmarkGroup ? "bookmark" : "unrelated";
+                tk.nextType = tk.isBookmarkGroup ? "bookmark" : "newtab"; //!! was "unrelated" instead of "newtab", but that meant they didn't get positioned the same way tabs (which are currently "newtab" by default) do
                 tk.dontMoveNextTab = false;
                 tk.addingTabOver();
                 tk.addedTabs = [tab];
@@ -6960,6 +6979,21 @@ functions at any time.
 if ("assert" in window) assert('normallyTrueCondition', function(e){return eval(e);}, "UnexpectedError");
 if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpoint requires QuickPrompt extension
 / **!!* /
+
+
+
+// Log tab sources to console (after setting http://kb.mozillazine.org/Javascript.options.showInConsole to true)
+gBrowser.mTabContainer.addEventListener("TabOpen", function __printSource() {
+    var func = arguments.callee.caller;
+    var stack = "";
+    for (var i = 0; func && i < 8; i++) {
+        stack += " " + i + ". " + func.name;
+        func = func.caller;
+    }
+    Components.classes["@mozilla.org/consoleservice;1"]
+              .getService(Components.interfaces.nsIConsoleService)
+              .logStringMessage("TabOpen stack:" + stack);
+}, false);
 
 
 
