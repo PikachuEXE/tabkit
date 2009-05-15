@@ -35,6 +35,7 @@
 /* Changelog
  * ---------
  * v0.5.6 (tbc)
+ * - Updated zh-CN locale
  * - Changed Close Subtree to more versatile Close Children
  * - Tweaked Switch Tabs on Hover: now has delay even if your tabs are vertical
  * - Improved compatibility with Personas by making tabs more opaque (as group colours are important) and making Personas' background repeat vertically (to fill the vertical tab bar)
@@ -149,6 +150,7 @@
  * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
  * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
+ * TODO=P3: Shrink First Run Wizard image filesizes (use JPEGs if necessary)
  
  * TODO=P3: Add Shortcuts dialog or options tab, with a 3/4 column table letting you 1) toggle whether things show in the tab context menu 2) allow setting keyboard shortcuts (with defaults of some kind (perhaps Alt+Shift ones) 3) ideally allow customisation of tab clicking options (assumes that context menu options correspond with possible commands). This could also take over letting people show Close Other Tabs and/or Close Left/Right tabs.
  

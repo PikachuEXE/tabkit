@@ -1,14 +1,14 @@
-<!ENTITY firstRunWizard.title "Tab Kit First Run Wizard">
+<!ENTITY firstRunWizard.title "Tab Kit 首次运行向导">
 
-<!ENTITY layoutChoice.desc "Please choose which tab bar layout you would like to use. You can change this later by going to Tools -&gt; Add-ons, selecting Tab Kit, clicking Options, then under the Tab Bar panel adjust 'The tab bar should be shown [...] of the window' and 'Show the tab bar on multiple rows' as appropriate.">
+<!ENTITY layoutChoice.desc "请选择您希望使用哪种标签条布局. 您也可在以后改变此选择, 方法是在 工具-&gt;附件组件 中选择 Tab Kit, 再点击上面的 [选项] 按钮, 之后根据需要, 在 [标签条] 面板中调整 '在窗口的...位置显示标签条' 和 '以多行显示标签条' 的设置.">
 
-<!ENTITY treeTabs.label "Tree Tabs (recommended)">
-<!ENTITY treeTabs.desc "Show tab bar as a tree along the left edge of the window">
+<!ENTITY treeTabs.label "树状布局(推荐)">
+<!ENTITY treeTabs.desc "沿窗口左边缘以树状布局显示标签条">
 
-<!ENTITY multiRowTabs.label "Multi-row Tabs">
-<!ENTITY multiRowTabs.desc "Show tab bar in normal (top) position, on multiple rows if necessary">
+<!ENTITY multiRowTabs.label "多行布局">
+<!ENTITY multiRowTabs.desc "在正常位置(网页上方)显示标签条, 标签较多时会分多行显示">
 
-<!ENTITY normalTabs.label "Normal Tabs">
-<!ENTITY normalTabs.desc "Show tab bar as normal without Tab Kit">
+<!ENTITY normalTabs.label "常规布局">
+<!ENTITY normalTabs.desc "象不使用 Tab Kit 时一样以通常的方式显示标签条">
 
-<!ENTITY documentation.text "N.B. The best way to get started with Tab Kit is probably to read through the Options menu (Tools -&gt; Add-ons -&gt; Tab Kit -&gt; Options), which lists all the features available. Tab Kit also adds a submenu to the tab right-click menu with some useful commands. More comprehensive documentation is in the works (help appreciated!)">
+<!ENTITY documentation.text "注意: 了解并用好 Tab Kit 的最佳途径可能是仔细阅读其选项菜单(工具-&gt;附件组件-&gt;Tab Kit-&gt;选项), 其中列出了所有可用的特性. 此外 Tab Kit 还在标签页的右键菜单中添加了一些有用的命令. 更详细的文档还在编写中(若您能提供帮助将不胜感激!)">

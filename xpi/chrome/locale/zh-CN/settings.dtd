@@ -89,7 +89,7 @@
 <!ENTITY tabWheelTabSwitch.accesskey "T">
 <!ENTITY rmbWheelTabSwitch.label "当按住了鼠标右键时">
 <!ENTITY rmbWheelTabSwitch.accesskey "R">
-<!ENTITY switchTabsOnHover.label "Switch tabs by hovering over them">
+<!ENTITY switchTabsOnHover.label "鼠标停在标签条上时用滚轮切换标签页">
 <!ENTITY switchTabsOnHover.accesskey "H">
 <!ENTITY lmbRmbBackForward.label "按住鼠标右键并单击左键, 以及 按住左键单击右键 执行与 后退/前进 按钮相同的动作">
 <!ENTITY lmbRmbBackForward.accesskey "L">
@@ -101,7 +101,7 @@
 <!ENTITY accelDragCopy.accesskey "C">
 <!ENTITY shiftDragGroups.label "按住 Shift 键时拖拽则一齐拖拽整个编组">
 <!ENTITY shiftDragGroups.accesskey "G">
-<!ENTITY shiftDragSubtrees.label "但在树状模式时, shift-拖拽 操作的对象应该是整个子树/分支, 而非编组 (experimental!)">
+<!ENTITY shiftDragSubtrees.label "但在树状模式时, shift-拖拽 操作的对象应该是整个子树/分支, 而非编组 (试验中!)">
 <!ENTITY shiftDragSubtrees.accesskey "I">
 
 <!ENTITY scrolling.caption "滚动">
@@ -119,7 +119,7 @@
 <!ENTITY lastActiveGrouping.label "激活编组功能*:">
 <!ENTITY lastActiveGrouping.accesskey "G">
 <!ENTITY lastActiveGrouping.domain.label "根据域名">
-<!ENTITY lastActiveGrouping.opener.label "根据标签页被打开的位置">
+<!ENTITY lastActiveGrouping.opener.label "根据标签页被打开的位置 (recommended)">
 <!ENTITY autoCollapse.label "自动收缩非活动的编组">
 <!ENTITY autoCollapse.accesskey "U">
 
@@ -164,7 +164,7 @@
 <!ENTITY addressBar.accesskey "A">
 <!ENTITY searchBar.label "搜索栏">
 <!ENTITY searchBar.accesskey "S">
-<!ENTITY places.label "Bookmarks and history">
+<!ENTITY places.label "书签与浏览历史">
 <!ENTITY places.accesskey "K">
 
 <!ENTITY closeOtherTabs.caption "其它">
