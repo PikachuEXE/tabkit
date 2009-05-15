@@ -36,9 +36,10 @@
  * ---------
  * v0.5.6 (tbc)
  * - Changed Close Subtree to more versatile Close Children
+ * - Tweaked Switch Tabs on Hover: now has delay even if your tabs are vertical
+ * - Improved compatibility with Personas by making tabs more opaque (as group colours are important) and making Personas' background repeat vertically (to fill the vertical tab bar)
+ * - Fix: Multiple tabs (like multiple homepages) open in the same place the equivalent single tab would have opened
  * - Added compatibility with Snap Links Plus (so tabs it opens are grouped)
- * - Make background repeat when using Personas with vertical tab bar
- * - Make multiple tabs (like the homepage) open in the same place the equivalent single tab would have opened
  * v0.5.5 (2009-04-27)
  * - Fixed typo affecting closing tabs in Firefox 3.5b4
  * v0.5.4 (2009-04-27)
@@ -6654,13 +6655,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             return;
         
         _hoverTab = event.target;
-        // Switch instantly if vertical tab bar, or less than 200ms since last switch, or to tabs next to current tab if less than 1s
-        var wait = 0;
-        if (!gBrowser.hasAttribute("vertitabbar")
-            && (Date.now() - _lastHover) > (Math.abs(_hoverTab._tPos - gBrowser.selectedTab._tPos) == 1 ? 1000 : 200))
-        {
-            wait = 200;
-        }
+        // Switch instantly if less than 200ms since last switch, or to tabs next to current tab if less than 1s
+        if ((Date.now() - _lastHover) < (Math.abs(_hoverTab._tPos - gBrowser.selectedTab._tPos) == 1 ? 1000 : 200))
+            var wait = 0;
+        else
+            var wait = 200;
         window.clearTimeout(_hoverTimer);
         _hoverTimer = window.setTimeout(function __hoverSelectTab() {
             gBrowser.selectedTab = _hoverTab;

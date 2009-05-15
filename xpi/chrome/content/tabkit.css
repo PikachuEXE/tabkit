@@ -526,7 +526,7 @@ hbox					H #browser
 	background-repeat: repeat-y !important; /* Especially for vertical tab bar */
 }
 #main-window[persona] .tabbrowser-tab {
-	opacity: 0.8 !important; /* Instead of default 0.6 */
+	opacity: 0.9 !important; /* Instead of default 0.6 */
 }
 #main-window[persona] .tabbrowser-tab[selected="true"] {
 	opacity: 1.0 !important; /* Instead of default 0.8 */
