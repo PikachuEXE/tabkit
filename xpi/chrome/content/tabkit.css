@@ -443,11 +443,12 @@ hbox					H #browser
 #browser-stack #tabkit-tab-drop-indicator-bar {
 	left: 0 !important; /*[Fx2only] Undo hack*/
 }
-#tabkit-tab-drop-indicator-bar[dragging="false"] {
+#tabkit-tab-drop-indicator-bar[dragging="false"] { /*[Fx2only]*/
     display: none;
 }
-#tabkit-tab-drop-indicator-bar[collapsed="true"] {
+#tabkit-tab-drop-indicator-bar[collapsed="true"] { /*[Fx3+]*/
     display: none; /* So when switching from vertical tabs to multirow tabs the tabbar doesn't stay very tall */
+	visibility: visible; /* Removing the collapsed attribute caused the tab bar to scroll (?!?!), so now keep collapsed attribute permanently on and use display: -moz-box/none to show/hide it. */
 }
 #tabkit-tab-drop-indicator-bar > hbox {
 	margin-bottom: -14px !important; /* Prevent moving mouse over indicator bar causing drop arrow to flash and drops to fail */

@@ -39,6 +39,7 @@
  * - Changed Close Subtree to more versatile Close Children
  * - Tweaked Switch Tabs on Hover: now has delay even if your tabs are vertical
  * - Improved compatibility with Personas by making tabs more opaque (as group colours are important) and making Personas' background repeat vertically (to fill the vertical tab bar)
+ * - Fix: Uncollapsing the tab drop indicator sometimes caused the tab bar to scroll
  * - Fix: Multiple tabs (like multiple homepages) open in the same place the equivalent single tab would have opened
  * - Added compatibility with Snap Links Plus (so tabs it opens are grouped)
  * v0.5.5 (2009-04-27)
@@ -5414,13 +5415,15 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         ]);//}
         
         if ("_onDrop" in gBrowser) { // [Fx3.5+]
-            // Lets us pass arbitrary dragged tabs to _onDrop
             tk.addMethodHook([
                 "gBrowser._onDrop",//{
                 null,
-                
+                // Lets us pass arbitrary dragged tabs to _onDrop
                 'dt.mozGetDataAt(TAB_DROP_TYPE, 0)',
-                '("tab" in aEvent ? aEvent.tab : $&)'
+                '("tab" in aEvent ? aEvent.tab : $&)',
+                // See _onDragOver replacement
+                'this.mTabDropIndicatorBar.collapsed = true;',
+                'this.mTabDropIndicatorBar.style.display = "none";'
             ]);//}
         }
         else { // [Fx3-]
@@ -5438,6 +5441,27 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     newTab = this.loadOneTab(getShortcutOrURI(url), null, null, null, bgLoad, false); \
                     tabkit.addingTabOver(); \
                     this.moveTabTo(newTab, newIndex);'
+            ]);//}
+        }
+        
+        if ("_onDragLeave" in gBrowser) { // [Fx3.5+]
+            tk.addMethodHook([
+                "gBrowser._onDragLeave",//{
+                null,
+                
+                // See _onDragOver replacement
+                'this.mTabDropIndicatorBar.collapsed = true;',
+                'this.mTabDropIndicatorBar.style.display = "none";'
+            ]);//}
+        }
+        else { // [Fx3-]
+            tk.addMethodHook([
+                "gBrowser.onDragExit",//{
+                null,
+                
+                // See _onDragOver replacement
+                'this.mTabDropIndicatorBar.collapsed = true;',
+                'this.mTabDropIndicatorBar.style.display = "none";'
             ]);//}
         }
         
@@ -6323,9 +6347,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 'ib.boxObject.x + ib.boxObject.width',
                 'gBrowser.boxObject.width',
                 
+                // See below
+                'ib.collapsed = "true";',
+                'ib.style.display = "none";',
+                
                 'ind.style.MozMarginStart = newMargin + "px";',
                 'if (gBrowser.hasAttribute("vertitabbar")) { \
-                    var targetIndex = newIndex == this.mTabs.length ? newIndex-1 : newIndex; \
                     newMargin = Math.floor(this.mStrip.width / 2); \
                 } \
                 ib.style.display = "none"; \
@@ -6337,7 +6364,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
                 else \
                     ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
-                ib.style.display = null;'
+                ib.style.display = null;',
+                // Removing this attribute sometimes caused tab bar to scroll (?!?!), so now
+                // we keep it permanently set and show/hide the tab bar with display: -moz-box/null
+                'ib.collapsed = false;',
+                'ib.style.display = "-moz-box";'
             ]);//}
         }
         else { //if ("onDragOver" in gBrowser) [Fx3-]
@@ -6386,7 +6417,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
                 else \
                     ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
-                ib.style.display = null;'
+                ib.style.display = null;',
+                // See _onDragOver replacement above
+                'ib.collapsed = !aDragSession.canDrop;',
+                'ib.style.display = aDragSession.canDrop ? "-moz-box" : "none";'
             ]);//}
         }
         
