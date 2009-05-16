@@ -119,7 +119,7 @@
 <!ENTITY lastActiveGrouping.label "激活编组功能*:">
 <!ENTITY lastActiveGrouping.accesskey "G">
 <!ENTITY lastActiveGrouping.domain.label "根据域名">
-<!ENTITY lastActiveGrouping.opener.label "根据标签页被打开的位置 (recommended)">
+<!ENTITY lastActiveGrouping.opener.label "根据标签页被打开的位置(推荐)">
 <!ENTITY autoCollapse.label "自动收缩非活动的编组">
 <!ENTITY autoCollapse.accesskey "U">
 
