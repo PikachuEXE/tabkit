@@ -146,6 +146,7 @@
  * Add Close Other Tabs (not in this group) to This Group submenu.
  
  * TODO=P3: Ability to Save/Restore Groups (a bit like session manager does for windows) [see also http://www.visibotech.com/toomanytabs/]. Just add a dropdown button with: Store Away Current Tab/Group <sep> Store Away Current Window <sep> <list of saved tab/groups> (clicking opens then removes entry) <sep> Recently restored entries >> <sep> (gray comment:) Shift+click to delete an entry (without opening it). Auto-suggest title from TLDs, date & tab count. Sort by most recent and/or alphabetic (if alphabetic default put date at beginning of title suggestion).
+ * TODO=P3: Idle Tabs functionality (perhaps as separate extension) - make idle tabs (or startup tabs) be sessionstore stubs that only (re)load once viewed and/or clicked in
  
  * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
  * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
@@ -3151,8 +3152,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.toggleGroupCollapsed = function toggleGroupCollapsed(contextTab) {
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
-        var group = tk.getGroupFromTab(contextTab);
         
+        var group = tk.getGroupFromTab(contextTab);
         if (group.length < 2) {
             tk.dump("toggleGroupCollapsed: Group too small (only \""+ group.length +"\" tabs)");
             return;
@@ -3177,15 +3178,76 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (gBrowser.selectedTab.hidden)
             gBrowser.selectedTab = contextTab;
     };
+    /*!!**/
+    this.tmtStoreGroup = function tmtStoreGroup(contextTab) {
+        if (!"toomanytabs_BMHander" in window
+            || !toomanytabs_BMHander.tmtFolderId
+            || !"toomanytabsAddHandler" in window
+            || !toomanytabsAddHandler.addTMTTab)
+        {
+            tk.dump("TooManyTabs not installed or not compatible.");
+            return;
+        }
+        
+        if (!contextTab)
+            contextTab = gBrowser.selectedTab;
+        
+        var group = tk.getGroupFromTab(contextTab);
+        if (group.length < 2) {
+            tk.dump("tmtStoreGroup: Group too small (only \""+ group.length +"\" tabs)");
+            return;
+        }
+        
+        var sites = {}; // Use object as a set to prevent duplicates
+        for each (var tab in group) {
+            var uri = tab.linkedBrowser.currentURI;
+            if (!uri)
+                continue;
+            try {
+                var eTLDService = Cc["@mozilla.org/network/effective-tld-service;1"]
+                                  .getService(Ci.nsIEffectiveTLDService);
+                var baseDomain = eTLDService.getBaseDomain(uri);             // e.g. google.co.uk
+                var site = baseDomain.charAt(0).toUpperCase() + baseDomain.substring(1, baseDomain.indexOf(".")); // e.g. google
+                sites[site] = true;
+            }
+            catch (ex) {
+                // There was no base domain (perhaps an IP address or an about: uri), so skip it
+            }
+        }
+        var rowName = "";
+        for (var site in sites)
+            rowName += ", " + site;
+        if (rowName != "")
+            rowName = rowName.substring(2);
+        else
+            rowName = new Date().toDateString();
+        
+        for each (var node in Application.bookmarks.unfiled.children) {
+            if (node.type == "folder" && node.id == toomanytabs_BMHander.tmtFolderId) {
+                var row = node.addFolder(rowName);
+                for each (var tab in group) {
+                    toomanytabsAddHandler.addTMTTab(tab, row.id);
+                    if (tab.getAttribute("protected") == "true")
+                        var protectedTabs = true;
+                }
+                if (protectedTabs)
+                    _ps.alert(null, "Tab Kit", "Some of the tabs were protected, so have been stored but not closed."); // TODO=P1: LOCALISE ME
+            }
+            break;
+        }
+    };
+    /**!!*/
     this.bookmarkGroup = function bookmarkGroup(contextTab) {
         // TODO=P4: Shift-drag onto bookmarks toolbar to create bookmark folder
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
+        
         var group = tk.getGroupFromTab(contextTab);
         if (group.length < 1) {
             tk.dump("bookmarkGroup: Group is empty!");
             return;
         }
+        
         if ("gBookmarkAllTabsHandler" in window) { // [Fx3only]
             // Based on PlacesCommandHook.bookmarkCurrentPages
             var uris = group.map(function __getUri(tab) {
@@ -3331,7 +3393,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         else {
             try { /*[Fx3only]*/
                 var eTLDService = Cc["@mozilla.org/network/effective-tld-service;1"]
-                                  .getService(Components.interfaces.nsIEffectiveTLDService);
+                                  .getService(Ci.nsIEffectiveTLDService);
                 
                 // I shall use http://www.google.co.uk/webhp?hl=en&complete=1 as an example
                 
@@ -3465,8 +3527,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.getGroupFromTab = function getGroupFromTab(tab) {
         // To get an existing grouped tab's group // TODO=P4: optimize using previous/nextSibling
         var gid = tab.getAttribute("groupid");
-        if (!gid)
-            return null;
+        if (!gid) {
+            tk.log("getGroupById called on an ungrouped tab; returning [tab]\n" + tk.quickStack());
+            return [ tab ];
+        }
         
         /*
         var group = [];
@@ -4750,7 +4814,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     tk.updateIndents(tabs);
                 }
                 //TODO=P4: make shift-drag force group ungrouped tabs with destination - or something!
-                if (tabs) {
+                if (tabs.length < 2) {
                     if (copyNotMove || oldTab.parentNode != _tabContainer) {
                         // Copying within/across windows, or moving across windows
                         var newTabs = [];
@@ -5059,13 +5123,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 tabs = tk.getGroupFromTab(draggedTab);
                 // Calculate the treeLevels - we'll need these when copying
                 // possibleparents (getSubtreeFromTab normally does this)
-                if (tabs)
+                if (tabs.length < 2)
                     tk.updateIndents(tabs);
             }
-            
-            if (!tabs) {
-                tabs = [ draggedTab ];
-            }
+            //!!// Done automatically by getGroupFromTab
+            //!!if (!tabs)
+            //!!    tabs = [ draggedTab ];
         }
         else {
             // User wants to drag a single tab

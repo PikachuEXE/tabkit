@@ -60,6 +60,7 @@
 	
 	
 	<command id="cmd_tabkit-sortgroup-group-collapseExpand" oncommand="tabkit.toggleGroupCollapsed(gBrowser.mContextTab);"/>
+	<!--!!*--><command id="cmd_tabkit-sortgroup-group-tmtStore" oncommand="tabkit.tmtStoreGroup(gBrowser.mContextTab);"/><!--*!!-->
 	<command id="cmd_tabkit-sortgroup-group-bookmark" oncommand="tabkit.bookmarkGroup(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-close" oncommand="tabkit.closeGroup(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-closeChildren" oncommand="tabkit.closeChildren(gBrowser.mContextTab);"/>
@@ -218,6 +219,8 @@
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-expand" label="&expand.label;" accesskey="&expand.accesskey;"
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true" collapsed="true"/>
+			<!--!!*--><menuitem id="menu_tabkit-sortgroup-group-tmtStore" label="Store Group to TooManyTabs"
+				command="cmd_tabkit-sortgroup-group-tmtStore" groupsonly="true"/><!-- NEEDS l10n & hiding unless tmt installed --><!--*!!-->
 			<menuitem id="menu_tabkit-sortgroup-group-bookmark" label="&bookmark.label;" accesskey="&bookmark.accesskey;"
 				command="cmd_tabkit-sortgroup-group-bookmark" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
