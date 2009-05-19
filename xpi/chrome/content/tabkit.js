@@ -3180,9 +3180,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     /*!!**/
     this.tmtStoreGroup = function tmtStoreGroup(contextTab) {
-        if (!"toomanytabs_BMHander" in window
+        if (!("toomanytabs_BMHander" in window)
             || !toomanytabs_BMHander.tmtFolderId
-            || !"toomanytabsAddHandler" in window
+            || !("toomanytabsAddHandler" in window)
             || !toomanytabsAddHandler.addTMTTab)
         {
             tk.dump("TooManyTabs not installed or not compatible.");
