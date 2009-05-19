@@ -3232,8 +3232,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 }
                 if (protectedTabs)
                     _ps.alert(null, "Tab Kit", "Some of the tabs were protected, so have been stored but not closed."); // TODO=P1: LOCALISE ME
+                break;
             }
-            break;
         }
     };
     /**!!*/
