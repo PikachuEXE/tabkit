@@ -34,7 +34,7 @@
 
 /* Changelog
  * ---------
- * v0.5.6 (tbc)
+ * v0.5.6 (2009-05-24)
  * - Updated zh-CN locale
  * - Changed Close Subtree to more versatile Close Children
  * - Tweaked Switch Tabs on Hover: now has delay even if your tabs are vertical
