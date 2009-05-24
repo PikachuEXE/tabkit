@@ -145,12 +145,12 @@
  * TODO=P3: Add Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]to This Group submenu.
  * Add Close Other Tabs (not in this group) to This Group submenu.
  
- * TODO=P3: Ability to Save/Restore Groups (a bit like session manager does for windows) [see also http://www.visibotech.com/toomanytabs/]. Just add a dropdown button with: Store Away Current Tab/Group <sep> Store Away Current Window <sep> <list of saved tab/groups> (clicking opens then removes entry) <sep> Recently restored entries >> <sep> (gray comment:) Shift+click to delete an entry (without opening it). Auto-suggest title from TLDs, date & tab count. Sort by most recent and/or alphabetic (if alphabetic default put date at beginning of title suggestion).
- * TODO=P3: Idle Tabs functionality (perhaps as separate extension) - make idle tabs (or startup tabs) be sessionstore stubs that only (re)load once viewed and/or clicked in
+ * TODO=P3: Integration with TooManyTabs (http://www.visibotech.com/toomanytabs/) providing ability to Save/Restore Groups (a bit like session manager does for windows). Seems preferable to implementing this directly [[[by adding a dropdown button with: Store Away Current Tab/Group <sep> Store Away Current Window <sep> <list of saved tab/groups> (clicking opens then removes entry) <sep> Recently restored entries >> <sep> (gray comment:) Shift+click to delete an entry (without opening it). Auto-suggest title from TLDs, date & tab count. Sort by most recent and/or alphabetic (if alphabetic default put date at beginning of title suggestion)]]].
+ * TODO=P3: Idle Tabs functionality (probably as separate extension or as extension of TooManyTabs) - make idle tabs (or startup tabs) be sessionstore stubs that only (re)load once viewed and/or clicked in
  
  * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
  * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
- * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab
+ * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab, like Tree Style Tabs
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
  * TODO=P3: Shrink First Run Wizard image filesizes (use JPEGs if necessary)
  
@@ -3154,8 +3154,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             contextTab = gBrowser.selectedTab;
         
         var group = tk.getGroupFromTab(contextTab);
-        if (group.length < 2) {
-            tk.dump("toggleGroupCollapsed: Group too small (only \""+ group.length +"\" tabs)");
+        if (!group) {
+            tk.dump("toggleGroupCollapsed: Group was null for tab in pos " + contextTab._tPos);
             return;
         }
         
@@ -3193,8 +3193,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             contextTab = gBrowser.selectedTab;
         
         var group = tk.getGroupFromTab(contextTab);
-        if (group.length < 2) {
-            tk.dump("tmtStoreGroup: Group too small (only \""+ group.length +"\" tabs)");
+        if (!group) {
+            tk.dump("tmtStoreGroup: Group was null for tab in pos " + contextTab._tPos);
             return;
         }
         
@@ -3243,8 +3243,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             contextTab = gBrowser.selectedTab;
         
         var group = tk.getGroupFromTab(contextTab);
-        if (group.length < 1) {
-            tk.dump("bookmarkGroup: Group is empty!");
+        if (!group) {
+            tk.dump("bookmarkGroup: Group was null for tab in pos " + contextTab._tPos);
             return;
         }
         
@@ -3300,8 +3300,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.ungroupGroup = function ungroupGroup(contextTab) {
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
-        var group = tk.getGroupFromTab(contextTab);
-        for each (var tab in group)
+        for each (var tab in tk.getGroupFromTab(contextTab))
             tk.removeGID(tab);
     };
     
@@ -3524,12 +3523,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         return group;
     };
     
+    /**
+     * Returns the tab group containing tab, as an array of
+     * tabs, or null if the tab is not part of a group.
+     * 
+     * FROZEN since 0.4.3 - this method will not be changed.
+     */
     this.getGroupFromTab = function getGroupFromTab(tab) {
-        // To get an existing grouped tab's group // TODO=P4: optimize using previous/nextSibling
+        // To get an existing grouped tab's group
         var gid = tab.getAttribute("groupid");
         if (!gid) {
-            tk.log("getGroupById called on an ungrouped tab; returning [tab]\n" + tk.quickStack());
-            return [ tab ];
+            tk.debug("getGroupFromTab called on an ungrouped tab (_tPos=" + tab._tPos + "); returning null\n" + tk.quickStack());
+            return null;
         }
         
         /*
@@ -3552,6 +3557,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             group.push(cur);
         }
         
+        if (group.length <= 1)
+            tk.dump("getGroupFromTab found a singleton group (_tPos=" + tab._tPos + "); returning [tab]\n" + tk.quickStack());
         return group;
     };
 
@@ -3659,6 +3666,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             return [ tab ];
         
         var group = tk.getGroupFromTab(tab);
+        if (!group)
+            return [ tab ];
         var gid = tab.getAttribute("groupid");
         tk.updateIndents(group);
         var tabs = [ tab ];
@@ -4814,163 +4823,161 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     tk.updateIndents(tabs);
                 }
                 //TODO=P4: make shift-drag force group ungrouped tabs with destination - or something!
-                if (tabs.length < 2) {
-                    if (copyNotMove || oldTab.parentNode != _tabContainer) {
-                        // Copying within/across windows, or moving across windows
-                        var newTabs = [];
-                        var tabIdMapping = {};
-                        for (var i = 0; i < tabs.length; i++) {
-                            tk.addingTab("unrelated", null, true);
-                            
-                            newTabs[i] = tk._duplicateTab(tabs[i]);
-                            if (i == 0 && oldTab.parentNode != _tabContainer)
-                                gBrowser.selectedTab = newTabs[i];
-                            
-                            //!!gBrowser.moveTabTo(newTabs[i], newIndex); // WRONG! Reverses order
-                            if (newIndex < _tabs.length)
-                                tk.moveBefore(newTabs[i], afterTab);
-                            else
-                                gBrowser.moveTabTo(newTabs[i], _tabs.length - 1);
-                            
-                            tk.addingTabOver();
-                            
-                            // Map tabids of original tabs to tabids of their clones
-                            tabIdMapping[tabs[i].getAttribute("tabid")] = newTabs[i].getAttribute("tabid");
-                            
-                            /*!! // Set appropriate possibleparent
-                            if (i == 0) {
-                                // Only inherit possibleparent if afterTab's group will enclose newTabs
-                                if (agid && agid == bgid) {
-                                    var app = afterTab.getAttribute("possibleparent");
-                                    // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-                                    var parent = tk.getTabById(app);
-                                    if (parent && parent.getAttribute("groupid") == agid)
-                                        newTabs[0].setAttribute("possibleparent", app);
-                                    else
-                                        newTabs[0].setAttribute("possibleparent", tabs[0].getAttribute("possibleparent"));
-                                }
-                            }
-                            else {
-                                var tpp = tabs[i].getAttribute("possibleparent");
-                                if (tpp in tabIdMapping)
-                                    tpp = tabIdMapping[tpp];
-                                newTabs[i].setAttribute("possibleparent", tpp);
-                            }*/
-                        }
+                if (copyNotMove || oldTab.parentNode != _tabContainer) {
+                    // Copying within/across windows, or moving across windows
+                    var newTabs = [];
+                    var tabIdMapping = {};
+                    for (var i = 0; i < tabs.length; i++) {
+                        tk.addingTab("unrelated", null, true);
                         
-                        // Inherit indentation
-                        var app = null;
-                        // Only inherit possibleparent if afterTab's group will enclose newTabs
-                        if (agid && agid == bgid) {
-                            app = afterTab.getAttribute("possibleparent");
-                            // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-                            var parent = tk.getTabById(app);
-                            if (!parent || parent.getAttribute("groupid") != agid)
-                                app = null;
-                        }
-                        for (var i = 0; i < tabs.length; i++) {
-                            if (app && /*!! (!shiftDragSubtree
-                                        || !("treeLevel" in tabs[i])
-                                        || !("treeLevel" in tabs[0])
-                                        || */tabs[i].treeLevel <= tabs[0].treeLevel/*!! )*/)
-                            {
-                                newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
-                            }
-                            else {
-                                var tpp = tabs[i].getAttribute("possibleparent");
-                                if (tpp in tabIdMapping)
-                                    tpp = tabIdMapping[tpp];
-                                newTabs[i].setAttribute("possibleparent", tpp);
-                            }
-                        }
+                        newTabs[i] = tk._duplicateTab(tabs[i]);
+                        if (i == 0 && oldTab.parentNode != _tabContainer)
+                            gBrowser.selectedTab = newTabs[i];
                         
-                        // Do this afterwards so sortgroup_onTabRemoved doesn't mess up tabs we have yet to copy across
-                        if (!copyNotMove) {
-                            var browser = oldTab.ownerDocument.defaultView.getBrowser();
-                            for (var i = 0; i < tabs.length; i++)
-                                browser.removeTab(tabs[i]);
-                        }
+                        //!!gBrowser.moveTabTo(newTabs[i], newIndex); // WRONG! Reverses order
+                        if (newIndex < _tabs.length)
+                            tk.moveBefore(newTabs[i], afterTab);
+                        else
+                            gBrowser.moveTabTo(newTabs[i], _tabs.length - 1);
                         
-                        // Copy enclosing groupid, or create a new one
-                        var useEnclosing = (agid && agid == bgid);
-                        var ngid = useEnclosing ? agid : (_prefs.getBoolPref("autoGroupNewTabs") ? ":oG-copiedGroupOrSubtree-" + tk.generateId() : null);
-                        if (ngid) {
-                            for each (var newTab in newTabs) {
-                                tk.setGID(newTab, ngid);
-                                if (useEnclosing)
-                                    newTab.setAttribute("outoforder", "true");
+                        tk.addingTabOver();
+                        
+                        // Map tabids of original tabs to tabids of their clones
+                        tabIdMapping[tabs[i].getAttribute("tabid")] = newTabs[i].getAttribute("tabid");
+                        
+                        /*!! // Set appropriate possibleparent
+                        if (i == 0) {
+                            // Only inherit possibleparent if afterTab's group will enclose newTabs
+                            if (agid && agid == bgid) {
+                                var app = afterTab.getAttribute("possibleparent");
+                                // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                                var parent = tk.getTabById(app);
+                                if (parent && parent.getAttribute("groupid") == agid)
+                                    newTabs[0].setAttribute("possibleparent", app);
+                                else
+                                    newTabs[0].setAttribute("possibleparent", tabs[0].getAttribute("possibleparent"));
                             }
-                        }
-                        // TODO=P3: Add an openerGroup to copied groups/subtrees
-                        if (!copyNotMove)
-                            window.focus();
-                    }
-                    else { // Move group within window
-                        for each (var tab in tabs) // Save the treeLevels before we move the tabs
-                            tab.originalTreeLevel = tab.treeLevel;
-                        
-                        if (newIndex < _tabs.length) {
-                            for each (var tab in tabs)
-                                tk.moveBefore(tab, afterTab);
                         }
                         else {
-                            for each (var tab in tabs)
-                                gBrowser.moveTabTo(tab, _tabs.length - 1);
+                            var tpp = tabs[i].getAttribute("possibleparent");
+                            if (tpp in tabIdMapping)
+                                tpp = tabIdMapping[tpp];
+                            newTabs[i].setAttribute("possibleparent", tpp);
+                        }*/
+                    }
+                    
+                    // Inherit indentation
+                    var app = null;
+                    // Only inherit possibleparent if afterTab's group will enclose newTabs
+                    if (agid && agid == bgid) {
+                        app = afterTab.getAttribute("possibleparent");
+                        // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                        var parent = tk.getTabById(app);
+                        if (!parent || parent.getAttribute("groupid") != agid)
+                            app = null;
+                    }
+                    for (var i = 0; i < tabs.length; i++) {
+                        if (app && /*!! (!shiftDragSubtree
+                                    || !("treeLevel" in tabs[i])
+                                    || !("treeLevel" in tabs[0])
+                                    || */tabs[i].treeLevel <= tabs[0].treeLevel/*!! )*/)
+                        {
+                            newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
                         }
-                        if (agid && agid == bgid) {
-                            /*!!
-                            if (!shiftDragSubtree) {
-                                // Merge the two groups
-                                var newgid = agid + "|" + ogid;
-                                tk.setWindowValue("knownColor:" + newgid, tk.getWindowValue("knownColor:" + agid)); // Preserve color of enclosing group
-                                var enclosingGroup = tk.getGroupById(agid);
-                                for each (var tab in enclosingGroup) {
-                                    tk.setGID(tab, newgid);
-                                }
-                                for each (var tab in tabs) {
-                                    tk.setGID(tab, newgid);
-                                    tab.setAttribute("outoforder", "true");
-                                }
-                                // T-O-D-O-P4: Merging groups like this means they'll be un[auto]sorted. It might be better to keep enclosing group's sort
-                            }
-                            */
-                            // Insert subtree/group into group
-                            for each (var tab in tabs) {
-                                tk.setGID(tab, agid);
-                                tab.setAttribute("outoforder", "true");
-                            }
-                            // Inherit indentation
-                            var app = afterTab.getAttribute("possibleparent");
-                            // Only copy possibleparent if afterTab's possibleparent is in the same group as it
-                            //!!tk.log(app);
-                            var parent = tk.getTabById(app);
-                            if (parent && parent.getAttribute("groupid") == agid) {
-                                for each (var tab in tabs) {
-                                    if (/*!! !shiftDragSubtree
-                                        || !("treeLevel" in tab)
-                                        || !("treeLevel" in tabs[0])
-                                        || */tab.originalTreeLevel <= tabs[0].originalTreeLevel) {
-                                        tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
-                                    }
-                                }
-                            }
-                        }
-                        else if (shiftDragSubtree && _prefs.getBoolPref("autoGroupNewTabs")) {
-                            // Make the subtree into a new group
-                            var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
-                            for each (var tab in tabs)
-                                tk.setGID(tab, newgid);
-                        }
-                        
-                        if (shiftDragSubtree) {
-                            // Make sure old group isn't now a singleton
-                            var group = tk.getGroupById(ogid);
-                            if (group.length == 1)
-                                tk.removeGID(group[0], true);
+                        else {
+                            var tpp = tabs[i].getAttribute("possibleparent");
+                            if (tpp in tabIdMapping)
+                                tpp = tabIdMapping[tpp];
+                            newTabs[i].setAttribute("possibleparent", tpp);
                         }
                     }
-                    return;
+                    
+                    // Do this afterwards so sortgroup_onTabRemoved doesn't mess up tabs we have yet to copy across
+                    if (!copyNotMove) {
+                        var browser = oldTab.ownerDocument.defaultView.getBrowser();
+                        for (var i = 0; i < tabs.length; i++)
+                            browser.removeTab(tabs[i]);
+                    }
+                    
+                    // Copy enclosing groupid, or create a new one
+                    var useEnclosing = (agid && agid == bgid);
+                    var ngid = useEnclosing ? agid : (_prefs.getBoolPref("autoGroupNewTabs") ? ":oG-copiedGroupOrSubtree-" + tk.generateId() : null);
+                    if (ngid) {
+                        for each (var newTab in newTabs) {
+                            tk.setGID(newTab, ngid);
+                            if (useEnclosing)
+                                newTab.setAttribute("outoforder", "true");
+                        }
+                    }
+                    // TODO=P3: Add an openerGroup to copied groups/subtrees
+                    if (!copyNotMove)
+                        window.focus();
                 }
+                else { // Move group within window
+                    for each (var tab in tabs) // Save the treeLevels before we move the tabs
+                        tab.originalTreeLevel = tab.treeLevel;
+                    
+                    if (newIndex < _tabs.length) {
+                        for each (var tab in tabs)
+                            tk.moveBefore(tab, afterTab);
+                    }
+                    else {
+                        for each (var tab in tabs)
+                            gBrowser.moveTabTo(tab, _tabs.length - 1);
+                    }
+                    if (agid && agid == bgid) {
+                        /*!!
+                        if (!shiftDragSubtree) {
+                            // Merge the two groups
+                            var newgid = agid + "|" + ogid;
+                            tk.setWindowValue("knownColor:" + newgid, tk.getWindowValue("knownColor:" + agid)); // Preserve color of enclosing group
+                            var enclosingGroup = tk.getGroupById(agid);
+                            for each (var tab in enclosingGroup) {
+                                tk.setGID(tab, newgid);
+                            }
+                            for each (var tab in tabs) {
+                                tk.setGID(tab, newgid);
+                                tab.setAttribute("outoforder", "true");
+                            }
+                            // T-O-D-O-P4: Merging groups like this means they'll be un[auto]sorted. It might be better to keep enclosing group's sort
+                        }
+                        */
+                        // Insert subtree/group into group
+                        for each (var tab in tabs) {
+                            tk.setGID(tab, agid);
+                            tab.setAttribute("outoforder", "true");
+                        }
+                        // Inherit indentation
+                        var app = afterTab.getAttribute("possibleparent");
+                        // Only copy possibleparent if afterTab's possibleparent is in the same group as it
+                        //!!tk.log(app);
+                        var parent = tk.getTabById(app);
+                        if (parent && parent.getAttribute("groupid") == agid) {
+                            for each (var tab in tabs) {
+                                if (/*!! !shiftDragSubtree
+                                    || !("treeLevel" in tab)
+                                    || !("treeLevel" in tabs[0])
+                                    || */tab.originalTreeLevel <= tabs[0].originalTreeLevel) {
+                                    tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
+                                }
+                            }
+                        }
+                    }
+                    else if (shiftDragSubtree && _prefs.getBoolPref("autoGroupNewTabs")) {
+                        // Make the subtree into a new group
+                        var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
+                        for each (var tab in tabs)
+                            tk.setGID(tab, newgid);
+                    }
+                    
+                    if (shiftDragSubtree) {
+                        // Make sure old group isn't now a singleton
+                        var group = tk.getGroupById(ogid);
+                        if (group.length == 1)
+                            tk.removeGID(group[0], true);
+                    }
+                }
+                return;
             }
             
             // [Copying a single tab within/across windows, or moving a tab across windows]
@@ -5123,12 +5130,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 tabs = tk.getGroupFromTab(draggedTab);
                 // Calculate the treeLevels - we'll need these when copying
                 // possibleparents (getSubtreeFromTab normally does this)
-                if (tabs.length < 2)
-                    tk.updateIndents(tabs);
+                tk.updateIndents(tabs);
             }
-            //!!// Done automatically by getGroupFromTab
-            //!!if (!tabs)
-            //!!    tabs = [ draggedTab ];
         }
         else {
             // User wants to drag a single tab
