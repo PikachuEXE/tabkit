@@ -1,6 +1,6 @@
 /**
  * Tab Kit - http://jomel.me.uk/software/firefox/tabkit/
- * Copyright (c) 2008 John Mellor
+ * Copyright (c) 2007-2009 John Mellor
  * 
  * This file is part of Tab Kit.
  * Tab Kit is free software; you can redistribute it and/or
@@ -35,7 +35,7 @@
 /* Changelog
  * ---------
  * v0.5.6 (2009-05-24)
- * - Updated zh-CN locale
+ * - Updated zh-CN locale (by Renda)
  * - Changed Close Subtree to more versatile Close Children
  * - Tweaked Switch Tabs on Hover: now has delay even if your tabs are vertical
  * - Improved compatibility with Personas by making tabs more opaque (as group colours are important) and making Personas' background repeat vertically (to fill the vertical tab bar)
@@ -127,9 +127,12 @@
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for: TODO=P
  
- * TODO=P2: Ask translators to update their translations
- * TODO=P2: Comment on http://www.azarask.in/blog/post/firefoxnext-tabs-on-the-side/
+ * TODO=P1: Mozilla Design Challenge
+ 
+ * TODO=P3: Upload Tab Kit's Mercurial repository to Google Code and move these TODOs to the issue tracker
+ 
  * TODO=P2: Bug: Drag child tab of parent-child group onto bottom half of parent tab (such that it wouldn't move!), and it'll lose its indent and the parent will be degrouped (but not the dragged tab!)
+ * TODO=P3: Strongly discourage using together with Tree Style Tab
  * TODO=P3: Fx3.5: Occasional bugs with subtree dragging
  * TODO=P3: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
  * TODO=P3: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
@@ -153,6 +156,9 @@
  * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab, like Tree Style Tabs
  * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
  * TODO=P3: Shrink First Run Wizard image filesizes (use JPEGs if necessary)
+ * TODO=P3: Option which will prevent you from opening the same url twice (or tell you that you have this url already opened) [info bar?]
+ * TODO=P3: Search within all tabs' text c.f. Design Challenge Plans in Evernote
+ * TODO=P3: Only mark tab as read after ~1s delay, to avoid doing so while flicking through
  
  * TODO=P3: Add Shortcuts dialog or options tab, with a 3/4 column table letting you 1) toggle whether things show in the tab context menu 2) allow setting keyboard shortcuts (with defaults of some kind (perhaps Alt+Shift ones) 3) ideally allow customisation of tab clicking options (assumes that context menu options correspond with possible commands). This could also take over letting people show Close Other Tabs and/or Close Left/Right tabs.
  
@@ -7115,6 +7121,9 @@ var inc = 30; var hue = 0; var groups = tk.getAllGroups(); for (var gid in group
 
 // Regenerate random sat/lum values
 var minS=70,maxS=100,minL=75,maxL=80; var groups = tk.getAllGroups(); for (var gid in groups) { var hue = /hsl\((\d+),/.exec(tk.getWindowValue("knownColor:"+gid))[1]; tk.setWindowValue("knownColor:"+gid, "hsl("+hue+", "+tk.randInt(minS, maxS)+"%, "+tk.randInt(minL, maxL)+"%)"); for each (var t in groups[gid]) tk.colorizeTab(t); }
+
+// Completely random colours
+var minH=0,maxH=359,minS=70,maxS=100,minL=75,maxL=80; var groups = tk.getAllGroups(); for (var gid in groups) { tk.setWindowValue("knownColor:"+gid, "hsl("+tk.randInt(minH, maxH)+", "+tk.randInt(minS, maxS)+"%, "+tk.randInt(minL, maxL)+"%)"); for each (var t in groups[gid]) tk.colorizeTab(t); }
 
 
 
