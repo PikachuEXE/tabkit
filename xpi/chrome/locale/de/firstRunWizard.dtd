@@ -1,0 +1,16 @@
+<!ENTITY firstRunWizard.title "Tab Kit Erste Einstellungen">
+
+<!ENTITY layoutChoice.desc "Bitte w&auml;hlen Sie ihr bevorzugtes Tab-Leisten-Layout. Sie k&ouml;nnen dies sp&auml;ter &auml;ndern: Klicken Sie auf Extras -&gt; Add-ons -&gt; Tab Kit -&gt; Einstellungen und &auml;ndern Sie die Einstellungen dort.">
+
+<!ENTITY treeTabs.label "Baum-Tabs (empfohlen)">
+<!ENTITY treeTabs.desc "Zeigt die Tab-Leiste als Baum am rechten Fensterrand">
+
+<!ENTITY multiRowTabs.label "Mehrere Tab-Reihen">
+<!ENTITY multiRowTabs.desc "Zeigt die Tabs in der &uuml;blichen Position (oben) mit mehreren Reihen, wenn n&ouml;tig">
+
+<!ENTITY normalTabs.label "Normale Tabs">
+<!ENTITY normalTabs.desc "Zeigt die Tabs ganz normal wie gewohnt an">
+
+<!ENTITY documentation.text "Der beste Einstieg in Tab Kit ist wahrscheinlich, sich alle Punkte im Einstellungs-Men&uuml; durchzulesen (Extras -&gt; Add-ons -&gt; Tab Kit -&gt; Einstellungen), dort werden alle Features aufgelistet. Au&szlig;erdem f&uuml;gt Tab Kit ein Untermen&uuml; zum Rechtsklick-Men&uuml; auf der Tab-Leiste mit vielen n&uuml;tzlichen Kommandos hinzu. Leichter zu verstehende Dokumentation ist in Arbeit (Hilfe erw&uuml;nscht!).">
+
+

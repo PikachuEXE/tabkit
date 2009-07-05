@@ -11,5 +11,6 @@ locale	tabkit	en-US jar:chrome/tabkit.jar!/locale/en-US/
 locale	tabkit	zh-CN jar:chrome/tabkit.jar!/locale/zh-CN/
 locale	tabkit	zh-TW jar:chrome/tabkit.jar!/locale/zh-TW/
 locale	tabkit	ru jar:chrome/tabkit.jar!/locale/ru/
+locale	tabkit	de jar:chrome/tabkit.jar!/locale/de/
 
 skin	tabkit	classic/1.0	jar:chrome/tabkit.jar!/skin/classic/

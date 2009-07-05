@@ -12,5 +12,6 @@ locale	tabkit	en-US chrome/locale/en-US/
 locale	tabkit	zh-CN chrome/locale/zh-CN/
 locale	tabkit	zh-TW chrome/locale/zh-TW/
 locale	tabkit	ru chrome/locale/ru/
+locale	tabkit	de chrome/locale/de/
 
 skin	tabkit	classic/1.0	chrome/skin/classic/
