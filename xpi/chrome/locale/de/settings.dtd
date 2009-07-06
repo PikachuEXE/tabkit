@@ -19,28 +19,28 @@
 <!ENTITY sidebarPosition.label2 "des Fensters">
 
 <!ENTITY horizontalTabbar.caption "Horizontal Tab-Leiste">
-<!ENTITY multipleRows.label "Zeige die Tab-Leiste mit mehreren Reihen">
+<!ENTITY multipleRows.label "Mehrere Reihen in der Tab-Leiste anzeigen">
 <!ENTITY multipleRows.accesskey "M">
 <!ENTITY tabRows.label1 "Zeige bis zu">
 <!ENTITY tabRows.accesskey "R">
 <!ENTITY tabRows.label2 "Reihen auf einmal">
 
 <!ENTITY verticalTabbar.caption "Vertikale Tab-Leiste">
-<!ENTITY indentedTree.label "Untergeordnete Tabs einr&uuml;cken (zeigt die Tabs als Baum an)">
+<!ENTITY indentedTree.label "Untergeordnete Tabs einrücken (zeigt die Tabs als Baum an)">
 <!ENTITY indentedTree.accesskey "I">
 <!ENTITY maxTreeLevel.label "Maximaler Verzweigungs-Level">
 <!ENTITY maxTreeLevel.accesskey "X">
-<!ENTITY indentAmount.label1 "Einr&uuml;ckung erfolgt um">
+<!ENTITY indentAmount.label1 "Einrückung erfolgt um">
 <!ENTITY indentAmount.accesskey "P">
 <!ENTITY indentAmount.label2 "Pixel">
 
 <!ENTITY tabs.title "Tabs">
 
 <!ENTITY tabs.caption "Tabs">
-<!ENTITY tabMinWidth.label1 "Tab Mindest-Breite:">
+<!ENTITY tabMinWidth.label1 "Tab-Mindestbreite:">
 <!ENTITY tabMinWidth.accesskey "B">
 <!ENTITY tabMinWidth.label2 "Pixel">
-<!ENTITY closeButtons.label "Schlie&szlig;en-Kn&ouml;pfe:">
+<!ENTITY closeButtons.label "Schließen-Knöpfe:">
 <!ENTITY closeButtons.accesskey "K">
 <!ENTITY closeButtons.active.label "nur auf dem aktiven Tab anzeigen">
 <!ENTITY closeButtons.all.label "auf allen Tabs anzeigen">
@@ -52,20 +52,20 @@
 <!ENTITY highlightUnreadTabs.accesskey "U">
 <!ENTITY emphasizeCurrentTab.label "Aktuellen Tab schwarz markieren">
 <!ENTITY emphasizeCurrentTab.accesskey "A">
-<!ENTITY emphasizeProtectedTabs.label "Gesch&uuml;tzte Tabs gr&uuml;n markieren">
+<!ENTITY emphasizeProtectedTabs.label "Geschützte Tabs grün markieren">
 <!ENTITY emphasizeProtectedTabs.accesskey "G">
 
-<!ENTITY coloring.caption "Tab-Einf&auml;rbung">
-<!ENTITY forceThemeCompatibility.label "Theme-Kompatibilit&auml;t:">
+<!ENTITY coloring.caption "Tab-Einfärbung">
+<!ENTITY forceThemeCompatibility.label "Theme-Kompatibilität:">
 <!ENTITY forceThemeCompatibility.accesskey "T">
-<!ENTITY forceThemeCompatibility.never.label "Niemals &uuml;ber Themes hinwegsetzen">
+<!ENTITY forceThemeCompatibility.never.label "Niemals über Themes hinwegsetzen">
 <!ENTITY forceThemeCompatibility.auto.label "Automatische Erkennung (empfohlen)">
-<!ENTITY forceThemeCompatibility.always.label "Immer &uuml;ber Themes hinwegsetzen">
-<!ENTITY colorTabNotLabel.label "Einf&auml;rbung:">
+<!ENTITY forceThemeCompatibility.always.label "Immer über Themes hinwegsetzen">
+<!ENTITY colorTabNotLabel.label "Einfärbung:">
 <!ENTITY colorTabNotLabel.accesskey "F">
-<!ENTITY colorTabNotLabel.true.label "Tabs nach Gruppe und Label einf&auml;rben">
-<!ENTITY colorTabNotLabel.false.label "Labels nach Gruppe und Tabs einf&auml;rben">
-<!ENTITY minSaturation.label "Gruppen-Farbs&auml;ttigung - Min:">
+<!ENTITY colorTabNotLabel.true.label "Tabs nach Gruppe und Label einfärben">
+<!ENTITY colorTabNotLabel.false.label "Labels nach Gruppe und Tabs einfärben">
+<!ENTITY minSaturation.label "Gruppen-Farbsättigung - Min:">
 <!ENTITY minSaturation.accesskey "S">
 <!ENTITY maxSaturation.label "Max:">
 <!ENTITY maxSaturation.accesskey "M">
@@ -73,10 +73,10 @@
 <!ENTITY minLightness.accesskey "L">
 <!ENTITY maxLightness.label "Max:">
 <!ENTITY maxLightness.accesskey "M">
-<!ENTITY hue.label "Der Farbton wird automatisch so vergeben, dass er sich von benachbarten Gruppen abhebt">
+<!ENTITY hue.label "Der Farbton wird automatisch so vergeben, dass er sich von benachbarten Gruppen abhebt.">
 
-<!ENTITY openSelectedLinks.caption "Markierte Links &ouml;ffnen">
-<!ENTITY openSelectedLinks.label "Kontextmen&uuml;-Punkt zum &Ouml;ffnen mehrerer markierter Links anzeigen (inklusive Text-Links)">
+<!ENTITY openSelectedLinks.caption "Markierte Links öffnen">
+<!ENTITY openSelectedLinks.label "Kontextmenü-Punkt zum Öffnen mehrerer markierter Links anzeigen (inklusive Text-Links)">
 <!ENTITY openSelectedLinks.accesskey "O">
 <!ENTITY openSelectedLinksShowOnlyOne.label "Nur die besten Links (Anstatt einer Auswahl der wichtigsten / aller / nur Text-Links)">
 <!ENTITY openSelectedLinksShowOnlyOne.accesskey "B">
@@ -85,27 +85,27 @@
 
 <!ENTITY mouseGestures.caption "Mausgesten">
 <!ENTITY scrollwheelTabSwitch.label "Tabs mit dem Scrollrad durchschalten...">
-<!ENTITY tabWheelTabSwitch.label "w&auml;hrend die Maus auf die Tab-Leiste zeigt">
+<!ENTITY tabWheelTabSwitch.label "während die Maus auf die Tab-Leiste zeigt">
 <!ENTITY tabWheelTabSwitch.accesskey "T">
-<!ENTITY rmbWheelTabSwitch.label "w&auml;hrend die rechte Maustaste gedr&uuml;ckt wird">
+<!ENTITY rmbWheelTabSwitch.label "während die rechte Maustaste gedrückt wird">
 <!ENTITY rmbWheelTabSwitch.accesskey "R">
-<!ENTITY switchTabsOnHover.label "Durch blo&szlig;es Dr&uuml;berfahren Tabs wechseln">
+<!ENTITY switchTabsOnHover.label "Durch bloßes Drüberfahren Tabs wechseln">
 <!ENTITY switchTabsOnHover.accesskey "H">
-<!ENTITY lmbRmbBackForward.label "Rechts gedr&uuml;ckt halten und Links klicken um zur&uuml;ck zur vorherigen Seite zu gehen, und umgekehrt">
+<!ENTITY lmbRmbBackForward.label "Rechts gedrückt halten und Links klicken um zurück zur vorherigen Seite zu gehen, und umgekehrt">
 <!ENTITY lmbRmbBackForward.accesskey "L">
 <!ENTITY doubleClickCollapseExpand.label "Doppelklick um Tab-Gruppen ein-/auszuklappen">
 <!ENTITY doubleClickCollapseExpand.accesskey "D">
 
 <!ENTITY dragging.caption "Tabs verschieben">
-<!ENTITY accelDragCopy.label "Mit Strg+Ziehen Tabs kopieren anstatt sie zu verschieben (Apfel+Ziehen auf Macs)">
+<!ENTITY accelDragCopy.label "Mit Strg+Ziehen Tabs kopieren anstatt zu verschieben (Apfel+Ziehen auf Macs)">
 <!ENTITY accelDragCopy.accesskey "C">
-<!ENTITY shiftDragGroups.label "Mit Shift+Ziehen eine komplette Gruppe verschieben">
+<!ENTITY shiftDragGroups.label "Mit Shift+Ziehen komplette Gruppen verschieben">
 <!ENTITY shiftDragGroups.accesskey "G">
 <!ENTITY shiftDragSubtrees.label "Stattdessen im Baum-Modus mit Shift+Ziehen einen Unterbaum verschieben (experimentell!)">
 <!ENTITY shiftDragSubtrees.accesskey "I">
 
 <!ENTITY scrolling.caption "Scrollen">
-<!ENTITY scrollbarsNotArrows.label "Scrollbars anstatt Pfeile in den Lesezeichen und allen Tab-Men&uuml;s benutzen*">
+<!ENTITY scrollbarsNotArrows.label "Scrollbars anstatt Pfeilen in den Lesezeichen und allen Tab-Menüs benutzen*">
 <!ENTITY scrollbarsNotArrows.accesskey "S">
 <!ENTITY onlyAppliesToNewWindows.label1 "* Wirkt sich erst auf neue Fenster aus">
 <!ENTITY scrollOneExtra.label "Den Tab neben dem aktuellen Tab immer sichtbar halten">
@@ -119,14 +119,14 @@
 <!ENTITY lastActiveGrouping.label "Gruppierung anhand*:">
 <!ENTITY lastActiveGrouping.accesskey "G">
 <!ENTITY lastActiveGrouping.domain.label "der Domain">
-<!ENTITY lastActiveGrouping.opener.label "des &Ouml;ffners">
+<!ENTITY lastActiveGrouping.opener.label "des Öffners">
 <!ENTITY autoCollapse.label "Inaktive Gruppen automatisch einklappen">
 <!ENTITY autoCollapse.accesskey "U">
 
 <!ENTITY positioningTabs.caption "Tab-Platzierung">
 <!ENTITY newTabPosition.label "Einzelne neue Tabs platzieren:*">
 <!ENTITY newTabPosition.accesskey "N">
-<!ENTITY newTabPosition.lastSort.label "gem&auml;&szlig; der letzten Sortierung">
+<!ENTITY newTabPosition.lastSort.label "gemäß der letzten Sortierung">
 <!ENTITY newTabPosition.nextToCurrent.label "neben dem aktuellen Tab">
 <!ENTITY newTabPosition.farRight.label "ganz rechts am Ende der Tab-Leiste">
 <!ENTITY lastActiveSort.label "Die 'letzte Sortierung' war*">
@@ -134,7 +134,7 @@
 <!ENTITY lastActiveSort.address.label "nach Adresse">
 <!ENTITY lastActiveSort.lastLoaded.label "nach zuletzt geladen">
 <!ENTITY lastActiveSort.lastViewed.label "nach zuletzt betrachtet">
-<!ENTITY lastActiveSort.creation.label "in Er&ouml;ffnungs-Reihenfolge">
+<!ENTITY lastActiveSort.creation.label "in Eröffnungs-Reihenfolge">
 <!ENTITY lastActiveSort.origin.label "nach Herkunft">
 <!ENTITY lastActiveSort.pageTitle.label "nach Seiten-Titel">
 <!ENTITY openRelativePosition.label "'neben dem aktuellen Tab' bedeutet:">
@@ -144,22 +144,22 @@
 <!ENTITY openRelativePosition.rightOfRecent.label "rechts neben den neusten untergeordneten Tabs">
 <!ENTITY openRelativePosition.rightOfConsecutive.label "rechts von allen untergeordneten Tabs">
 
-<!ENTITY closingTabs.caption "Tabs schlie&szlig;en">
-<!ENTITY customCloseOrder.label "Beim Schlie&szlig;en:">
+<!ENTITY closingTabs.caption "Tabs schließen">
+<!ENTITY customCloseOrder.label "Beim Schließen:">
 <!ENTITY customCloseOrder.accesskey "B">
-<!ENTITY customCloseOrder.auto.label "automatisch w&auml;hlen (gem&auml;&szlig; Gruppen und Baum-Level)">
-<!ENTITY customCloseOrder.groupLeft.label "den n&auml;chstlinken Tab w&auml;hlen, aber in der Gruppe bleiben">
-<!ENTITY customCloseOrder.groupRight.label "den n&auml;chstrechten Tab w&auml;hlen, aber in der Gruppe bleiben">
-<!ENTITY customCloseOrder.left.label "immer den n&auml;chstlinken Tab w&auml;hlen">
-<!ENTITY customCloseOrder.right.label "immer den n&auml;chstrechten Tab w&auml;hlen">
-<!ENTITY selectOwnerOnClose.label "Sonderregelung f&uuml;r Popup-Fenster: immer zur&uuml;ck zum Hauptfenster wechseln">
+<!ENTITY customCloseOrder.auto.label "automatisch wählen (gemäß Gruppen und Baum-Level)">
+<!ENTITY customCloseOrder.groupLeft.label "den nächstlinken Tab wählen, aber in der Gruppe bleiben">
+<!ENTITY customCloseOrder.groupRight.label "den nächstrechten Tab wählen, aber in der Gruppe bleiben">
+<!ENTITY customCloseOrder.left.label "immer den nächstlinken Tab wählen">
+<!ENTITY customCloseOrder.right.label "immer den nächstrechten Tab wählen">
+<!ENTITY selectOwnerOnClose.label "Sonderregelung für Popup-Fenster: immer zurück zum Hauptfenster wechseln">
 <!ENTITY selectOwnerOnClose.accesskey "O">
 
 <!ENTITY onlyAppliesToNewWindows.label2 "* Wirkt sich erst auf neue Fenster aus">
 
 <!ENTITY advanced.title "Erweitert">
 
-<!ENTITY openTabsFrom.caption "Neue Tabs standardm&auml;&szlig;ig &ouml;ffnen von:">
+<!ENTITY openTabsFrom.caption "Neue Tabs standardmäßig öffnen von:">
 <!ENTITY addressBar.label "Adressleiste">
 <!ENTITY addressBar.accesskey "A">
 <!ENTITY searchBar.label "Suchleiste">
@@ -167,26 +167,26 @@
 <!ENTITY places.label "Lesezeichen und Chronik">
 <!ENTITY places.accesskey "K">
 
-<!ENTITY closeOtherTabs.caption "Andere Tab schlie&szlig;en">
-<!ENTITY closeBeforeAfterNotOther.label "Ersetze 'Andere Tab schlie&szlig;en' mit 'vorhergehende Tabs' und 'nachfolgende Tabs schlie&szlig;en'">
+<!ENTITY closeOtherTabs.caption "Andere Tab schließen">
+<!ENTITY closeBeforeAfterNotOther.label "Ersetze 'Andere Tabs schließen' mit 'vorhergehende Tabs' und 'nachfolgende Tabs schließen'">
 <!ENTITY closeBeforeAfterNotOther.accesskey "C">
 
 <!ENTITY tabOrder.caption "Tab-Reihenfolge">
-<!ENTITY autoSortOpenerGroups.label "Tabs automatisch nach dem &Ouml;ffner gruppieren (empfohlen)">
+<!ENTITY autoSortOpenerGroups.label "Tabs automatisch nach dem Öffner gruppieren (empfohlen)">
 <!ENTITY autoSortOpenerGroups.accesskey "O">
 <!ENTITY autoSortDomainGroups.label "Tabs automatisch nach Domain/Adresse sortieren">
 <!ENTITY autoSortDomainGroups.accesskey "D">
 
-<!ENTITY whenGroupingByOpener.caption "Beim Gruppierung nach dem &Ouml;ffner:">
-<!ENTITY bookmarkTabsAreRelated.label "Lesezeichen als zum aktuellen Tab zugeh&ouml;rig behandeln">
+<!ENTITY whenGroupingByOpener.caption "Beim Gruppierung nach dem Öffner:">
+<!ENTITY bookmarkTabsAreRelated.label "Lesezeichen mit aktuellem Tab gruppieren">
 <!ENTITY bookmarkTabsAreRelated.accesskey "L">
-<!ENTITY historyTabsAreRelated.label "Chronik-Tabs als zum aktuellen Tab zugeh&ouml;rig behandeln">
+<!ENTITY historyTabsAreRelated.label "Chronik-Tabs mit aktuellem Tab gruppieren">
 <!ENTITY historyTabsAreRelated.accesskey "H">
-<!ENTITY newTabsAreRelated.label "Leere, neue Tabs als zum aktuellen Tab zugeh&ouml;rig behandeln">
+<!ENTITY newTabsAreRelated.label "Leere, neue Tabs mit aktuellem Tab gruppieren">
 <!ENTITY newTabsAreRelated.accesskey "N">
 
-<!ENTITY reset.caption "Zur&uuml;cksetzen">
-<!ENTITY resetAll.label "Alle Einstellungen auf Standard-Werte zur&uuml;cksetzen">
+<!ENTITY reset.caption "Zurücksetzen">
+<!ENTITY resetAll.label "Alle Einstellungen auf Standard-Werte zurücksetzen">
 <!ENTITY resetAll.accesskey "R">
-<!ENTITY disableAll.label "Alle Zusatz-Funktionen abstellen">
+<!ENTITY disableAll.label "Alle Zusatz-Funktionen deaktivieren">
 <!ENTITY disableAll.accesskey "T">

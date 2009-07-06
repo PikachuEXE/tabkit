@@ -34,6 +34,8 @@
 
 /* Changelog
  * ---------
+ * V0.5.7 (2009-07-??) TBC
+ * - Added de (German) locale (by Tom Fichtner)
  * v0.5.6 (2009-05-24)
  * - Updated zh-CN locale (by Renda)
  * - Changed Close Subtree to more versatile Close Children
@@ -127,9 +129,9 @@
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for: TODO=P
  
- * TODO=P1: Mozilla Design Challenge
- 
  * TODO=P3: Upload Tab Kit's Mercurial repository to Google Code and move these TODOs to the issue tracker
+ 
+ * TODO=P3: Gradually implement my Mozilla Design Challenge entry (search for "John Mellor" on http://design-challenge.mozilla.com/summer09/showcase.php)
  
  * TODO=P2: Bug: Drag child tab of parent-child group onto bottom half of parent tab (such that it wouldn't move!), and it'll lose its indent and the parent will be degrouped (but not the dragged tab!)
  * TODO=P3: Strongly discourage using together with Tree Style Tab
