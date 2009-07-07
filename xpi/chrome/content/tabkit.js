@@ -34,8 +34,9 @@
 
 /* Changelog
  * ---------
- * V0.5.7 (2009-07-??) TBC
+ * V0.5.7 (2009-07-06)
  * - Added de (German) locale (by Tom Fichtner)
+ * - Fix bug closing the last tab when browser.tabs.closeWindowWithLastTab is false
  * v0.5.6 (2009-05-24)
  * - Updated zh-CN locale (by Renda)
  * - Changed Close Subtree to more versatile Close Children
@@ -1871,7 +1872,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         { d: 2, n: "handleCommand",         t: "newtab" }, //[Fx3.5+] gURLBar.handleCommand [[[1.loadOneTab 2. handleCommand 3. anonymous 4. fireEvent 5. onTextEntered]]]
         { d: 3, n: "doSearch",              t: "newtab" }, //[Fx3only] BrowserSearch.searchBar.doSearch [[[1. loadOneTab 2. openUILinkIn 3. doSearch 4. handleSearchCommand 5. onTextEntered 6. handleEnter 7. onKeyPress]]] // (note: simple replacement wouldn't work if searchbar was added after opening window
         { d: 2, n: "doSearch",              t: "newtab" }, //[Fx2only] BrowserSearch.getSearchBar().doSearch [[[1. loadOneTab 2. doSearch 3. handleSearchCommand 4. onTextEntered 5. handleEnter 6. onKeyPress 7. onxblkeypress]]] // (note: simple replacement wouldn't work if searchbar was added after opening window
-        { d: 1, n: "removeTab",             t: "newtab" }, //gBrowser.removeTab [[[1. removeTab 2. onTabClick 3. onclick]]]
+        { d: 1, n: "_endRemoveTab",         t: "newtab" }, //[Fx3.5+] gBrowser._endRemoveTab [[[1. _endRemoveTab 2. removeTab 3. removeCurrentTab 4. BrowserCloseTabOrWindow 5. oncommand]]]
+        { d: 1, n: "removeTab",             t: "newtab" }, //[Fx3-] gBrowser.removeTab [[[1. removeTab 2. onTabClick 3. onclick]]]
         
         { d: 4, n: "openReleaseNotes",      t: "unrelated" }, //openReleaseNotes [[[1. loadOneTab 2. openUILinkIn 3. openUILink 4. openReleaseNotes 5. anonymous 6. checkForMiddleClick 7. onclick]]]
         
@@ -2788,7 +2790,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 null,
                 
                 'var tab = aTab;',
-                'tabkit.blurTab(aTab); return;'
+                'if (tabkit.chosenNextTab != null) { \
+                    tabkit.blurTab(aTab); \
+                    return; \
+                } \
+                $&' // When closing the last tab and browser.tabs.closeWindowWithLastTab is false, tk.chooseNextTab is called before the replacement tab is opened, so tk.blurTab returns null; the original _blurTab works fine in this case though
             ]);//}
         }
         else if ("_endRemoveTab" in gBrowser) { // [Fx3.1b3]
@@ -2797,7 +2803,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 null,
                 
                 'newIndex = index == length ? index - 1 : index;',
-                'newIndex = tabkit.pickNextIndex(index, length);'
+                'newIndex = tabkit.pickNextIndex(index, length); \
+                if (newIndex == null) $&' // When closing the last tab and browser.tabs.closeWindowWithLastTab is false, tk.chooseNextTab is perhaps called before the replacement tab is opened, so tk.pickNextIndex returns null; the original code works fine in this case though
             ]);//}
         }
         else { // [Fx3-]
@@ -2806,7 +2813,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 null,
                 
                 /newIndex = \(?index == l - 1\)? \? index - 1 : index;/,
-                'newIndex = tabkit.pickNextIndex(index, l - 1);'
+                'newIndex = tabkit.pickNextIndex(index, l - 1); \
+                if (newIndex == null) $&' // When closing the last tab and browser.tabs.closeWindowWithLastTab is false, tk.chooseNextTab is perhaps called before the replacement tab is opened, so tk.pickNextIndex returns null; the original code works fine in this case though
             ]);//}
         }
     };
