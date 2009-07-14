@@ -34,7 +34,9 @@
 
 /* Changelog
  * ---------
- * V0.5.7 (2009-07-06)
+ * v0.5.8 (tba)
+ * - Fix bug with Scrollbars instead of arrows (e.g. on bookmarks menu) functionality
+ * v0.5.7 (2009-07-06)
  * - Added de (German) locale (by Tom Fichtner)
  * - Fix bug closing the last tab when browser.tabs.closeWindowWithLastTab is false
  * v0.5.6 (2009-05-24)
@@ -136,9 +138,10 @@
  
  * TODO=P2: Bug: Drag child tab of parent-child group onto bottom half of parent tab (such that it wouldn't move!), and it'll lose its indent and the parent will be degrouped (but not the dragged tab!)
  * TODO=P3: Strongly discourage using together with Tree Style Tab
+ * TODO=P3: Recommend using with TabGroups Manager and/or TooManyTabs (until I implement workspaces)
  * TODO=P3: Fx3.5: Occasional bugs with subtree dragging
- * TODO=P3: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
- * TODO=P3: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
+ * TODO=P4: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
+ * TODO=P4: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
  
  Groups as persistent selections:
  * TODO=P3: Make Ctrl+Click tab add any tab to the current group (moving it adjacent to the group if necessary, and creating a new group if the current tab was ungrouped), unless the clicked tab was already in the current group, in which case it is removed from the group (and moved out of the group if not already on the edge).

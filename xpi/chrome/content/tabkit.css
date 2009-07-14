@@ -512,6 +512,7 @@ hbox					H #browser
  *************************/
 
 #main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > scrollbox > .scrollbox-innerbox {
+	overflow-x: hidden !important;
 	overflow-y: auto !important;
 }
 #main-window[scrollbarsnotarrows] arrowscrollbox[orient="vertical"] > .autorepeatbutton-up,
