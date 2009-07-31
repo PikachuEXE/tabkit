@@ -131,116 +131,118 @@
  * I keep todo notes in the form TODO=Px where x is a priority betweeen 1 (highest) and 5 (lowest).
  * Though I normally finish all the P1 and most of the P2 ones before making a release.
  * There are more todos in the source itself, search for: TODO=P
+ * These todos are now being transitioned to two places, http://tabkit.uservoice.com/ for major enhancements, and
+   http://code.google.com/p/tabkit/issues for bug reports, tasks, and small tweaks. Issues marked UVOICE have been
+   moved to the former, issues marked GCODE are being moved to the latter. Issues marked ??? are undetermined,
+   issues marked TJS will remain in this source code file for now, and issues marked N/A are no longer relevant.
  
- * TODO=P3: Upload Tab Kit's Mercurial repository to Google Code and move these TODOs to the issue tracker
+ * TODO=P3: GCODE#1 Upload Tab Kit's Mercurial repository to Google Code
+ * TODO=P3: GCODE Move these TODOs to the issue tracker
  
- * TODO=P3: Gradually implement my Mozilla Design Challenge entry (search for "John Mellor" on http://design-challenge.mozilla.com/summer09/showcase.php)
- 
- * TODO=P2: Bug: Drag child tab of parent-child group onto bottom half of parent tab (such that it wouldn't move!), and it'll lose its indent and the parent will be degrouped (but not the dragged tab!)
- * TODO=P3: Strongly discourage using together with Tree Style Tab
- * TODO=P3: Recommend using with TabGroups Manager and/or TooManyTabs (until I implement workspaces)
- * TODO=P3: Fx3.5: Occasional bugs with subtree dragging
- * TODO=P4: Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
- * TODO=P4: _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
+ * TODO=P2: GCODE#2 Bug: Drag child tab of parent-child group onto bottom half of parent tab (such that it wouldn't move!), and it'll lose its indent and the parent will be degrouped (but not the dragged tab!)
+ * TODO=P3: GCODE Strongly discourage using together with Tree Style Tab (don't necessarily auto-disable, but at least show a first-run-tab)
+ * TODO=P3: GCODE Recommend using with TabGroups Manager and/or TooManyTabs (until I implement workspaces), and Ctrl-Tab, Session Manager and Tab Clicking Options
+ * TODO=P3: GCODE Fx3.5: Occasional bugs with subtree dragging
+ * TODO=P4: GCODE Use, and hook, Firefox's new duplicateTab method (esp. reset tabid and remove gid) [partially done in sortgroup_onSSTabRestoring]
+ * TODO=P4: GCODE _onDrop's 'document.getBindingParent(aEvent.originalTarget).localName != "tab"' should be 'aEvent.target.localName != "tab"' ?!
  
  Groups as persistent selections:
- * TODO=P3: Make Ctrl+Click tab add any tab to the current group (moving it adjacent to the group if necessary, and creating a new group if the current tab was ungrouped), unless the clicked tab was already in the current group, in which case it is removed from the group (and moved out of the group if not already on the edge).
- * TODO=P3: Make Shift+Click tab make a group from all tabs between the current and clicked tab inclusive (if the current tab was already in a group, any group tabs that aren't between the current and clicked tabs will stay in their old group instead of joining the new group). Then allow removing Group Tabs From Here To Current menuitem.
- * TODO=P3: Document both the above in First Run Wizard.
+ * TODO=P3: UVOICE Make Ctrl+Click tab add any tab to the current group (moving it adjacent to the group if necessary, and creating a new group if the current tab was ungrouped), unless the clicked tab was already in the current group, in which case it is removed from the group (and moved out of the group if not already on the edge).
+ * TODO=P3: UVOICE Make Shift+Click tab make a group from all tabs between the current and clicked tab inclusive (if the current tab was already in a group, any group tabs that aren't between the current and clicked tabs will stay in their old group instead of joining the new group). Then allow removing Group Tabs From Here To Current menuitem.
+ * TODO=P3: ??? Document both the above in First Run Wizard? Nah, just show shortcuts on menuitems and people will pick them up?
  
- * TODO=P3: Refactor context menu. Move Global Actions into Tools, This Tab items into top level context menu, and This Group can stay as the submenu.
- * TODO=P3: Make context menu New Tab become New Tab Here, replacing that option, except when right-clicking empty parts of tab bar.
- * TODO=P3: Add Tab Bar Position to Global Actions (now in Tools), and other extremely common options. Also menuitem for Help and/or re-run First Run Wizard.
- * TODO=P3: Add Move group to window >> Title 1 / Title 2 / Title 3 / [New Window]to This Group submenu.
- * Add Close Other Tabs (not in this group) to This Group submenu.
+ * TODO=P3: GCODE Refactor context menu. Move Global Actions into Tools, This Tab items into top level context menu, and This Group can stay as the submenu.
+ * TODO=P3: GCODE Make context menu New Tab become New Tab Here, replacing that option, except when right-clicking empty parts of tab bar.
+ * TODO=P3: GCODE Add Tab Bar Position to Global Actions (now in Tools), and other extremely common options. Also menuitem for Help and/or re-run First Run Wizard.
+ * TODO=P3: UVOICE Add Move group to window >> Title 1 / Title 2 / Title 3 / [New Window] to This Group submenu. To workspaces instead?
+ * TODO=P4: GCODE Add Close Other Tabs (not in this group) to This Group submenu (how does this interact with Close Left/Right?)
  
- * TODO=P3: Integration with TooManyTabs (http://www.visibotech.com/toomanytabs/) providing ability to Save/Restore Groups (a bit like session manager does for windows). Seems preferable to implementing this directly [[[by adding a dropdown button with: Store Away Current Tab/Group <sep> Store Away Current Window <sep> <list of saved tab/groups> (clicking opens then removes entry) <sep> Recently restored entries >> <sep> (gray comment:) Shift+click to delete an entry (without opening it). Auto-suggest title from TLDs, date & tab count. Sort by most recent and/or alphabetic (if alphabetic default put date at beginning of title suggestion)]]].
- * TODO=P3: Idle Tabs functionality (probably as separate extension or as extension of TooManyTabs) - make idle tabs (or startup tabs) be sessionstore stubs that only (re)load once viewed and/or clicked in
+ * TODO=P3: UVOICE Workspaces [[[adding a dropdown button with: Store Away Current Tab/Group <sep> Store Away Current Window <sep> <list of saved tab/groups> (clicking opens then removes entry) <sep> Recently restored entries >> <sep> (gray comment:) Shift+click to delete an entry (without opening it). Auto-suggest title from TLDs, date & tab count. Sort by most recent and/or alphabetic (if alphabetic default put date at beginning of title suggestion)]]].
+ * TODO=P3: UVOICE Idle Tabs functionality (possibly as separate extension) - make idle tabs (or startup tabs) be sessionstore stubs that only (re)load once viewed and/or clicked in
  
- * TODO=P3: Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
- * TODO=P3: Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014)
- * TODO=P3: Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab); and/or allow dropping onto middle of tabs to make the dropped tab a child of the target tab, like Tree Style Tabs
- * TODO=P3: Performance: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
- * TODO=P3: Shrink First Run Wizard image filesizes (use JPEGs if necessary)
- * TODO=P3: Option which will prevent you from opening the same url twice (or tell you that you have this url already opened) [info bar?]
- * TODO=P3: Search within all tabs' text c.f. Design Challenge Plans in Evernote
- * TODO=P3: Only mark tab as read after ~1s delay, to avoid doing so while flicking through
+ * TODO=P3: GCODE Scroll up/down when tab dragging so can drag to anywhere rather than having to do it in bits
+ * TODO=P3: GCODE Fx3+: Improve Fullscreen (F11) animation with vertical tab bar (c.f. bug 423014). Tree Style Tab does this well...
+ * TODO=P3: GCODE Expand groups hovered over (for a while) during tab drags, so can drag into them (then make auto-collapse always collapse, even if select ungrouped tab). In the long run, am planning to show collapsed groups as favicon list, which you could drag straight into.
+ * TODO=P3: UVOICE Allow dropping onto middle of tabs to make the dropped tab a child of the target tab, like Tree Style Tabs
+ * TODO=P3: GCODE Optmisation: Use _tabContainer.getElementsByAttribute in many of the cases where I currently iterate through _tabs
+ * TODO=P3: GCODE Shrink First Run Wizard image filesizes (use JPEGs if necessary)
+ * TODO=P3: UVOICE Option which will prevent you from opening the same url twice (or tell you that you have this url already opened) [info bar?]
+ * TODO=P3: UVOICE Search within all tabs' text c.f. Design Challenge Plans in Evernote
+ * TODO=P3: UVOICE Only mark tab as read after ~1s delay, to avoid doing so while flicking through
  
- * TODO=P3: Add Shortcuts dialog or options tab, with a 3/4 column table letting you 1) toggle whether things show in the tab context menu 2) allow setting keyboard shortcuts (with defaults of some kind (perhaps Alt+Shift ones) 3) ideally allow customisation of tab clicking options (assumes that context menu options correspond with possible commands). This could also take over letting people show Close Other Tabs and/or Close Left/Right tabs.
+ * TODO=P3: UVOICE Add Shortcuts dialog or options tab, with a 3/4 column table letting you 1) toggle whether things show in the tab context menu 2) allow setting keyboard shortcuts (with defaults of some kind (perhaps Alt+Shift ones) 3) ideally allow customisation of tab clicking options (assumes that context menu options correspond with possible commands). This could also take over letting people show Close Other Tabs and/or Close Left/Right tabs.
  
- * TODO=P3: Reset background tabs as unread when their title changes (due to a load, or incoming Gmail message)
- * TODO=P3: Add "Tab Kit Options" button to Firefox Options -> Tabs, like Tab Mix Plus does (less important once Global Actions moved to Tools).
- * TODO=P3: Protect Tab could save tabs across sessions, like PermaTabs did, and/or lock navigation (no back/forward and links open in new tabs)
+ * TODO=P3: UVOICE Reset background tabs as unread when their title changes (due to a load, or incoming Gmail message)
+ * TODO=P3: GCODE Add "Tab Kit Options" button to Firefox Options -> Tabs, like Tab Mix Plus does (less important once Global Actions moved to Tools)
+ * TODO=P3: UVOICE Protect (/Pin) Tab could save tabs across sessions, like PermaTabs did
+ * TODO=P4: ??? Protect tab could lock navigation (no back/forward and links open in new tabs)
  
- * TODO=P3: Make grouping bookmark groups optional?
+ * TODO=P3: ??? Make grouping bookmark groups optional?
  
- * TODO=P3: Colorpickers for unread/current/protected tab highlights, as in PermaTabs
+ * TODO=P3: GCODE Colorpickers for unread/current/protected tab highlights, as in PermaTabs. Instead, could just make these prettier...
  
- * TODO=P3: Document the fact that Close buttons: 'Show on all tabs' depends on tab clip width
+ * TODO=P3: GCODE Document the fact that Close buttons: 'Show on all tabs' depends on tab clip width
  
- * TODO=P3: Add double-click to close tab option (less important now no longer conflicts with Tab Clicking Options)
+ * TODO=P3: GCODE Add double-click to close tab option (less important now no longer conflicts with Tab Clicking Options)
  
- * TODO=P3: Use preventChangeOfAttributes to set vertical tabbar increment (though not pageincrement)
- * TODO=P3: Fx3+: Update Sorting & Grouping method hooks
+ * TODO=P3: GCODE Use preventChangeOfAttributes to set vertical tabbar increment (though not pageincrement)
+ * TODO=P3: GCODE Fx3+: Update Sorting & Grouping method hooks
  
- * TODO=P3: Investigate http://piro.sakura.ne.jp/xul/_treestyletab.html.en
-             - Collapse/expand any subtree, not just entire groups?
-             - Slick arrows for collapsed/expanded
-             - count showing # of hidden child tabs
-             - better auto-hide tab bar
+ * TODO=P3: GCODE Investigate http://piro.sakura.ne.jp/xul/_treestyletab.html.en
+ * TODO=P3: UVOICE Collapse/expand any subtree, not just entire groups?
+ * TODO=P3: UVOICE Slick arrows for collapsed/expanded
+ * TODO=P3: ~UVOICE count showing # of hidden child tabs
+ * TODO=P3: UVOICE better auto-hide tab bar
                     o Can you make it so its just like that of the "Tree Style Tab"  where you can pick the exact size-width of the tab-bar by dragging it to the width of your liking, and also when and where you want it to pop out when you hover your mouse over to it 0-100Px from left etc
                     o Also instead of moving the whole webpage over to the right to make room for the unhidden tab-bar (when its in vertical mode on the left), can you make it so the tab-bar just overlays on top of the webpage please..Like Tree Style Tab does..
                     o And also have the tab-bar already in auto-hide mode every time Firefox starts up and also when the tab-bar first appears when a new tab is opened, have it autohide itself then too.
  
- * TODO=P3: Investigate http://paranoid-androids.com/tabgroups/
+ * TODO=P3: GCODE Investigate http://paranoid-androids.com/tabgroups/
  
- * TODO=P3: Investigate https://addons.mozilla.org/en-US/firefox/addon/3726 (Tab Overflow Scrollbar)
+ * TODO=P3: GCODE Check compatibility with https://addons.mozilla.org/en-US/firefox/addon/3726 (Tab Overflow Scrollbar)
  
- * TODO=P3: Preferences Wizard on first run offering sensible settings for multi-row / tab tree, etc.
- * TODO=P3: Automatic conflict checkings, e.g.
+ * TODO=P3: UVOICE Preferences Wizard on first run offering sensible settings for multi-row / tab tree, etc.
+ * TODO=P3: GCODE Automatic conflict checkings, e.g.
         * Disable gestures if FireGestures is installed - https://addons.mozilla.org/en-US/firefox/addon/6366
         * Investigate compatibility with Tab Mix Plus (for the minor features like progress bars on tabs & tab clicking options)
         * TreeStyleTab, tabgroups, etc.
         * New Tab Button on Tab Right is apparently incompatible
  
- * TODO=P3: More flexible/intuitive tree drag&drop, letting you arbitrarily assign parents etc, and also make the indents etc more robust
+ * TODO=P3: UVOICE More flexible/intuitive tree drag&drop, letting you arbitrarily assign parents etc, and also make the indents etc more robust
  
- * TODO=P3: Window merging
- * TODO=P3: .tabs-bottom color doesn't work in Fx3+ (and was never updated when closing a tab group)
- * TODO=P3: Fx3+: Bottom row of multirow tabs is 1px too tall
- * TODO=P3: Fx3.5: Scrollbars on bookmarks and all tabs menus causes all menus to randomly show scrollbars (both horiz and vert!)
- * TODO=P4: Fx2: Can't drag scrollbar slider on bookmarks menu without closing menu (works in Fx3+)
- * TODO=P4: Look into possibility of displaying the sidebar beneath a vertical tab bar, so they share one column
+ * TODO=P3: UVOICE Window/workspace merging
+ * TODO=P3: GCODE .tabs-bottom color doesn't work in Fx3+ (and was never updated when closing a tab group)
+ * TODO=P3: GCODE Fx3+: Bottom row of multirow tabs is 1px too tall
+ * TODO=P4: GCODE Fx2: Can't drag scrollbar slider on bookmarks menu without closing menu (works in Fx3+)
+ * TODO=P4: GCODE Look into possibility of displaying the sidebar beneath a vertical tab bar, so they share one column
  
- * TODO=P3: Implement lite version of LastTab Ctrl-Tab stack switching? No actually, since Ctrl-Tab is supposedly going to be incorporated into Fx3.5
- * TODO=P3: Multi-row on hover (for more than ~1 second)
- * TODO=P3: Multi-row: vertical splitter to adjust [max] no. of rows?
- * TODO=P3: Allow dragging into collapsed groups (especially with auto-collapse tabs), e.g. by temporarily expanding hovered-over groups (alternatively show a popup menu)
- * TODO=P3: BabelZilla
+ * TODO=P3: GCODE Implement lite version of LastTab Ctrl-Tab stack switching? Probably not since Ctrl-Tab is supposedly going to be incorporated into Fx3.6
+ * TODO=P3: ??? Multi-row on hover (for more than ~1 second)
+ * TODO=P3: ??? Multi-row: vertical splitter to adjust [max] no. of rows?
+
+ * TODO=P3: GCODE BabelZilla
  
- * TODO=P3: Fade old tabs with age, like Dao's Aging Tabs (https://addons.mozilla.org/en-US/firefox/addon/3542), or be compatible(!)
- * TODO=P3: (Re)implement tab scrollbar (though with centered tabs?)
- * TODO=P3: Collapsed group underline is invisible for the active tab when emphasizecurrent is on
- * TODO=P3: MTH-like ctrl/shift-click, and corresponding actions
- * TODO=P3: Make All Tabs scroll to current tab (preferably vertically centered)
+ * TODO=P3: UVOICE Fade old tabs with age, like Dao's Aging Tabs (https://addons.mozilla.org/en-US/firefox/addon/3542), or be compatible(!)
+ * TODO=P3: GCODE Collapsed group underline is invisible for the active tab when emphasizecurrent is on
+ * TODO=P3: GCODE Make All Tabs scroll to current tab (preferably vertically centered)
  
- * TODO=P3: Back forward rocker: "Any chance something was left out? I’ve found a bug, but I don’t know if it occurs in Tab Kit or only in the snippet. Activating a rocker gesture while hovering over a link usually does not work. Rather, the left-click takes precedence. From some testing, it appears that the gesture does work when the previous/next page is already in the fastback cache. (Edit: Thus, it seems the problem is that normal left-click still occurs in addition to, and right after, the gesture.) I hope this helps track down the issue. Thanks." http://forums.mozillazine.org/viewtopic.php?p=3746475#p3746475
- * TODO=P3: Under "When Closing Tabs", is it possible to add a "Last Selected Tab"?
+ * TODO=P3: GCODE Back forward rocker: "Any chance something was left out? I’ve found a bug, but I don’t know if it occurs in Tab Kit or only in the snippet. Activating a rocker gesture while hovering over a link usually does not work. Rather, the left-click takes precedence. From some testing, it appears that the gesture does work when the previous/next page is already in the fastback cache. (Edit: Thus, it seems the problem is that normal left-click still occurs in addition to, and right after, the gesture.) I hope this helps track down the issue. Thanks." http://forums.mozillazine.org/viewtopic.php?p=3746475#p3746475
+ * TODO=P3: UVOICE Under "When Closing Tabs", is it possible to add a "Last Selected Tab"?
  
- * TODO=P3: Make collapsed groups more obvious, e.g. "(+N)" right-aligned text showing hidden count, heavy border (arguably expanded ones should have a minus too, but need to think about how that ties into the tree)
- * TODO=P4: Make collapsed group plus symbol work in Mac theme
- * TODO=P4: Should auto-expanded collapsed groups recollapse when you leave (assuming auto-collapse inactive is off)?
+ * TODO=P3: ~UVOICE Make collapsed groups more obvious, e.g. "(+N)" right-aligned text showing hidden count, heavy border (arguably expanded ones should have a minus too, but need to think about how that ties into the tree)
+ * TODO=P4: GCODE Make collapsed group plus symbol work in Mac theme
+ * TODO=P4: N/A Should auto-expanded collapsed groups recollapse when you leave (assuming auto-collapse inactive is off)?
  
- * TODO=P4: Option to hide All Tabs button
+ * TODO=P4: GCODE Option to hide All Tabs button
  
- * TODO=P4: Groups change colour when dragged (probably only when shift-drag subtrees is enabled)
- * TODO=P4: Disable Close Tabs Above/Below on first/last tab respectively
- * TODO=P4: Use existing tab duplication code in Fx3+ rather than reimplementing
- * TODO=P4: Fisheye vertical tabs, c.f. https://addons.mozilla.org/en-US/firefox/addon/4845 (horizontal fisheye tabs)   
- * TODO=P4: Fix mouse rocker back/forward on linux (where context menu is onmousedown)
- * TODO=P4: Mark group start/end with /--|---|--\ for colorblind people
- * TODO=P4: Fx2: Scrollbar on bookmarks menu used to cause artifacts (wheelscroll even worse), check this is fixed
- * TODO=P4: Check that shift-dragging a group and/or subtree into subtree never causes following tabs to reset indent
+ * TODO=P4: GCODE Groups change colour when dragged (probably only when shift-drag subtrees is enabled)
+ * TODO=P4: GCODE Disable Close Tabs Above/Below on first/last tab respectively
+ * TODO=P4: GCODE Use existing tab duplication code in Fx3+ rather than reimplementing
+ * TODO=P4: UVOICE Fisheye vertical tabs, c.f. https://addons.mozilla.org/en-US/firefox/addon/4845 (horizontal fisheye tabs)   
+ * TODO=P4: GCODE Fix mouse rocker back/forward on linux (where context menu is onmousedown)
+ * TODO=P4: GCODE Make group start/end more obvious, e.g. with /--|---|--\ for colorblind people
+ * TODO=P4: GCODE Fx2: Scrollbar on bookmarks menu used to cause artifacts (wheelscroll even worse), check this is fixed
+ * TODO=P4: GCODE Check that shift-dragging a group and/or subtree into subtree never causes following tabs to reset indent
 */
 
 var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide our stuff in
@@ -340,7 +342,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 var lineNumber   = (haveException && "lineNumber"   in actualException && actualException.lineNumber)   ? actualException.lineNumber   : Components.stack.caller.lineNumber; // error.lineNumber isn't always accurate, unfortunately - sometimes might be better to just ignore it
                 var columnNumber = (haveException && "columnNumber" in actualException && actualException.columnNumber) ? actualException.columnNumber : 0;
                 var flags = haveException ? scriptError.errorFlag : scriptError.warningFlag;
-                var category = "JavaScript error"; // TODO-P6: Check this
+                var category = "JavaScript error"; // TODO-P6: TJS Check this
                 scriptError.init(message, sourceName, sourceLine, lineNumber, columnNumber, flags, category);
                 tk.logs.dump.push(scriptError);
                 _console.logMessage(scriptError);
@@ -390,7 +392,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     this.assert = function assert(test, message) {
         if (!test)
-            tk.dump("Assertion Failure! " + (message ? message : ""));
+            tk.dump("Assertion Failure! " + message);
     };
 
 
@@ -611,9 +613,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
 
-    // TODO=P4: scrollOneExtra should also apply with a single-row horizontal tab bar
-    // TODO=P3: Could always keep selected tab in centre of tabbar instead (whether horizontal or vertical?)
-    this.scrollToElement = function scrollToElement(overflowPane, element) { // TODO-P6: cleanup code? [based on toomanytabs]
+    // TODO=P4: GCODE scrollOneExtra should also apply with a single-row horizontal tab bar
+    // TODO=P3: GCODE Could always keep selected tab in centre of tabbar instead (whether horizontal or vertical?)
+    this.scrollToElement = function scrollToElement(overflowPane, element) { // TODO-P6: TJS cleanup code? [based on toomanytabs]
         var scrollbar = overflowPane.mVerticalScrollbar;
         if (!scrollbar) {
             /*
@@ -775,17 +777,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         window.removeEventListener("DOMContentLoaded", tk.onDOMContentLoaded, false);
         
-        // Find what version of Firefox we're using TODO=P4: Do this in a less hacky way. Or better still, just drop support for Fx2
+        // Find what version of Firefox we're using TODO=P4: TJS+GCODE Do this in a less hacky way. Or better still, just drop support for Fx2
         _isFx2 = !(_isFx3 = (document.getElementById("browser-stack") == null));
         
         // Check compatibility with existing addons (only in Fx3+, as extensions.enabledItems doesn't exist before that)
         if (_prefs.getBoolPref("checkCompatibility")
             && gPrefService.getPrefType("extensions.enabledItems") == gPrefService.PREF_STRING)
         {
-            // TODO=P3: Only check compatibility on first loaded window; future windows should follow what the first window did
+            // TODO=P3: GCODE Only check compatibility on first loaded window; future windows should follow what the first window did
             var incompatible = [
                 { id: "{dc572301-7619-498c-a57d-39143191b318}", name: "Tab Mix Plus" }
-                // TODO: Before adding more extensions here, change the neverCheckCompatibility pref so it's per extension instead of being global
+                // TODO: TJS Before adding more extensions here, change the neverCheckCompatibility pref so it's per extension instead of being global
             ];
             var enabledAddons = gPrefService.getCharPref("extensions.enabledItems");
             var needsRestart = false;
@@ -830,7 +832,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             
             if (needsRestart) {
-                // TODO=P3: Try to disable incompatible extensions by disabling onLoad methods etc to avoid restarting / allow selective disabling
+                // TODO=P3: GCODE Try to disable incompatible extensions by disabling onLoad methods etc to avoid restarting / allow selective disabling
                 window.focus();
                 var strings = document.getElementById("bundle_tabkit"); // This line is technically redundant, but it's clearer like this
                 var flags = _ps.BUTTON_POS_0 * _ps.BUTTON_TITLE_IS_STRING
@@ -1108,7 +1110,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
     };
 
-    // TODO=P4: prepend/append/wrapMethodCode could be done without modifying the actual method to preserve closures
+    // TODO=P4: GCODE prepend/append/wrapMethodCode could be done without modifying the actual method to preserve closures
     this.prependMethodCode = function prependMethodCode(methodname, codestring) {
         tk.addMethodHook([methodname, null, '{', '{' + codestring]);
     };
@@ -1126,9 +1128,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{>>> Sorting & Grouping
     //|##########################
 
-    // TODO=P3: Allow viewing tabs in sorted order without reordering them OR undoing sorts
-    // TODO=P4: Check outoforder is set as appropriate (tabs that have been moved or added contrary to the prevailing sort and should be ignored when placing new tabs by sort order)
-    // TODO=P5: Back to the tab the current tab is opened from, by the "Back" button; Forward to tabs opened from the current tab, by the "Forward" button
+    // TODO=P3: UVOICE Allow viewing tabs in sorted order without reordering them OR undoing sorts
+    // TODO=P4: GCODE Check outoforder is set as appropriate (tabs that have been moved or added contrary to the prevailing sort and should be ignored when placing new tabs by sort order)
+    // TODO=P5: ??? Back to the tab the current tab is opened from, by the "Back" button; Forward to tabs opened from the current tab, by the "Forward" button
 
     //!!/ Constants
     /*!!var GROUP_START_URL = "data:text/html,<style>h1{font-size:256px;margin-bottom:32px}h1,p{text-align:center}p{font-size:1.2em}</style><h1>{&nbsp;&nbsp;&nbsp;...</h1><p><b>Tab Kit:</b> This is a <i>temporary</i> tab to indicate the <b>start</b> of a tab group.<br>It will go away when you stop dragging tabs.<p>";
@@ -1159,8 +1161,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     // Sort keys in here will have larger items sorted to the top/left of the tabbar
     this.ReverseSorts = {};
-    //this.ReverseSorts["lastLoaded"] = true; // TODO=P5: pref
-    //this.ReverseSorts["lastViewed"] = true; // TODO=P5: pref
+    //this.ReverseSorts["lastLoaded"] = true; // TODO=P5: GCODE pref
+    //this.ReverseSorts["lastViewed"] = true; // TODO=P5: GCODE pref
 
     // Sort keys listed here should be converted to numbers before comparison
     this.NumericSorts = {};
@@ -1311,7 +1313,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         _tabContainer.addEventListener("TabSelect", tk.sortgroup_onTabSelect, true);
         gBrowser.addEventListener("DOMContentLoaded", tk.sortgroup_onTabLoading, true);
         gBrowser.addEventListener("load", tk.sortgroup_onTabLoaded, true);
-        // TODO=P3: See https://developer.mozilla.org/En/Listening_to_events_on_all_tabs for better ways to listen for tab loads in Fx3.5+
+        // TODO=P3: GCODE See https://developer.mozilla.org/En/Listening_to_events_on_all_tabs for better ways to listen for tab loads in Fx3.5+
         // This is called just before the tab starts loading its content, use SSTabRestored for once that's finished
         document.addEventListener("SSTabRestoring", tk.sortgroup_onSSTabRestoring, false);
         _tabContainer.addEventListener("TabMove", tk.sortgroup_onTabMoved, false);
@@ -1360,7 +1362,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.nextParent = null;
     this.lastParent = null;
     this.dontMoveNextTab = false;
-    this.ignoreOvers = 0; // TODO=P5: Auto unset this after a timeout?
+    this.ignoreOvers = 0; // TODO=P5: TJS Auto unset this after a timeout?
     this.addedTabs = [];
     
     /// Method Hooks (for group by opener):
@@ -1446,7 +1448,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             goMenu.setAttribute("oncommand", 'tabkit.addingTab("history"); try {' + goMenu.getAttribute("oncommand") + '} finally { tabkit.addingTabOver(); }');
         
         // And another
-        // TODO=P5: document.getElementById("sidebar").contentDocument.getElementById("miOpenInNewTab") [set onload and onopensidebar]
+        // TODO=P5: GCODE document.getElementById("sidebar").contentDocument.getElementById("miOpenInNewTab") [set onload and onopensidebar]
         
         // And deal with tab groups
         tk.wrapMethodCode(
@@ -1581,7 +1583,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                 // Group tab
                                 var grouped = false;
                                 if (pgid) {
-                                    // TODO=P4: allow forcing all groups to act as openergroups?
+                                    // TODO=P4: ??? allow forcing all groups to act as openergroups?
                                     //if (pgid.indexOf(openerGroup) != -1 || pgid.indexOf(":tmpOG-") != -1) {
                                     if (pgid.indexOf(":oG-") != -1 || pgid.indexOf(":tmpOG-") != -1) { // So :oG-bookmarkGroup- works as intended
                                         tk.setGID(tab, pgid);
@@ -1654,7 +1656,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                 // Group tab
                                 if (group.length == 0) {
                                     group = tk.getUngroupedTabsByAttr(tk.Groupings.domain, domain);
-                                    if (group.length == 2) // TODO=P2: Replace this simplistic check with an attribute remembering whether tabs were explicitly ungrouped, or are happy to be made into a domain group
+                                    if (group.length == 2) // TODO=P2: GCODE Replace this simplistic check with an attribute remembering whether tabs were explicitly ungrouped, or are happy to be made into a domain group
                                         for (var i = 0; i < group.length; i++)
                                             tk.setGID(group[i], domain);
                                     else
@@ -1850,8 +1852,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     // A collection of stack signatures we use to classify tab sources (see the end of sortgroup_onTabAdded)
     // Note: This can't replace cases where an explicit parent tab must be set
-    // TODO=P4: Use sourceTypes for more tab sources
-    this.sourceTypes = [ // TODO=P3: Store full stack signatures here (even if only the last element is used)
+    // TODO=P4: GCODE Use sourceTypes for more tab sources
+    this.sourceTypes = [ // TODO=P3: TJS Store full stack signatures here (even if only the last element is used)
         { d: 5, n: "goup_up",               t: "related" }, //postInit: if ("goup_up" in window && window.goup_up) tk.wrapMethodCode('window.goup_up', 'tabkit.addingTab("related"); try {', '} finally { tabkit.addingTabOver(); }');
         { d: 4, n: "diggerLoadURL",         t: "related" }, //diggerLoadURL
         { d: 3, n: "mlb_common_Utils_openUrlInNewTab", t: "related" }, //Mouseless Browsing mlb_common.Utils.openUrlInNewTab (but only after Tab Kit assigns a name to the function in postInitSortingAndGroupingMethodHooks!) [[[1. win_open 2. open 3. mlb_common_Utils_openUrlInNewTab 4.  5. ]]]
@@ -1976,7 +1978,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                             }));
                 //!!if ("breakpoint" in window)
                     //!!breakpoint(function(e){return eval(e);}, "No nextType for added tab: " + tid + "\n" + tk.quickStack() + "\n\n" + new Error().stack);
-                // TODO=P2: Make default nextType depend on whether the tab was opened in the foreground or background, for better compatibility with extensions that open tabs (this may have to be done by seeing if the tab gets selected...)
+                // TODO=P2: GCODE Make default nextType depend on whether the tab was opened in the foreground or background, for better compatibility with extensions that open tabs (this may have to be done by seeing if the tab gets selected...)
                 tk.nextType = "newtab";
                 //tk.nextType = "unrelated";
                 //tk.dontMoveNextTab = true;
@@ -2039,7 +2041,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         //!!tk._cancelMakeGroup();
     };
     
-    // TODO=P3: Call updateAutoCollapse on restore if selected before the groupid is restored
+    // TODO=P3: GCODE Call updateAutoCollapse on restore if selected before the groupid is restored
     this.updateAutoCollapse = function updateAutoCollapse(group) {
         if (!_prefs.getBoolPref("autoCollapse"))
             return;
@@ -2171,7 +2173,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             lt.t = window.setTimeout(lt.l, 100);
         }
         
-        // TODO=P4: Check tabs are restored correctly (and test groupcollapsed and hidden)
+        // TODO=P4: GCODE Check tabs are restored correctly (and test groupcollapsed and hidden)
         // The timeout is because this might be the first tab of a group to be restored, and we'd rather not waste time marking it as a singleton then turning it back into a group (sss_restoreHistory calls itself with a timeout of 0 between each added tab)
         tab.groupNotChecked = true;
         var listener = (function __sortgroup_onTabRestored() {
@@ -2293,7 +2295,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         }*/
                         
                         //~ if (tab.hasAttribute("groupcollapsed")) {
-                            // It is the only "done" tab so far. // TODO=P4: If there is already a groupcollapsed but not hidden tab being restored show that instead.
+                            // It is the only "done" tab so far. // TODO=P4: TJS? If there is already a groupcollapsed but not hidden tab being restored show that instead.
                             tab.hidden = false;
                         //~ }
                         //~ else {
@@ -2319,7 +2321,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             delete tab.groupNotChecked;
         });
-        _sortgroup_onSSTabRestoring_timers.push({l:listener, t:window.setTimeout(listener, 100)}); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
+        _sortgroup_onSSTabRestoring_timers.push({l:listener, t:window.setTimeout(listener, 100)}); // TODO=P5: TJS Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
     };
     
     this.sortgroup_onTabMoved = function sortgroup_onTabMoved(event) {
@@ -2328,7 +2330,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (tab.hasAttribute("groupid"))
             tk.colorizeTab(tab); // Maintain/update tab color, as it gets lost after a move
         
-        tk.keepGroupsTogether(); // TODO=P5: Intelligently adjust groups on move into or out of group? (with timeout of course, so as not to duplicate my existing code for dragged tabs etc.)
+        tk.keepGroupsTogether(); // TODO=P5: ??? Intelligently adjust groups on move into or out of group? (with timeout of course, so as not to duplicate my existing code for dragged tabs etc.)
         
         tk.updateIndents();
         
@@ -2579,7 +2581,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     // then clicking on the close button of the tab below it (which will
                     // by now have risen up by one), so do this.
                     // Note: to avoid dataloss, we don't allow this when closing a group or subtree at a time
-                    // TODO=P3: Test on Linux (where close tab might happen on mousedown instead of mouseup?)
+                    // TODO=P3: GCODE Test on Linux (where close tab might happen on mousedown instead of mouseup?)
                     gBrowser.removeTab(tab);
                     event.stopPropagation();
                 }
@@ -2765,7 +2767,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         else
             document.getElementById("menu_tabkit-sortgroup-newtabs-autoGroup").removeAttribute("checked");
         
-        // TODO=P4: update text of menu_tabkit-sortgroup-newtabs-nextToCurrent depending on openRelativePosition
+        // TODO=P4: GCODE update text of menu_tabkit-sortgroup-newtabs-nextToCurrent depending on openRelativePosition
     };
 
 
@@ -2775,13 +2777,13 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (_keepGroupsTogether_timeoutID != -1) // Wait until this stops getting called
             window.clearTimeout(_keepGroupsTogether_timeoutID);
         _keepGroupsTogether_timeoutID = window.setTimeout(function () {
-            // TODO=P4: Check for singletons too
+            // TODO=P4: GCODE Check for singletons too
             for each (var group in tk.getAllGroups())
                 for (var i = group.length - 2; i >= 0; i--)
                     if (group[i].nextSibling != group[i + 1])
                         tk.moveBefore(group[i], group[i + 1]);
             _keepGroupsTogether_timeoutID = -1;
-        }, 250); // TODO=P5: Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
+        }, 250); // TODO=P5: GCODE Tweak timeout - lower values cause less jumping, but may slow down restoring an entire window
     };
     
     
@@ -2892,7 +2894,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             return prev;
         case 4: // Right
             return next;
-        default: //case 0: // Auto // TODO=P4: Can I improve tree level in auto-sorted opener groups?
+        default: //case 0: // Auto // TODO=P4: ??? Can I improve tree level in auto-sorted opener groups?
             var defaultTab = (tk.openRelativePosition == "left") ? prev : next;
             if (!gid)
                 return defaultTab;
@@ -3046,7 +3048,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tk.moveAfter(newTab, contextTab);
         }
     };
-    // TODO=P3: Middle-click reload -> duplicate
     this.duplicateTab = function duplicateTab(contextTab) {
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
@@ -3065,7 +3066,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         gBrowser.selectedTab = newTab;
     };
     this.makeGroup = function makeGroup(contextTab) {
-        // TODO=P3: replace redundant .hidden calls
+        // TODO=P3: GCODE replace redundant .hidden calls
         if (!contextTab || contextTab == gBrowser.selectedTab)
             return;
         
@@ -3154,7 +3155,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             _tabContainer.removeAttribute("makinggroup");
         }
     };*/
-    // TODO=P4: merge left/right & split group features?
+    // TODO=P4: N/A merge left/right & split group features?
     
     this.toggleUnread = function toggleUnread(contextTab) {
         if (!contextTab)
@@ -3167,7 +3168,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
     
     
-    // TODO=P4: Left click on already selected collapsed tab shows group as menu (with expand option obviously) - or maybe on right-click? (see auto-collapse/expanding)
+    // TODO=P4: ??? Left click on already selected collapsed tab shows group as menu (with expand option obviously) - or maybe on right-click? (see auto-collapse/expanding)
     this.toggleGroupCollapsed = function toggleGroupCollapsed(contextTab) {
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
@@ -3197,7 +3198,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (gBrowser.selectedTab.hidden)
             gBrowser.selectedTab = contextTab;
     };
-    /*!!**/
+    /*!!
     this.tmtStoreGroup = function tmtStoreGroup(contextTab) {
         if (!("toomanytabs_BMHander" in window)
             || !toomanytabs_BMHander.tmtFolderId
@@ -3250,14 +3251,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         var protectedTabs = true;
                 }
                 if (protectedTabs)
-                    _ps.alert(null, "Tab Kit", "Some of the tabs were protected, so have been stored but not closed."); // TODO=P1: LOCALISE ME
+                    _ps.alert(null, "Tab Kit", "Some of the tabs were protected, so have been stored but not closed."); // T-O-D-O: LOCALISE ME
                 break;
             }
         }
     };
-    /**!!*/
+    */
     this.bookmarkGroup = function bookmarkGroup(contextTab) {
-        // TODO=P4: Shift-drag onto bookmarks toolbar to create bookmark folder
+        // TODO=P3: GCODE Drag group/subtree onto bookmarks toolbar should create bookmark folder
         if (!contextTab)
             contextTab = gBrowser.selectedTab;
         
@@ -3387,7 +3388,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
      * .sy, because although forms like .gov.sy and .org.sy are common,
      * many domains also just end in .sy
      */
-    this.setTabUriKey = function setTabUriKey(aTab) { // TODO=P3 Listen for back/forwards
+    this.setTabUriKey = function setTabUriKey(aTab) { // TODO=P3: GCODE Listen for back/forwards
         var uri = aTab.linkedBrowser.currentURI;
         if (aTab.initialURI) {
             if (!uri || uri.asciiSpec == "about:blank")
@@ -3421,7 +3422,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 var uriKey = baseDomain + subDomain.split(".").reverse().join(".") + "/" + uri.scheme + "/" + uri.path; // e.g. google.co.uk.www/http//webhp?hl=en&complete=1
                 var uriGroup = baseDomain.substring(0, baseDomain.indexOf(".")); // e.g. google
                 
-                // TODO=P4: Make sure we only fall back to the old code in Firefox 2
+                // TODO=P4: TJS Make sure we only fall back to the old code in Firefox 2
             }
             catch (ex) {
                 if (Cc["@mozilla.org/network/effective-tld-service;1"]) // Don't bother logging this error on Fx2, as the Effective TLD Service doesn't exist
@@ -3495,7 +3496,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         't.initialURI = aURI; $&'
     ]);//}
     
-    var _seed = 0; // Used to generate ids; TODO-P6: sync across windows to completely avoid duplicates
+    var _seed = 0; // Used to generate ids; TODO-P6: TJS sync across windows to completely avoid duplicates
     this.generateId = function generateId() {
         return String(Date.now()) + "-" + String(++_seed);
     };
@@ -3664,7 +3665,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
     this.ensureCollapsedGroupVisible = function ensureCollapsedGroupVisible(group) {
-        // TODO=P3: Optimize ensureCollapsedGroupVisible with a timeout and Set of gids to avoid processing groups repeatedly [O(n^2) time]
+        // TODO=P3: GCODE Optimize ensureCollapsedGroupVisible with a timeout and Set of gids to avoid processing groups repeatedly [O(n^2) time]
         for each (var t in group)
             if (!t.hidden)
                 return;
@@ -3800,7 +3801,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
         colorTabNotLabel = compatibleTheme ? 1 : 0;*/
         const goodThemes = { // Themes that work well
-            // TODO=P4: Keep testing themes...
+            // TODO=P4: GCODE Keep testing themes...
             "classic/1.0"      : { platform: /Win32/ }, // Default Windows theme ("Strata" in Fx3, "Firefox (default)" in Fx2)
             "BlueIce"          : {}, // [Fx2only]
             "MidnightFox"      : {}, // [Fx2only]
@@ -3909,7 +3910,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     this.regenSaturationLightness = function regenSaturationLightness() {
         // Used to reset each group's saturation and lightness when the prefs are changed
-        // TODO=P4: Make this deal with restored old groups too (perhaps require that the hsl values are within the right ranges, otherwise regen them)
+        // TODO=P4: GCODE Make this deal with restored old groups too (perhaps require that the hsl values are within the right ranges, otherwise regen them)
         var groups = tk.getAllGroups();
         for (var gid in groups) {
             try {
@@ -3957,7 +3958,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         // If there are no surrounding groups, just generate a new color
         if (gids.length < 1) {
-            // TODO=P4: Should I give domain groups a consistent color even if it might be the same as nearby groups?
+            // TODO=P4: GCODE Should I give domain groups a consistent color even if it might be the same as nearby groups?
             /*!!var md5 = tabkit.rawMD5(tgid);
             var hue = 0;
             for (var i = 0; i < md5.length; i++)
@@ -4092,7 +4093,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var sat = tk.randInt(_prefs.getIntPref("minSaturation"), _prefs.getIntPref("maxSaturation"));
         var lum = tk.randInt(_prefs.getIntPref("minLightness"), _prefs.getIntPref("maxLightness"));
         
-        // TODO=P3: Stop memory-leaking known colors (for the duration of a session)
+        // TODO=P3: GCODE Stop memory-leaking known colors (for the duration of a session)
         tk.setWindowValue("knownColor:" + tgid, "hsl(" + hue + ", " + sat + "%, " + lum + "%)");
     };
     
@@ -4147,7 +4148,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     };
 
     this.colorAllTabsMenuItem = function colorAllTabsMenuItem(tab, menuItem) {
-        // TODO=P4: Fx3: Make All Tabs prettier (since we mess things up a little by setting -moz-appearance: none)
+        // TODO=P4: GCODE Fx3: Make All Tabs prettier (since we mess things up a little by setting -moz-appearance: none)
         try {
             var isFx2 = (gBrowser.mCurrentTab.boxObject.firstChild.className.indexOf("tab-image-") == 0);
             var bgSample = isFx2 ? document.getAnonymousNodes(tab)[0] : tab; // [Fx2only] and [Fx3only]
@@ -4414,7 +4415,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (gid != "") {
                     var group = tk.getGroupById(gid);
                     if (group.length > 0) {
-                        // TODO=P4: move next to parent if it's in the group
+                        // TODO=P4: ??? move next to parent if it's in the group
                         if (tk.newTabPosition == 2 && tk.activeSort != "origin"
                             && (groupingName != "domain" || !_prefs.getBoolPref("autoSortDomainGroups")) // We're going to sort all the groups anyway
                             && (groupingName != "opener" || !_prefs.getBoolPref("autoSortOpenerGroups"))) // We're going to sort all the groups anyway
@@ -4443,7 +4444,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     tk.setGID(tab, gid);
                 }
                 
-                // Move all tabs to where the median positioned tab currently is // TODO=P4: if tk.newTabPosition == 2 && tk.activeSort in tk.DateSorts move to most recent tab instead?
+                // Move all tabs to where the median positioned tab currently is // TODO=P4: TJS if tk.newTabPosition == 2 && tk.activeSort in tk.DateSorts move to most recent tab instead?
                 var mi = group.length >> 1;
                 var median = group[mi];
                 for (var i = 0; i < mi; i++)
@@ -4466,7 +4467,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (_prefs.getBoolPref("autoSortOpenerGroups")) {
                 var groups = tk.getAllGroups();
                 for (var gid in groups)
-                    if (gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) // TODO-P6: Would it make more sense for manual groups not to get autosorted, i.e. if ((gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1) && !tk.startsWith(gid, ":oG-manualGroup-"))
+                    if (gid.indexOf(":oG-") != -1 || gid.indexOf(":tmpOG-") != -1)
                         tk.sortTabsBy("origin", gid);
             }
         }
@@ -4571,10 +4572,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             
             if (!gid) {
-                // TODO=P4: ignore outoforder tabs?
+                // TODO=P4: ??? ignore outoforder tabs?
                 if (sortName == "origin")
                     var representative = (tk.openRelativePosition == "left") ? g.concat().sort(tk.compareTabCreated)[0].key : g[0].key;
-                //~ else if (isDate) // TODO=P4: Should I?
+                //~ else if (isDate) // TODO=P4: TJS Should I?
                     //~ var representative = g[ g.length - 1 ].key
                 else // Median
                     var representative = g[ g.length >> 1 ].key;
@@ -4730,7 +4731,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         '/*[Fx2only]*/this.mTabContainer.insertBefore(aTab, this.mTabContainer.childNodes.item(aIndex));'
     ]);//}
     
-    /*!! // Commented out since people might prefer to skip over them (only worked in Fx2 anyway) //TODO=P4: Show warning when tabs are skipped because their group is collapsed
+    //TODO=P4: GCODE Show warning when tabs are skipped because their group is collapsed
+    /*!! // Commented out since people might prefer to skip over them (only worked in Fx2 anyway)
     // Allow selecting hidden tabs of a collapsed group (which will then be automatically raised to the top)
     this.earlyMethodHooks.push([
         "_tabContainer.selectNewTab",//{
@@ -4841,7 +4843,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     // possibleparents (getSubtreeFromTab normally does this)
                     tk.updateIndents(tabs);
                 }
-                //TODO=P4: make shift-drag force group ungrouped tabs with destination - or something!
+                //TODO=P4: --- make shift-drag force group ungrouped tabs with destination - or something!
                 if (copyNotMove || oldTab.parentNode != _tabContainer) {
                     // Copying within/across windows, or moving across windows
                     var newTabs = [];
@@ -4901,7 +4903,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                     || !("treeLevel" in tabs[0])
                                     || */tabs[i].treeLevel <= tabs[0].treeLevel/*!! )*/)
                         {
-                            newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
+                            newTabs[i].setAttribute("possibleparent", app); // TODO=P3: TJS For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
                         }
                         else {
                             var tpp = tabs[i].getAttribute("possibleparent");
@@ -4928,7 +4930,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                 newTab.setAttribute("outoforder", "true");
                         }
                     }
-                    // TODO=P3: Add an openerGroup to copied groups/subtrees
+                    // TODO=P3: ??? Add an openerGroup to copied groups/subtrees
                     if (!copyNotMove)
                         window.focus();
                 }
@@ -4977,7 +4979,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                     || !("treeLevel" in tab)
                                     || !("treeLevel" in tabs[0])
                                     || */tab.originalTreeLevel <= tabs[0].originalTreeLevel) {
-                                    tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
+                                    tab.setAttribute("possibleparent", app); // TODO=P3: TJS For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
                                 }
                             }
                         }
@@ -5000,7 +5002,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             
             // [Copying a single tab within/across windows, or moving a tab across windows]
-            // TODO=P4: Allow Accel-dropping onto current tab (instead of having to drop onto the neighbouring tab)
+            // TODO=P4: GCODE Allow Accel-dropping onto current tab (instead of having to drop onto the neighbouring tab)
             if (copyNotMove || oldTab.parentNode != _tabContainer) {
                 if (oldTab.parentNode == _tabContainer) // Copying one tab (possibly from a different window)
                     tk.addingTab("related", oldTab, true);
@@ -5197,7 +5199,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             newTabs[0].originalTreeLevel = singleTab ? 0 : tab.treeLevel; // Save the treeLevels
         }
         if (dropEffect == "copy" && draggedTab.parentNode != _tabContainer)
-            gBrowser.selectedTab = newTabs[0]; // TODO=P3: Is this necessary?
+            gBrowser.selectedTab = newTabs[0]; // TODO=P3: TJS Is this necessary?
         /*!!if (SINGLE_TAB) {
             draggedTab.originalTreeLevel = 0;
             // In case we changed newIndex in "Prevent accidentally dragging into ..." (plus saves recomputing it)
@@ -5251,7 +5253,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 gBrowser.selectedTab = newTabs[0];
         }*/
         
-        window.setTimeout(function ___onDropCallback() { // TODO=P3: Waiting may actually be unnecessary
+        window.setTimeout(function ___onDropCallback() { // TODO=P3: TJS Waiting may actually be unnecessary
             // This is now after the tabs have been restored
             
             if (copyOrFromAnotherWindow)
@@ -5292,7 +5294,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             }
             else {
                 if (shiftDragSubtree)
-                    nGid = ":oG-draggedSubtree-" + tk.generateId(); // Maintain subtree by creating a new opener group // TODO=P5: No need if the subtree was the entire group
+                    nGid = ":oG-draggedSubtree-" + tk.generateId(); // Maintain subtree by creating a new opener group // TODO=P5: GCODE No need if the subtree was the entire group
                 else
                     nGid = null; // Just keep existing groupid
                 
@@ -5310,7 +5312,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 
                 // Apply app, or copy from original if appropriate
                 if (app && newTab.originalTreeLevel <= newTabs[0].originalTreeLevel) {
-                    // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc.
+                    // TODO=P3: N/A For consistency, use a temporary parent attribute so it's reset by sorts etc.
                     newTab.setAttribute("possibleparent", app);
                 }
                 else if (copyOrFromAnotherWindow && !singleTab) {
@@ -5335,7 +5337,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (parent && parent.getAttribute("groupid") == aGid) {
                     for each (var tab in tabs) {
                         if (tab.originalTreeLevel <= tabs[0].originalTreeLevel) { // Top level tabs only
-                            tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
+                            tab.setAttribute("possibleparent", app); // TODO=P3: N/A For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
                         }
                     }
                 }
@@ -5393,7 +5395,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     if (parent && parent.getAttribute("groupid") == agid) {
                         for each (var tab in tabs) {
                             if (tab.originalTreeLevel <= tabs[0].originalTreeLevel) { // Top level tabs only
-                                tab.setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
+                                tab.setAttribute("possibleparent", app); // TODO=P3: N/A For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto above)
                             }
                         }
                     }
@@ -5418,7 +5420,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 }
                 for (var i = 0; i < tabs.length; i++) {
                     if (app && tabs[i].originalTreeLevel <= tabs[0].originalTreeLevel) {
-                        newTabs[i].setAttribute("possibleparent", app); // TODO=P3: For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
+                        newTabs[i].setAttribute("possibleparent", app); // TODO=P3: N/A For consistency, use a temporary parent attribute so it's reset by sorts etc. (ditto below)
                     }
                     else {
                         var tpp = tabs[i].getAttribute("possibleparent");
@@ -5446,7 +5448,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                             newTab.setAttribute("outoforder", "true");
                     }
                 }
-                // TODO=P3: Add an openerGroup to copied groups/subtrees
+                // TODO=P3: ??? Add an openerGroup to copied groups/subtrees
                 if (!copyNotMove)
                     window.focus();
             }*/
@@ -5454,7 +5456,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             // Make sure the old group isn't now a singleton
             if (singleTab) {
                 if (dGid) {
-                    // TODO=P4: Refactor out into a checkIfSingleton method
+                    // TODO=P4: TJS Refactor out into a checkIfSingleton method
                     if (dPrev && dPrev.getAttribute("groupid") == dGid) {
                         if ((!dPrev.previousSibling || dPrev.previousSibling.getAttribute("groupid") != dGid)
                             && (!dNext || dNext.getAttribute("groupid") != dGid))
@@ -5566,7 +5568,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
     };
     this.preInitListeners.push(this.preInitTabDragModifications);
-    this.postInitTabDragModifications = function postInitTabDragModifications(event) { // TODO=P4: Test
+    this.postInitTabDragModifications = function postInitTabDragModifications(event) { // TODO=P4: TJS Test
         if ("_onDrop" in gBrowser) { // [Fx3.5+]
             gBrowser.old_onDrop = gBrowser._onDrop;
             gBrowser._onDrop = tk._onDrop;
@@ -5932,7 +5934,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tab.maxWidth = null;
             tab.minWidth = 0;
             
-            // Ensure newly opened tabs can be seen (even if, in some cases, this may put the selected tab offscreen - TODO=P4: Make sure not to move selected tab offscreen if it is onscreen)
+            // Ensure newly opened tabs can be seen (even if, in some cases, this may put the selected tab offscreen - TODO=P4: GCODE Make sure not to move selected tab offscreen if it is onscreen)
             window.setTimeout(function() {
                 tk.scrollToElement(_tabInnerBox, tab);
             }, 0);
@@ -6009,7 +6011,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     delete gBrowser.mStrip.tkScrollPos;
                 }
                 //!!else tk.scrollToElement(_tabInnerBox, gBrowser.selectedTab); // At least make sure selected tab is still visible
-            }, 50); // TODO: Find more reliable way of setting this than 50 ms timeout...
+            }, 50); // TODO: TJS Find more reliable way of setting this than 50 ms timeout...
         }
         // Ignore event.attrChange == MutationEvent.MODIFICATION
     };
@@ -6069,7 +6071,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (typeof pos != "number") pos = _prefs.getIntPref("tabbarPosition");
         
         if (_isFx3 && pos == tk.Positions.BOTTOM) {
-            _ps.alert(window, "Tab Kit", "Sorry, the tab bar cannot be shown at the bottom in Firefox 3+.\nIt will be moved to the top."); // TODO=P3: Prevent tabbar at bottom from expanding when dragging tabs, or just don't offer option
+            _ps.alert(window, "Tab Kit", "Sorry, the tab bar cannot be shown at the bottom in Firefox 3+.\nIt will be moved to the top."); // TODO=P3: GCODE Prevent tabbar at bottom from expanding when dragging tabs, or just don't offer option
             _prefs.setIntPref("tabbarPosition", tk.Positions.TOP);
             return; // The pref listener will trigger moveTabbar again
             //pos = tk.Positions.TOP;
@@ -6301,7 +6303,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (rows > maxRows) {
                     _tabContainer.setAttribute("multirowscroll", "true");
 
-                    // TODO=P3: Make sure tab borders and padding are properly taken into account...
+                    // TODO=P3: GCODE Make sure tab borders and padding are properly taken into account...
                     _tabstrip.style.setProperty("min-height", 24 * maxRows + "px", "important");
                     _tabstrip.style.setProperty("max-height", 24 * maxRows + "px", "important");
 
@@ -6320,7 +6322,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         availWidth -= Math.max(scrollbar.boxObject.width, 22);
                     }
                     catch (ex) {
-                        tk.debug("Oops, the scrollbar hasn't been created yet... TODO-P6: use a timeout");
+                        tk.debug("Oops, the scrollbar hasn't been created yet... TODO-P6: TJS use a timeout");
                         availWidth -= 22;
                     }
                 }
@@ -6422,7 +6424,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                                 || !multiRow))'
     ]);//}
     
-    // TODO=P4: Prevent inappropriate indicator wrap around when dragging to end of row
+    // TODO=P4: GCODE Prevent inappropriate indicator wrap around when dragging to end of row
     this.postInitTabDragIndicator = function postInitTabDragIndicator(event) {
         if ("_onDragOver" in gBrowser) { // [Fx3.5]
             // These are the same changes as in Fx3
@@ -6594,7 +6596,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{=== Highlight unread tabs
     //|##########################
 
-    // TODO=P4: Tab progress bar/rotating+filling pie
+    // TODO=P4: UVOICE Tab progress bar/rotating+filling pie
 
     // Note: sorting and grouping hooks into _onShowingAllTabsPopup to highlight all tabs menu entries
 
@@ -6851,9 +6853,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     //{=== Scrollbars not arrows
     //|##########################
 
-    // TODO=P4: Bug 345378 - tab preview from all tabs menupopup
-    // TODO=P4: Middle/right-click All Tabs menu, drag & drop
-    // TODO=P5: Double-click scroll buttons -> scroll to start/end
+    // TODO=P4: UVOICE Bug 345378 - tab preview from all tabs menupopup
+    // TODO=P4: N/A Middle/right-click All Tabs menu, drag & drop
+    // TODO=P5: N/A Double-click scroll buttons -> scroll to start/end
 
     /// Private Globals:
     var _allTabsInnerBox;
@@ -6891,7 +6893,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     this.initListeners.push(this.initOpenSelectedLinks);
 
     /// Event Listeners:
-    // TODO=P4: Localize Open Selected Links
+    // TODO=P4: GCODE Localize Open Selected Links
     this.openSelectedLinks_onPopupShowing = function openSelectedLinks_onPopupShowing(event) {
         var topMenuItem = document.getElementById("context_tabkit-opentopselectedlinks");
         var menuItem = document.getElementById("context_tabkit-openselectedlinks");
@@ -6911,7 +6913,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var s = topUris.length > 1 ? "s" : "";
             topMenuItem.setAttribute("label", "Open Main " + topUris.length + " Link" + s + " in New Tab" + s);
             topMenuItem.tabkit_selectedLinks = topUris;
-            topMenuItem.tabkit_linkSource = content.document.documentURI; // TODO=P4: Should this be focusedWindow?
+            topMenuItem.tabkit_linkSource = content.document.documentURI; // TODO=P4: TJS Should this be focusedWindow?
             topMenuItem.hidden = false;
             if (oneItemOnly)
                 return;
@@ -6922,7 +6924,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var all = topUris.length < uris.length ? "All " : "";
             menuItem.setAttribute("label", "Open " + all + uris.length + " Link" + s + " in New Tab" + s);
             menuItem.tabkit_selectedLinks = uris;
-            menuItem.tabkit_linkSource = content.document.documentURI; // TODO-P4: Should this be focusedWindow?
+            menuItem.tabkit_linkSource = content.document.documentURI; // TODO-P4: TJS Should this be focusedWindow?
             menuItem.hidden = false;
             if (oneItemOnly)
                 return;
@@ -6934,7 +6936,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             var s = textUris.length > 1 ? "s" : "";
             textMenuItem.setAttribute("label", "Open " + textUris.length + " Text Link" + s + " in New Tab" + s);
             textMenuItem.tabkit_selectedLinks = textUris;
-            textMenuItem.tabkit_linkSource = content.document.documentURI; // TODO-P4: Should this be focusedWindow?
+            textMenuItem.tabkit_linkSource = content.document.documentURI; // TODO-P4: TJS Should this be focusedWindow?
             textMenuItem.hidden = false;
         }
     };
