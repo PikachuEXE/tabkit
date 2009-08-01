@@ -35,7 +35,8 @@
 /* Changelog
  * ---------
  * v0.5.8 (tba)
- * - Fix bug with Scrollbars instead of arrows (e.g. on bookmarks menu) functionality
+ * - Fix issue #2: Dropping a tab from a 2 tab group onto itself causes weird behaviour
+ * - Fix issue #11: "Use scrollbars instead of arrows on the Bookmarks and All Tabs menus" messes up various menus
  * v0.5.7 (2009-07-06)
  * - Added de (German) locale (by Tom Fichtner)
  * - Fix bug closing the last tab when browser.tabs.closeWindowWithLastTab is false
@@ -5062,16 +5063,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             
             // Make sure the old group isn't now a singleton
             if (ogid) {
-                if (_previousSibling && _previousSibling.getAttribute("groupid") == ogid) {
-                    if ((!_previousSibling.previousSibling || _previousSibling.previousSibling.getAttribute("groupid") != ogid)
-                        && (!_nextSibling || _nextSibling.getAttribute("groupid") != ogid))
-                    {
-                        tk.removeGID(_previousSibling, true);
-                    }
+                if (_previousSibling && _previousSibling.getAttribute("groupid") == ogid
+                    && (!_previousSibling.previousSibling || _previousSibling.previousSibling.getAttribute("groupid") != ogid)
+                    && (!_previousSibling.nextSibling || _previousSibling.nextSibling.getAttribute("groupid") != ogid))
+                {
+                    tk.removeGID(_previousSibling, true);
                 }
-                else if (_nextSibling && _nextSibling.getAttribute("groupid") == ogid) {
-                    if (!_nextSibling.nextSibling || _nextSibling.nextSibling.getAttribute("groupid") != ogid)
-                        tk.removeGID(_nextSibling, true);
+                else if (_nextSibling && _nextSibling.getAttribute("groupid") == ogid
+                    && (!_nextSibling.previousSibling || _nextSibling.previousSibling.getAttribute("groupid") != ogid)
+                    && (!_nextSibling.nextSibling || _nextSibling.nextSibling.getAttribute("groupid") != ogid))
+                {
+                    tk.removeGID(_nextSibling, true);
                 }
             }
             
@@ -5081,7 +5083,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             gBrowser._pre_tk_onDrop(aEvent, aXferData, aDragSession);
         }
     };
-    this._onDrop = function _onDrop(aEvent) {
+    this._onDrop = function _onDrop(aEvent) { // [Fx3.5+]
         var dt = aEvent.dataTransfer;
         var dropEffect = dt.dropEffect;
         if (dropEffect == "link")
@@ -5457,16 +5459,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             if (singleTab) {
                 if (dGid) {
                     // TODO=P4: TJS Refactor out into a checkIfSingleton method
-                    if (dPrev && dPrev.getAttribute("groupid") == dGid) {
-                        if ((!dPrev.previousSibling || dPrev.previousSibling.getAttribute("groupid") != dGid)
-                            && (!dNext || dNext.getAttribute("groupid") != dGid))
-                        {
-                            tk.removeGID(dPrev, true);
-                        }
+                    if (dPrev && dPrev.getAttribute("groupid") == dGid
+                        && (!dPrev.previousSibling || dPrev.previousSibling.getAttribute("groupid") != dGid)
+                        && (!dPrev.nextSibling || dPrev.nextSibling.getAttribute("groupid") != dGid))
+                    {
+                        tk.removeGID(dPrev, true);
                     }
-                    else if (dNext && dNext.getAttribute("groupid") == dGid) {
-                        if (!dNext.nextSibling || dNext.nextSibling.getAttribute("groupid") != dGid)
-                            tk.removeGID(dNext, true);
+                    else if (dNext && dNext.getAttribute("groupid") == dGid
+                        && (!dNext.previousSibling || dNext.previousSibling.getAttribute("groupid") != dGid)
+                        && (!dNext.nextSibling || dNext.nextSibling.getAttribute("groupid") != dGid))
+                    {
+                        tk.removeGID(dNext, true);
                     }
                 }
             }
