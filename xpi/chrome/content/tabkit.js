@@ -37,6 +37,7 @@
  * v0.5.8 (tba)
  * - Fix issue #2: Dropping a tab from a 2 tab group onto itself causes weird behaviour
  * - Fix issue #11: "Use scrollbars instead of arrows on the Bookmarks and All Tabs menus" messes up various menus
+ * - Fix issue #8: When grouping disabled tab color still set when use "Open X Links in New Tabs", or "Open All In Tabs" on bookmark folder
  * v0.5.7 (2009-07-06)
  * - Added de (German) locale (by Tom Fichtner)
  * - Fix bug closing the last tab when browser.tabs.closeWindowWithLastTab is false
@@ -1813,19 +1814,20 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 if (!openerGroup) {
                     openerGroup = ":oG-bookmarkGroup-" + firstTab.getAttribute("tabid");
                     firstTab.setAttribute(tk.Groupings.opener, openerGroup);
-                    if (!gid) {
+                    if (tk.autoGroupNewTabs && !gid) {
                         gid = openerGroup;
                         tk.setGID(firstTab, gid);
                     }
                 }
-                else if (!gid) {
+                else if (tk.autoGroupNewTabs && !gid) {
                     gid = ":oG-bookmarkGroup-" + tk.generateId(); // Pretend to be an openerGroup ;)
                     tk.setGID(firstTab, gid);
                 }
                 for (var i = tk.addedTabs.length - 1; i >= 1; i--) {
                     var tab = tk.addedTabs[i];
                     tk.moveAfter(tab, firstTab); // n.b. this is sometimes redundant since loadTabs already moves the tabs if loadOneOrMoreURIs (from Fx2)
-                    tk.setGID(tab, gid);
+                    if (tk.autoGroupNewTabs)
+                        tk.setGID(tab, gid);
                     if (pid) {
                         tab.setAttribute("possibleparent", pid);
                         tk.updateIndents();
