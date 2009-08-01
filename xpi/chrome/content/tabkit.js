@@ -1555,7 +1555,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 
                 var tabNeedsPlacing = !tk.dontMoveNextTab;
                 
-                if (_prefs.getBoolPref("autoGroupNewTabs")) {
+                if (tk.autoGroupNewTabs) {
                     if (!tabNeedsPlacing
                         && tab.previousSibling
                         && tab.nextSibling
@@ -2102,7 +2102,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 && uriKey == "zzzzzzzzzzzzzzz/about/blank"   // Tab was blank...
                 && uriKey != tab.getAttribute(tk.Sorts.uri)  // ...but now has a url
                 && !tab.hasAttribute("groupid")
-                && _prefs.getBoolPref("autoGroupNewTabs")
+                && tk.autoGroupNewTabs
                 && tk.activeGrouping == "domain")
             {
                 var pid = tab.getAttribute("possibleparent");
@@ -4923,7 +4923,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     
                     // Copy enclosing groupid, or create a new one
                     var useEnclosing = (agid && agid == bgid);
-                    var ngid = useEnclosing ? agid : (_prefs.getBoolPref("autoGroupNewTabs") ? ":oG-copiedGroupOrSubtree-" + tk.generateId() : null);
+                    var ngid = useEnclosing ? agid : (tk.autoGroupNewTabs ? ":oG-copiedGroupOrSubtree-" + tk.generateId() : null);
                     if (ngid) {
                         for each (var newTab in newTabs) {
                             tk.setGID(newTab, ngid);
@@ -4985,7 +4985,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                             }
                         }
                     }
-                    else if (shiftDragSubtree && _prefs.getBoolPref("autoGroupNewTabs")) {
+                    else if (shiftDragSubtree && tk.autoGroupNewTabs) {
                         // Make the subtree into a new group
                         var newgid = ":oG-draggedSubtree-" + tk.generateId(); // As it is a subtree it must be an opener group
                         for each (var tab in tabs)
