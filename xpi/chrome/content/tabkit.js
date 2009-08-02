@@ -34,7 +34,7 @@
 
 /* Changelog
  * ---------
- * v0.5.8 (tba)
+ * v0.5.8 (2009-08-02)
  * - Fix issue #2: Dropping a tab from a 2 tab group onto itself causes weird behaviour
  * - Fix issue #11: "Use scrollbars instead of arrows on the Bookmarks and All Tabs menus" messes up various menus
  * - Fix issue #8: When grouping disabled tab color still set when use "Open X Links in New Tabs", or "Open All In Tabs" on bookmark folder
