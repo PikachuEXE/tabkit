@@ -1885,8 +1885,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         { d: 4, n: "openReleaseNotes",      t: "unrelated" }, //openReleaseNotes [[[1. loadOneTab 2. openUILinkIn 3. openUILink 4. openReleaseNotes 5. anonymous 6. checkForMiddleClick 7. onclick]]]
         
-        { d: 1, n: "sss_undoCloseTab",      t: "sessionrestore", m: true }, // [[[1. sss_undoCloseTab 2. undoCloseTab 3. undoCloseTab 4. oncommand]]]
-        { d: 1, n: "sss_restoreWindow",     t: "sessionrestore", m: true }
+        { d: 1, n: "sss_duplicateTab",      t: "sessionrestore", m: true }, //sss_duplicateTab [[[1. sss_duplicateTab 2. duplicateTab ...]]]
+        { d: 1, n: "sss_undoCloseTab",      t: "sessionrestore", m: true }, //sss_undoCloseTab [[[1. sss_undoCloseTab 2. undoCloseTab 3. undoCloseTab 4. oncommand]]]
+        { d: 1, n: "sss_restoreWindow",     t: "sessionrestore", m: true }  //sss_restoreWindow
     ];
     this.sourceTypes.sort(function __compareSourceDepths(a, b) { return b.d - a.d; }); // Sort by decreasing d(epth)
     
@@ -4759,9 +4760,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     ]);//}
 
     /// Implement Bug 298571 - support tab duplication (using ctrl) on tab drag and drop
-    /// Partly based on Simon Bünzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
     this._duplicateTab = function _duplicateTab(aTab) {
         if (_ss) {
+            var newTab = _ss.duplicateTab(window, aTab); // [Fx3+]
+            newTab.setAttribute("tabid", tk.generateId());
+            tk.removeGID(newTab);
+            return newTab;
+            /*!! // [Fx2-]
+            /// Partly based on Simon Bünzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
             // Try to have SessionStore serialize the given tab
             try {
                 var tabState = _ss.getWindowState(aTab.ownerDocument.defaultView);
@@ -4780,8 +4786,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             catch (ex) {
                 // Fall back to basic URL copying
             }
+            */
         }
-        return gBrowser.loadOneTab(gBrowser.getBrowserForTab(aTab).currentURI.spec);
+        return gBrowser.loadOneTab(gBrowser.getBrowserForTab(aTab).currentURI.spec); // [Fx3- since browser.sessionstore.enabled always on in 3.5+]
     };
     
     this.onDrop = function onDrop(aEvent, aXferData, aDragSession) { // [Fx3-]
@@ -5167,17 +5174,17 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         var copyOrFromAnotherWindow = (dropEffect == "copy" || draggedTab.parentNode != _tabContainer);
         
         // Move/copy the tab(s)
-        tabs.reverse();
         var tabsReverse = tabs.slice(); // Copy
-        tabs.reverse();
+        tabsReverse.reverse(); // In-place reverse
         var newTabs = [];
         var tabIdMapping = {};
         for each (var tab in tabsReverse) {
             if (copyOrFromAnotherWindow) {
                 // Tab was copied or from another window, so tab will be recreated instead of moved directly
                 
-                if (singleTab && draggedTab.parentNode == _tabContainer)
-                    tk.addingTab("related", draggedTab, true);
+                // Only allow beforeTab not afterTab because addingTabOver only indents newTab if it is after draggedTab (since addingTabOver just sets possibleparent to the source tab)
+                if (singleTab && draggedTab == beforeTab)
+                    tk.addingTab("related", draggedTab, true); // Or could just do tk.duplicateTab(draggedTab); return;
                 else
                     tk.addingTab("unrelated", null, true);
                 
@@ -5188,6 +5195,8 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 newTabs.unshift(tk.addedTabs[0]);
                 
                 tk.addingTabOver();
+                if (singleTab && draggedTab == beforeTab)
+                    return; // addingTabOver will already have grouped the tab etc, so skip ___onDropCallback 
             }
             else {
                 // Tab will be moved directly
