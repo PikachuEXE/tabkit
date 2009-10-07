@@ -298,11 +298,12 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     var _sm = Cc["@mozilla.org/scriptsecuritymanager;1"]
               .getService(Ci.nsIScriptSecurityManager);
     
-    if ("@mozilla.org/browser/sessionstore;1" in Components.classes)
-        var _ss = Cc["@mozilla.org/browser/sessionstore;1"]
-                  .getService(Ci.nsISessionStore);
+    var _ss = null;
+    if ("@mozilla.org/browser/sessionstore;1" in Cc)
+        _ss = Cc["@mozilla.org/browser/sessionstore;1"]
+              .getService(Ci.nsISessionStore);
     else
-        var _winvars = {}; // For tk.get/setWindowValue
+        var _winvars = {}; // For tk.get/setWindowValue // TODO=P1: Remove if redundant
     
     var _sound = Cc["@mozilla.org/sound;1"]
                  .getService(Ci.nsISound);
@@ -392,10 +393,30 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         }
     };
     
-    this.assert = function assert(test, message) {
-        if (!test)
-            tk.dump("Assertion Failure! " + message);
-    };
+    /* USAGE:
+     *   tk.assert('true != false', function(e) eval(e), "True should not equal false");
+     */
+    this.assert = function assert(condition, localEval, message) {
+        if (!_prefs.getBoolPref("debug") || localEval(condition))
+            return;
+        
+        var title = "Assert Failed: '" + condition + "' in " + Components.stack.caller.name + "(";
+        // Append arguments to title
+        if (arguments.callee.caller.arguments.length > 0)
+            title += uneval(arguments.callee.caller.arguments[0]);
+        for (var i = 1; i < arguments.callee.caller.arguments.length; i++)
+            title += ", " + uneval(arguments.callee.caller.arguments[i]);
+        title += ")";
+        
+        var message = (msg ? msg + "\n\n" : "") + "Stacktrace:\n" + tk.quickStack();
+        
+        tk.dump(title + "\n\n" + message);
+        
+        /*!!**/
+        if ("quickprompt" in window) // quickprompt requires my QuickPrompt extension
+            quickprompt(localEval, title, message, "help()");
+        /**!!*/
+    }
 
 
     this.startsWith = function startsWith(str, start) {
@@ -950,11 +971,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     
     /// Initialisation:
     this.preInitShortcuts = function preInitShortcuts(event) {
-        tk.assert(window.location == "chrome://browser/content/browser.xul", "preInitShortcuts should only be run in browser windows, as tabkit.js is only loaded into browser.xul");
+        tk.assert('window.location == "chrome://browser/content/browser.xul"', function(e) eval(e), "preInitShortcuts should only be run in browser windows, as tabkit.js is only loaded into browser.xul");
         
         // Make sure we can use gBrowser from now on if this is a browser window
         getBrowser();
-        tk.assert(gBrowser, "gBrowser must not be null after preInitShortcuts!");
+        tk.assert('gBrowser', function(e) eval(e), "gBrowser must not be null after preInitShortcuts!");
         
         _tabContainer = gBrowser.mTabContainer;
         _tabstrip = _tabContainer.mTabstrip;
@@ -7110,13 +7131,6 @@ functions at any time.
 
 
 **** Snippets ***
-
-/ *!!** /
-if ("assert" in window) assert('normallyTrueCondition', function(e){return eval(e);}, "UnexpectedError");
-if ("breakpoint" in window) breakpoint(function(e){return eval(e);}); // breakpoint requires QuickPrompt extension
-/ **!!* /
-
-
 
 // Log tab sources to console (after setting http://kb.mozillazine.org/Javascript.options.showInConsole to true)
 gBrowser.mTabContainer.addEventListener("TabOpen", function __printSource() {
