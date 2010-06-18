@@ -6995,7 +6995,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 NodeFilter.SHOW_ELEMENT,
                 {
                     acceptNode: function(node) {
-                        return node.localName == "A" ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+                        return node.localName.toLowerCase() == "a" ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
                     }
                 },
                 true
