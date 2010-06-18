@@ -14,6 +14,11 @@
 @if not exist xpi\chrome goto nochrome
 @if not exist xpi\chrome\content goto nocontent
 
+::Check required tools are available on the Path
+for /F %%X in ("xcopy.exe")  DO IF "%%~$PATH:X"=="" goto noxcopy
+for /F %%X in ("python.exe") DO IF "%%~$PATH:X"=="" goto nopython
+for /F %%X in ("7z.exe")     DO IF "%%~$PATH:X"=="" goto no7z
+
 ::Cleanup things that might get in the way
 @if exist temp rmdir /s /q temp
 @if exist "%extname%%version%.xpi" del "%extname%%version%.xpi"
@@ -56,6 +61,18 @@ rmdir /s /q temp
 
 :nocontent
 @echo Error: folder "xpi\chrome\content" not found
+@goto pause
+
+:noxcopy
+@echo Error: required tool "xcopy.exe" not found on system path
+@goto pause
+
+:nopython
+@echo Error: required tool "python.exe" not found on system path
+@goto pause
+
+:no7z
+@echo Error: required tool "7z.exe" not found on system path
 @goto pause
 
 :pause
