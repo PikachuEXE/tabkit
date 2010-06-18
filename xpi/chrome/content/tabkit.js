@@ -1,6 +1,6 @@
 /**
- * Tab Kit - http://jomel.me.uk/software/firefox/tabkit/
- * Copyright (c) 2007-2009 John Mellor
+ * Tab Kit - http://code.google.com/p/tabkit
+ * Copyright (c) 2007-2010 John Mellor
  * 
  * This file is part of Tab Kit.
  * Tab Kit is free software; you can redistribute it and/or

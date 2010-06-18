@@ -1,10 +1,7 @@
-::Set this to your extension's short name (i.e. no spaces, punctuation, etc.)
+::Extension short name (no spaces or punctuation)
 @set extname=tabkit
-::If you want to call your xpi file something like <extname>0.5 then put everything after <extname> in version.
-::You can just leave version blank of course
+::Extension version (left blank as I just want tabkit.xpi, not e.g. tabkit0.5.xpi)
 @set version=
-
-::DON'T CHANGE ANYTHING BELOW THIS LINE
 
 ::Check mimimum necessary files are present (the script would work without some of them, but their absence suggests a problem with the extension)
 @if not exist chrome.manifest goto nochromemanifest

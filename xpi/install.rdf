@@ -16,7 +16,7 @@
 		<em:translator>Hugo Chen (Chinese Traditional [zh-TW])</em:translator>
 		<em:translator>Timur Timirkhanov (Russian [ru])</em:translator>
 		<em:translator>Tom Fichtner (German [de])</em:translator>
-		<em:homepageURL>http://jomel.me.uk/software/firefox/tabkit/</em:homepageURL>
+		<em:homepageURL>http://code.google.com/p/tabkit</em:homepageURL>
 		
 		<em:optionsURL>chrome://tabkit/content/settings.xul</em:optionsURL>
 		<em:iconURL>chrome://tabkit/skin/tabkit.png</em:iconURL>
