@@ -32,9 +32,9 @@ del content\consoleOverlay.xul
 for /D %%d IN (*.*) DO rmdir /S /Q %%d
 ::Make the xpi
 cd ..
-rem if exist ..\install.rdf copy /Y ..\install.rdf install.rdf
+@rem if exist ..\install.rdf copy /Y ..\install.rdf install.rdf
 copy /Y ..\chrome.manifest chrome.manifest
-7z a -mx=2 -r -tzip "..\%extname%%version%.xpi" *
+7z a -mx=9 -r -tzip "..\%extname%%version%.xpi" *
 cd ..
 ::Clean up
 rmdir /s /q temp
