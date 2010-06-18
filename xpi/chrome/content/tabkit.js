@@ -228,7 +228,7 @@
  * TODO=P3: GCODE Collapsed group underline is invisible for the active tab when emphasizecurrent is on
  * TODO=P3: GCODE Make All Tabs scroll to current tab (preferably vertically centered)
  
- * TODO=P3: GCODE Back forward rocker: "Any chance something was left out? I’ve found a bug, but I don’t know if it occurs in Tab Kit or only in the snippet. Activating a rocker gesture while hovering over a link usually does not work. Rather, the left-click takes precedence. From some testing, it appears that the gesture does work when the previous/next page is already in the fastback cache. (Edit: Thus, it seems the problem is that normal left-click still occurs in addition to, and right after, the gesture.) I hope this helps track down the issue. Thanks." http://forums.mozillazine.org/viewtopic.php?p=3746475#p3746475
+ * TODO=P3: GCODE Back forward rocker: "Any chance something was left out? I've found a bug, but I don't know if it occurs in Tab Kit or only in the snippet. Activating a rocker gesture while hovering over a link usually does not work. Rather, the left-click takes precedence. From some testing, it appears that the gesture does work when the previous/next page is already in the fastback cache. (Edit: Thus, it seems the problem is that normal left-click still occurs in addition to, and right after, the gesture.) I hope this helps track down the issue. Thanks." http://forums.mozillazine.org/viewtopic.php?p=3746475#p3746475
  * TODO=P3: UVOICE Under "When Closing Tabs", is it possible to add a "Last Selected Tab"?
  
  * TODO=P3: ~UVOICE Make collapsed groups more obvious, e.g. "(+N)" right-aligned text showing hidden count, heavy border (arguably expanded ones should have a minus too, but need to think about how that ties into the tree)
@@ -833,7 +833,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                         strings.getFormattedString("incompatible_warning", [ addon.name ]), //aText
                         flags, // aButtonFlags
                         strings.getFormattedString("incompatible_disable", [ addon.name ]), //aButton0Title
-                        strings.getString("incompatible_ignore"), //aButton1Title // This has to be button 1 due to Bug 345067 – Issues with prompt service's confirmEx - confirmEx always returns 1 when user closes dialog window using the X button in titlebar
+                        strings.getString("incompatible_ignore"), //aButton1Title // This has to be button 1 due to Bug 345067 - Issues with prompt service's confirmEx - confirmEx always returns 1 when user closes dialog window using the X button in titlebar
                         strings.getFormattedString("incompatible_disable", [ strings.getString("tab_kit") ]), //aButton2Title
                         strings.getString("incompatible_dont_ask_again"), //aCheckMsg
                         check //aCheckState
@@ -4788,7 +4788,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             tk.removeGID(newTab);
             return newTab;
             /*!! // [Fx2-]
-            /// Partly based on Simon Bünzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
+            /// Partly based on Simon Bunzli's patch, https://bugzilla.mozilla.org/show_bug.cgi?id=298571#c18
             // Try to have SessionStore serialize the given tab
             try {
                 var tabState = _ss.getWindowState(aTab.ownerDocument.defaultView);
@@ -5816,7 +5816,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             strings.getFormattedString("close_warning_protected_tabs", [ _tabs.length, numProtected ]), //aText
             flags, // aButtonFlags
             strings.getString("close_all_tabs"), //aButton0Title
-            null, //aButton1Title // Cancel has to be button 1 due to Bug 345067 – Issues with prompt service's confirmEx - confirmEx always returns 1 when user closes dialog window using the X button in titlebar
+            null, //aButton1Title // Cancel has to be button 1 due to Bug 345067 - Issues with prompt service's confirmEx - confirmEx always returns 1 when user closes dialog window using the X button in titlebar
             strings.getString("close_unprotected_tabs"), //aButton2Title
             null, //aCheckMsg
             {} //aCheckState
