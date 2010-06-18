@@ -1,4 +1,3 @@
-::THIS IS THE SAME AS makev2.bat EXCEPT I ADDED LINES 23, 24, 27 and 32
 ::Set this to your extension's short name (i.e. no spaces, punctuation, etc.)
 @set extname=tabkit
 ::If you want to call your xpi file something like <extname>0.5 then put everything after <extname> in version.
@@ -16,7 +15,6 @@
 
 ::Check required tools are available on the Path
 for /F %%X in ("xcopy.exe")  DO IF "%%~$PATH:X"=="" goto noxcopy
-for /F %%X in ("python.exe") DO IF "%%~$PATH:X"=="" goto nopython
 for /F %%X in ("7z.exe")     DO IF "%%~$PATH:X"=="" goto no7z
 
 ::Cleanup things that might get in the way
@@ -25,9 +23,6 @@ for /F %%X in ("7z.exe")     DO IF "%%~$PATH:X"=="" goto no7z
 
 ::Work with a temporary copy of the files
 xcopy /E /I /Q /Y xpi temp
-::Filter marked comments
-@rem php -f filterComments.php
-python filterComments.py
 ::Make the jar
 cd temp\chrome
 del content\consoleOverlay.xul
@@ -65,10 +60,6 @@ rmdir /s /q temp
 
 :noxcopy
 @echo Error: required tool "xcopy.exe" not found on system path
-@goto pause
-
-:nopython
-@echo Error: required tool "python.exe" not found on system path
 @goto pause
 
 :no7z

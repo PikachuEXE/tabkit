@@ -3,12 +3,6 @@
 <?xml-stylesheet href="chrome://tabkit/content/tabkit.css" type="text/css"?>
 
 <!DOCTYPE overlay SYSTEM "chrome://tabkit/locale/overlay.dtd">
-<!--!!DOCTYPE overlay [
-	<!ENTITY % browserDTD SYSTEM "chrome://browser/locale/browser.dtd" >
-	%browserDTD;
-	<!ENTITY % tabkitDTD SYSTEM "chrome://tabtree/locale/overlay.dtd" >
-	%tabkitDTD;
-]-->
 
 <overlay id="tabkit-browser" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
@@ -24,13 +18,6 @@
 ]]></script>
 
 <commandset id="mainCommandSet">
-<!--!! COMMENTED OUT, SINCE UPDATE OF "SESSION MANAGER" EXTENSION MAKES THIS OBSOLETE
-	<command id="cmd_tabkit-sessions-saveWindow" oncommand="tabkit.saveSingleWindowSession();"/>
-	<command id="cmd_tabkit-sessions-saveAllWindows" oncommand="tabkit.saveAllWindowsSession();"/>
-	<command id="cmd_tabkit-sessions-options" oncommand="/* T O D O */"/>
-	<command id="cmd_tabkit-recentwindows-openAll" oncommand="tabkit.openAllRecentWindows();"/>
-	
--->
 	<command id="cmd_tabkit-sortgroup-sortByUri" oncommand="tabkit.sortByUri();"/>
 	<command id="cmd_tabkit-sortgroup-sortByLastLoaded" oncommand="tabkit.sortByLastLoaded();"/>
 	<command id="cmd_tabkit-sortgroup-sortByLastViewed" oncommand="tabkit.sortByLastViewed();"/>
@@ -60,85 +47,17 @@
 	
 	
 	<command id="cmd_tabkit-sortgroup-group-collapseExpand" oncommand="tabkit.toggleGroupCollapsed(gBrowser.mContextTab);"/>
-	<!--!! <command id="cmd_tabkit-sortgroup-group-tmtStore" oncommand="tabkit.tmtStoreGroup(gBrowser.mContextTab);"/> -->
 	<command id="cmd_tabkit-sortgroup-group-bookmark" oncommand="tabkit.bookmarkGroup(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-close" oncommand="tabkit.closeGroup(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-closeChildren" oncommand="tabkit.closeChildren(gBrowser.mContextTab);"/>
 	<command id="cmd_tabkit-sortgroup-group-ungroup" oncommand="tabkit.ungroupGroup(gBrowser.mContextTab);"/>
 	
 	<command id="cmd_tabkit-options" oncommand="tabkit.openOptions();"/>
-	<!--!!
-	
-	<command id="cmd_newNavigatorTab" oncommand="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> <!- -(is the default anyway) - ->
-	<command id="cmd_tabTree_newNavigatorTabGroup" oncommand="tabtree_tempParent = TABTREE_ROOT; BrowserOpenTab();"/>-->
 </commandset>
 
 <keyset id="mainKeyset">
-<!--!!*-->
-<!-- COMMENTED OUT, SINCE UPDATE OF "SESSION MANAGER" EXTENSION MAKES THIS OBSOLETE
-	<key id="key_tabkit-sessions-saveWindow" modifiers="accel shift" key="S" command="cmd_tabkit-sessions-saveWindow"/><!- - T O D O: check keys - ->
-	<key id="key_tabkit-sessions-saveAllWindows" modifiers="accel shift" key="A" command="cmd_tabkit-sessions-saveAllWindows"/><!- - T O D O: check keys - ->
--->
-	
-	<!-- TODO-P6: Have another think about whether any keys might be useful. -->
-	<!--<key id="key_tabkit-sortgroup-groupByDomain" modifiers="accel shift" key="," command="cmd_tabkit-sortgroup-groupByDomain"/>-->
-	<!--<key id="key_tabkit-sortgroup-groupByOpener" modifiers="accel shift" key="." command="cmd_tabkit-sortgroup-groupByOpener"/>-->
-	
-	<!--<key id="key_tabTree_newNavigatorTabGroup" modifiers="accel shift" key="&tabCmd.commandkey;" command="cmd_tabTree_newNavigatorTabGroup"/>-->
-	<!--<key id="key_tabTree_mergeLeft" modifiers="accel shift" key="&tabTree.mergeLeft.commandkey;" oncommand="tabtree_mergeWithPrevious();"/>--><!--keycode="VK_COMMA"-->
-	<!--<key id="key_tabTree_mergeRight" modifiers="accel shift" key="&tabTree.mergeRight.commandkey;" oncommand="tabtree_mergeWithNext();"/>--><!--keycode="VK_PERIOD"-->
-	<!--<key id="key_tabTree_splitGroup" modifiers="accel shift" key="&tabTree.splitGroup.commandkey;" oncommand="tabtree_splitGroup();"/>--><!--keycode="VK_SLASH"-->
-<!--*!!-->
 	<key id="key_tabkit-sortgroup-group-close" modifiers="&closeGroup.modifiers;" key="&closeGroup.key;" command="cmd_tabkit-sortgroup-group-close"/>
 </keyset>
-
-<!--!!*-->
-<menupopup id="menu_FilePopup">
-	<!--<menuitem id="tabtree-file-new-tab-group" command="cmd_tabTree_newNavigatorTabGroup" key="key_tabTree_newNavigatorTabGroup"
-		label="&tabTree.tabGroupCmd.label;" accesskey="&tabTree.tabGroupCmd.accesskey;" position="3"/>-->
-</menupopup>
-<!--*!!-->
-
-<!--!! COMMENTED OUT, SINCE UPDATE OF "SESSION MANAGER" EXTENSION MAKES THIS OBSOLETE
-<menupopup id="goPopup">
-	<!- - No accesskey for any of these, see bug 308812 - ->
-	<menu id="menu_tabkit-recentwindows-menu" insertbefore="endUndoSeparator" label="Recently Closed Windows" disabled="true">
-		<menupopup id="menu_tabkit-recentwindows-popup" onpopupshowing="tabkit.updateRecentWindowsMenu(event, this);">
-			<menuseparator id="menu_tabkit-recentwindows-endList"/>
-			<menuitem id="menu_tabkit-recentwindows-openAll" label="Open All in New Windows"
-				accesskey="O" command="cmd_tabkit-recentwindows-openAll"/>
-		</menupopup>
-	</menu>
-	<menu id="menu_tabkit-sessions-menu" insertbefore="endUndoSeparator" label="Browsing Sessions">
-		<menupopup id="menu_tabkit-sessions-popup" onpopupshowing="tabkit.updateSessionsMenu(event, this);">
-			<menuitem id="menu_tabkit-sessions-saveWindow" label="Save Current Window"
-				key="key_tabkit-sessions-saveWindow" accesskey="S" command="cmd_tabkit-sessions-saveWindow"/>
-			<menuitem id="menu_tabkit-sessions-saveAllWindows" label="Save All Windows"
-				key="key_tabkit-sessions-saveAllWindows" accesskey="A" command="cmd_tabkit-sessions-saveAllWindows"/>
-			<menuseparator id="menu_tabkit-sessions-startList"/>
-			<menuseparator id="menu_tabkit-sessions-endList" hidden="true"/>
-			<menuitem id="menu_tabkit-sessions-options" label="Sessions Options"
-				accesskey="O" command="cmd_tabkit-sessions-options"/>
-		</menupopup>
-	</menu>
-</menupopup>
--->
-
-<!--!!*-->
-<toolbarpalette id="BrowserToolbarPalette">
-	<!--<toolbarbutton id="new-tab-group-button" class="toolbarbutton-1 chromeclass-toolbar-additional"
-		style="list-style-image: url(chrome://tabtree/skin/newtab.png);" label="&tabTree.tabGroupCmd.label;"
-		command="cmd_tabTree_newNavigatorTabGroup" tooltiptext="&tabTree.tabGroupCmd.tooltip;"/>-->
-		<!--T O D O:ondragover="nsDragAndDrop.dragOver(event, newTabButtonObserver);"
-		ondragdrop="nsDragAndDrop.drop(event, newTabButtonObserver);"
-		ondragexit="nsDragAndDrop.dragExit(event, newTabButtonObserver);"/>
-		(see also browser.js:newTabButtonObserver-->
-</toolbarpalette>
-<!--*!!-->
-
-<!--!!<toolbarbutton id="new-tab-button" command="" oncommand="tabkit.tabType = 'newtab'; tabkit.tabSource = gBrowser.selectedTab; BrowserOpenTab();" onclick="if (event.button == 1) { tabkit.tabType = 'newtabmiddle'; BrowserOpenTab(); }"/>-->
-
-<!--!!<tabbrowser id="content" onnewtab="tabtree_tempParent = gBrowser.mCurrentTab; BrowserOpenTab();"/> (for context menu item, but is the default anyway)-->
 
 <menupopup id="menu_ToolsPopup">
 	<!-- We move this to the tab context menu in tabkit.initSortingAndGrouping -->
@@ -162,9 +81,9 @@
 					<menuseparator/>
 					
 					<menuitem id="menu_tabkit-sortgroup-groupByDomain" label="&groupByDomain.label;" accesskey="&groupByDomain.accesskey;"
-						type="checkbox" command="cmd_tabkit-sortgroup-groupByDomain"/><!--!! key="key_tabkit-sortgroup-groupByDomain"-->
+						type="checkbox" command="cmd_tabkit-sortgroup-groupByDomain"/>
 					<menuitem id="menu_tabkit-sortgroup-groupByOpener" label="&groupByOpener.label;" accesskey="&groupByOpener.accesskey;"
-						type="checkbox" command="cmd_tabkit-sortgroup-groupByOpener"/><!--!! key="key_tabkit-sortgroup-groupByOpener"-->
+						type="checkbox" command="cmd_tabkit-sortgroup-groupByOpener"/>
 					
 					<menuitem id="menu_tabkit-sortgroup-ungroupAll" label="&ungroupAll.label;" accesskey="&ungroupAll.accesskey;"
 						command="cmd_tabkit-sortgroup-ungroupAll"/>
@@ -219,8 +138,6 @@
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-expand" label="&expand.label;" accesskey="&expand.accesskey;"
 				command="cmd_tabkit-sortgroup-group-collapseExpand" groupsonly="true" collapsed="true"/>
-			<!--!! <menuitem id="menu_tabkit-sortgroup-group-tmtStore" label="Store Group to TooManyTabs"
-				command="cmd_tabkit-sortgroup-group-tmtStore" groupsonly="true"/><!- - NEEDS l10n & hiding unless tmt installed - -> -->
 			<menuitem id="menu_tabkit-sortgroup-group-bookmark" label="&bookmark.label;" accesskey="&bookmark.accesskey;"
 				command="cmd_tabkit-sortgroup-group-bookmark" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
@@ -230,19 +147,6 @@
 				command="cmd_tabkit-sortgroup-group-closeChildren" acceltext="&closeChildren.acceltext;" groupsonly="true"/>
 			<menuitem id="menu_tabkit-sortgroup-group-ungroup" label="&ungroup.label;" accesskey="&ungroup.accesskey;"
 				command="cmd_tabkit-sortgroup-group-ungroup" groupsonly="true"/>
-			<!--!!*-->
-			<menuseparator selectiononly="true"/>
-			
-			<menuitem id="menu_tabkit-sortgroup-selection-caption" label="&selection.caption;" disabled="true"
-				style="font-size: 80%; background: inherit !important;" selectiononly="true"/>
-			
-			<menuitem id="menu_tabkit-sortgroup-selection-group" label="&makeGroup.label;" accesskey="&makeGroup.accesskey;"
-				command="cmd_tabkit-sortgroup-selection-group" selectiononly="true"/>
-			<menuitem id="menu_tabkit-sortgroup-selection-bookmark" label="&bookmark.label;" accesskey="&bookmark.accesskey;"
-				command="cmd_tabkit-sortgroup-selection-bookmark" selectiononly="true"/>
-			<menuitem id="menu_tabkit-sortgroup-selection-close" label="&closeGroup.label;" accesskey="&closeGroup.accesskey;"
-				command="cmd_tabkit-sortgroup-selection-close" selectiononly="true"/>
-			<!--*!!-->
 		</menupopup>
 	</menu>
 	

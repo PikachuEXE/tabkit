@@ -75,9 +75,6 @@ var tabkitGlobal = new function _tabkitGlobal() { // Primarily just a 'namespace
             }
         }
         catch (ex) {
-            /*!!**/
-            if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
-            /**!!*/
         }
     };
     
@@ -91,9 +88,6 @@ var tabkitGlobal = new function _tabkitGlobal() { // Primarily just a 'namespace
             }
         }
         catch (ex) {
-            /*!!**/
-            if ("breakpoint" in window) breakpoint(function(e){return eval(e);}, ex); // breakpoint requires my QuickPrompt extension
-            /**!!*/
         }
     };
     
