@@ -280,7 +280,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
               .getService(Ci.nsIProperties);
     
     var _em = Cc["@mozilla.org/extensions/manager;1"]
-              .getService(Ci.nsIExtensionManager)
+              .getService(Ci.nsIExtensionManager);
     
     var _ios = Cc["@mozilla.org/network/io-service;1"]
                .getService(Ci.nsIIOService);
@@ -399,14 +399,14 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
             title += ", " + uneval(arguments.callee.caller.arguments[i]);
         title += ")";
         
-        var message = (msg ? msg + "\n\n" : "") + "Stacktrace:\n" + tk.quickStack();
+        var msg = (message ? message + "\n\n" : "") + "Stacktrace:\n" + tk.quickStack();
         
-        tk.dump(title + "\n\n" + message);
+        tk.dump(title + "\n\n" + msg);
         
         // quickprompt requires my (currently unreleased) QuickPrompt extension
         if ("quickprompt" in window)
-            quickprompt(localEval, title, message, "help()");
-    }
+            quickprompt(localEval, title, msg, "help()");
+    };
 
 
     this.startsWith = function startsWith(str, start) {
@@ -800,7 +800,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         _tabContainer = gBrowser.mTabContainer;
         _tabstrip = _tabContainer.mTabstrip;
         _tabInnerBox = document.getAnonymousElementByAttribute(_tabstrip._scrollbox, "class", "box-inherit scrollbox-innerbox");
-        _tabs = gBrowser.mTabs
+        _tabs = gBrowser.mTabs;
     };
     this.preInitListeners.push(this.preInitShortcuts);
 
