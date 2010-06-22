@@ -930,16 +930,20 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     /// Methods:
     this.addMethodHook = function addMethodHook(hook) {
         try {
+            // Make backup, if requested
             if (hook[1])
                 eval(hook[1] + "=" + hook[0]);
-
+                
             var code = eval(hook[0] + ".toString()");
             
             for (var i = 2; i < hook.length; ) {
                 var newCode = code.replace(hook[i++], hook[i++]);
                 if (newCode == code) {
-                    if ((!_isFx2 || !tk.startsWith(hook[i-1], "/*[Fx3only]*/")) && (!_isFx3 || !tk.startsWith(hook[i-1], "/*[Fx2only]*/")))
+                    if ((!tk.startsWith(hook[i-1], "/*[Fx3only]*/") || _isFx3)
+                     && (!tk.startsWith(hook[i-1], "/*[Fx2only]*/") || _isFx2))
+                    {
                         tk.log("Method hook of \"" + hook[0] + "\" had no effect, when replacing:\n" + uneval(hook[i - 2]) + "\nwith:\n" + uneval(hook[i - 1]));
+                    }
                 }
                 else {
                     code = newCode;
@@ -5159,12 +5163,25 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     // TODO=P4: GCODE Prevent inappropriate indicator wrap around when dragging to end of row
     this.postInitTabDragIndicator = function postInitTabDragIndicator(event) {
         if ("_onDragOver" in gBrowser) { // [Fx3.5]
-            // These are the same changes as in Fx3
+            if (gBrowser._onDragOver.toString().indexOf("ib.getBoundingClientRect().right") != -1) { // [Fx3.6+]
+                tk.addMethodHook([
+                    "gBrowser._onDragOver",
+                    null,
+                    'ib.getBoundingClientRect().right',
+                    'gBrowser.clientWidth'
+                ]);
+            }
+            else { // [Fx3.5only]
+                tk.addMethodHook([
+                    "gBrowser._onDragOver",
+                    null,
+                    'ib.boxObject.x + ib.boxObject.width',
+                    'gBrowser.boxObject.width'
+                ]);
+            }
             tk.addMethodHook([
                 "gBrowser._onDragOver",//{
                 null,
-                'ib.boxObject.x + ib.boxObject.width',
-                'gBrowser.boxObject.width',
                 
                 // See below
                 'ib.collapsed = "true";',
