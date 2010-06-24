@@ -5371,6 +5371,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (!event.isTrusted)
             return;
 
+        var splitter = document.getElementById("tabkit-splitter");
+        if (splitter && splitter.getAttribute("state") == "dragging")
+            return;
+
         var btn = event.button;
         if (_mousedown[btn])
             _mousedown[btn] = false;
@@ -5380,6 +5384,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     this.onMouseDownGesture = function onMouseDownGesture(event) {
         if (!event.isTrusted)
+            return;
+
+        var splitter = document.getElementById("tabkit-splitter");
+        if (splitter && splitter.getAttribute("state") == "dragging")
             return;
 
         var btn = event.button;
