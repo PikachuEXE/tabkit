@@ -1286,8 +1286,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     // See globalPreInitSortingAndGroupingMethodHooks in tabkit-global.js
     
     this.postInitSortingAndGroupingMethodHooks = function postInitSortingAndGroupingMethodHooks(event) {
-        if ("openSelectedLinks" in tk && tk.openSelectedLinks)
-            tk.wrapMethodCode('tk.openSelectedLinks', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
         if ("openselectedlinks" in window && window.openselectedlinks && window.openselectedlinks.goCol) // [Fx2only] (or at least I haven't seen any updated versions of this)
             tk.wrapMethodCode('window.openselectedlinks.goCol', 'tabkit.addingTabs(gBrowser.selectedTab); try {', '} finally { tabkit.addingTabsOver(); }');
         
@@ -1690,6 +1688,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         { d: 2, n: "BrowserSearch_search",  t: "related" }, //BrowserSearch.loadSearch
         { d: 3, n: "handleLinkClick",       t: "related" }, //handleLinkClick [[[1. loadOneTab 2. openNewTabWith 3. handleLinkClick 4. contentAreaClick 5. onclick]]]
         { d: 1, n: "webdeveloper_generateDocument", t: "related" }, //webdeveloper_generateDocument (WebDeveloper extension)
+        { d: 1, n: "openSelectedLinks",     t: "related" }, //Tab Kit openSelectedLinks [[[1: openSelectedLinks]]]
         
         { d: 5, n: "BM_onCommand",          t: "newtab" }, //BM_onCommand [[[1. loadOneTab 2. openUILinkIn 3. PU_openNodeIn 4. PU_openNodeWithEvent 5. BM_onCommand]]]
         { d: 5, n: "ondragdrop",            t: "newtab" }, //newTabButtonObserver.onDrop [[[1. loadOneTab 2. openNewTabWith 3.  4.  5. ondragdrop]]] // Could make unrelated if from a different window?
@@ -5746,7 +5745,11 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 return false;
             }
         });
-        gBrowser.loadTabs(uris, gPrefService.getBoolPref("browser.tabs.loadInBackground"), false);
+        var firstTab = gBrowser.addTab(uris.shift());
+        for each (var uri in uris)
+            gBrowser.addTab(uri);
+        if (!gPrefService.getBoolPref("browser.tabs.loadInBackground"))
+            gBrowser.selectedTab = firstTab;
     };
 
     //}##########################
