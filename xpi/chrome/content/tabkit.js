@@ -3132,8 +3132,10 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     var _updateIndentsRequested = false;
     // Incidentally this should work across browser windows so getSubtreeFromTab works for onDrop
     this.updateIndents = function updateIndents(group) {
+        var subtreesEnabled = tk.subtreesEnabled();
+        
         if (!group) {
-            if (!tk.subtreesEnabled())
+            if (!subtreesEnabled)
                 return;
             
             if (!_updateIndentsRequested) {
@@ -3179,7 +3181,7 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                     if (stack[i] == pp) {
                         stack.push(t.getAttribute("tabid"));
                         t.treeLevel = Math.min(i + 1, maxlevel); // For external use, e.g. dragging subtrees
-                        if (!groupcollapsed)
+                        if (!groupcollapsed && subtreesEnabled)
                             t.style.setProperty("margin-left", (indent * t.treeLevel) + "px", "important");
                         break;
                     }
