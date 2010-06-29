@@ -34,6 +34,12 @@
 
 /* Changelog
  * ---------
+ * v0.5.10 (2010-06-29)
+ * - Support Firefox 3.6
+ * - Fix issue #16: Sidebar border shrinks/expands on mouseover => can't widen the sidebar by dragging
+ * - Fix issue #94: Tab drop indicator not showing while setting tab bar position at top edge
+ * - Fix Open Selected Links in Fx 3.6
+ * - Fix gaps appearing when dragging groups around horizontal tab bar
  * v0.5.8 (2009-08-02)
  * - Fix issue #2: Dropping a tab from a 2 tab group onto itself causes weird behaviour
  * - Fix issue #11: "Use scrollbars instead of arrows on the Bookmarks and All Tabs menus" messes up various menus
