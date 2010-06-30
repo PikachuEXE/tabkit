@@ -369,9 +369,16 @@ hbox					H #browser
 .tabbrowser-tabs[multirow] .tabs-newtab-button/*[sinceFx3.5]*/ {
 	min-height: 24px !important;
 	max-height: 24px !important;
-	margin-top: 0 !important; /*[sinceFx3]*/
-	margin-bottom: 0 !important; /*[sinceFx3]*/
-	padding-top: 0 !important; /*[sinceFx3]*/
+	margin-top:           0   !important; /*[sinceFx3]*/
+	margin-bottom:        0   !important; /*[sinceFx3]*/
+	border-top-width:     1px !important; /*[sinceFx3.6]*/
+	border-bottom-width:  0   !important; /*[sinceFx3.6]*/
+	padding-top:          0   !important; /*[sinceFx3]*/
+	padding-bottom:       2px !important; /*[sinceFx3.6]*/
+}
+
+.tabbrowser-tabs[multirow] .tabs-newtab-button > image/*[sinceFx3.6]*/ {
+	height: 17px;
 }
 
 /* Center All Tabs button */
