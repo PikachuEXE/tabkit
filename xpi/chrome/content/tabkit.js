@@ -34,6 +34,8 @@
 
 /* Changelog
  * ---------
+ * v0.5.11 (2010-06-30)
+ * - Fix: hovering over multi-row tab bar would cause rows to change height.
  * v0.5.10 (2010-06-29)
  * - Support Firefox 3.6
  * - Fix issue #16: Sidebar border shrinks/expands on mouseover => can't widen the sidebar by dragging
