@@ -34,6 +34,9 @@
 
 /* Changelog
  * ---------
+ * v0.5.12 (2010-07-02)
+ * - Use tab instead of modal dialog for First Run Wizard
+ * - Fix: don't rely on old extensions manager interface which has been removed from Fx 4
  * v0.5.11 (2010-06-30)
  * - Fix: hovering over multi-row tab bar would cause rows to change height.
  * v0.5.10 (2010-06-29)
