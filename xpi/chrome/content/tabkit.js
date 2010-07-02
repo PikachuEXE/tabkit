@@ -287,7 +287,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
     var _ds = Cc["@mozilla.org/file/directory_service;1"]
               .getService(Ci.nsIProperties);
     
-    var _em = Cc["@mozilla.org/extensions/manager;1"]
+    var _em = null;
+    if ("@mozilla.org/extensions/manager;1" in Cc)
+        _em = Cc["@mozilla.org/extensions/manager;1"]
               .getService(Ci.nsIExtensionManager);
     
     var _ios = Cc["@mozilla.org/network/io-service;1"]
@@ -631,8 +633,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         // Find what version of Firefox we're using TODO=P4: TJS+GCODE Do this in a less hacky way. Or better still, just drop support for Fx2
         _isFx2 = !(_isFx3 = (document.getElementById("browser-stack") == null));
         
-        // Check compatibility with existing addons (only in Fx3+, as extensions.enabledItems doesn't exist before that)
+        // Check compatibility with existing addons (only in Fx3+, as extensions.enabledItems doesn't exist before that, and not in Fx4+ since _em is unavailable)
         if (_prefs.getBoolPref("checkCompatibility")
+            && _em != null
             && gPrefService.getPrefType("extensions.enabledItems") == gPrefService.PREF_STRING)
         {
             // TODO=P3: GCODE Only check compatibility on first loaded window; future windows should follow what the first window did
@@ -719,8 +722,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         
         // Run First Run Wizard if appropriate
         if (!_prefs.getBoolPref("firstRunWizardDone")) {
-            var features = "chrome,dialog,modal,alwaysRaised,centerscreen,resizable=yes";
-            window.openDialog("chrome://tabkit/content/firstRunWizard.xul", "", features).focus();
+            window.setTimeout(function __startfirstRunWizard() {
+                gBrowser.selectedTab = gBrowser.addTab("chrome://tabkit/content/firstRunWizard.xul");
+            }, 1500);
         }
         
         // Run module early initialisation code (before any init* listeners, and before most extensions):
