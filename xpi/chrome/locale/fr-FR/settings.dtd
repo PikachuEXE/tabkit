@@ -171,7 +171,7 @@
 <!ENTITY closeBeforeAfterNotOther.label "Remplacer 'Fermer les autres onglets' par Fermer les onglets précédents et les onglets suivants">
 <!ENTITY closeBeforeAfterNotOther.accesskey "C">
 
-<!ENTITY tabOrder.caption Ordre des onglets">
+<!ENTITY tabOrder.caption "Ordre des onglets">
 <!ENTITY autoSortOpenerGroups.label "Trier automatiquement les onglets groupés par origine en fonction de l'onglet parent (recommandé)">
 <!ENTITY autoSortOpenerGroups.accesskey "O">
 <!ENTITY autoSortDomainGroups.label "Trier automatiquement les onglets groupés par domaine en fonction de l'adresse">
