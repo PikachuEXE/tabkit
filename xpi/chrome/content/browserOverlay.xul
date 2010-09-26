@@ -60,7 +60,7 @@
 </keyset>
 
 <menupopup id="menu_ToolsPopup">
-	<!-- We move this to the tab context menu in tabkit.initSortingAndGrouping -->
+	<!-- We move this to the tab context menu in tabkit.initSortingAndGrouping (this is unnecessary in Fx4+ as we could just overlay tabContextMenu) -->
 	<menu id="menu_tabkit-sortgroup" label="&tabcontextmenu.label;" accesskey="&tabcontextmenu.accesskey;">
 		<menupopup onpopupshowing="tabkit.updateSortGroupMenu(event, this);">
 			<menu id="menu_tabkit-sortgroup-global" label="&global.label;" accesskey="&global.accesskey;">

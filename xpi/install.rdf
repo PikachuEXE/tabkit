@@ -9,7 +9,7 @@
 		
 		<!-- Front End MetaData -->
 		<em:name>Tab Kit</em:name>
-		<em:version>0.5.12</em:version>
+		<em:version>0.6</em:version>
 		<em:description>Tab grouping, multi-rows, tree view, and other tweaks.</em:description>
 		<em:creator>John Mellor</em:creator>
 		<em:contributor>Ivor Hewitt</em:contributor>
@@ -17,6 +17,7 @@
 		<em:translator>Hugo Chen (Chinese Traditional [zh-TW])</em:translator>
 		<em:translator>Timur Timirkhanov (Russian [ru])</em:translator>
 		<em:translator>Tom Fichtner (German [de])</em:translator>
+		<em:translator>Calimero988 (French [fr-FR])</em:translator>
 		<em:homepageURL>http://code.google.com/p/tabkit/</em:homepageURL>
 		
 		<em:optionsURL>chrome://tabkit/content/settings.xul</em:optionsURL>

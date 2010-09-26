@@ -34,6 +34,10 @@
 
 /* Changelog
  * ---------
+ * v0.6 (2010-09-26)
+ * - Add tab search bar
+ * - Re-enable tabs on bottom (as the main bug has been fixed)
+ * - Dropped compatibility with Fx3
  * v0.5.12 (2010-07-02)
  * - Use tab instead of modal dialog for First Run Wizard
  * - Fix: don't rely on old extensions manager interface which has been removed from Fx 4
@@ -4856,13 +4860,6 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
 
     this.moveTabbar = function moveTabbar(pos) {
         if (typeof pos != "number") pos = _prefs.getIntPref("tabbarPosition");
-        
-        if (_isFx3 && pos == tk.Positions.BOTTOM) {
-            _ps.alert(window, "Tab Kit", "Sorry, the tab bar cannot be shown at the bottom in Firefox 3+.\nIt will be moved to the top."); // TODO=P3: GCODE Prevent tabbar at bottom from expanding when dragging tabs, or just don't offer option
-            _prefs.setIntPref("tabbarPosition", tk.Positions.TOP);
-            return; // The pref listener will trigger moveTabbar again
-            //pos = tk.Positions.TOP;
-        }
 
         // Calculate new orient attributes
         var flipOrient = (pos == tk.Positions.LEFT || pos == tk.Positions.RIGHT);
@@ -5213,14 +5210,18 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 'ind.style.MozMarginStart = newMargin + "px";',
                 '$& \
                 if (newIndex == this.mTabs.length) \
-                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.mTabs[0].boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex-1].boxObject.height : 0)) + "px"; \
                 else \
-                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
+                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.mTabs[0].boxObject.screenY) + "px"; \
                 ib.style.display = null;',
                 // Removing this attribute sometimes caused tab bar to scroll (?!?!), so now
                 // we keep it permanently set and show/hide the tab bar with display: -moz-box/null
                 'ib.collapsed = false;',
-                'ib.style.display = "-moz-box";'
+                'ib.style.display = "-moz-box";',
+                
+                // For compatibility with tab search bar
+                'rect = this.getBoundingClientRect()',
+                'rect = this.tabContainer.getBoundingClientRect()'
             ]);//}
         }
         else { //if ("onDragOver" in gBrowser) [Fx3-]
@@ -5251,9 +5252,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 /ind\.style\.marginRight = newMarginRight \+ "px";\s+\}/,
                 '/*[Fx2only]*/$& \
                 if (newIndex == this.mTabs.length) \
-                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.mTabs[0].boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex-1].boxObject.height : 0)) + "px"; \
                 else \
-                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px";',
+                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.mTabs[0].boxObject.screenY) + "px";',
                 
                 'ind.style.MozMarginStart = newMargin + "px";',
                 '/*[Fx3only]*/if (gBrowser.hasAttribute("vertitabbar")) { \
@@ -5266,9 +5267,9 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
                 'ind.style.MozMarginStart = newMargin + "px";',
                 '/*[Fx3only]*/$& \
                 if (newIndex == this.mTabs.length) \
-                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex -1].boxObject.height : 0)) + "px"; \
+                    ib.style.top = (this.mTabs[newIndex-1].boxObject.screenY - this.mTabs[0].boxObject.screenY + (gBrowser.hasAttribute("vertitabbar") ? this.mTabs[newIndex-1].boxObject.height : 0)) + "px"; \
                 else \
-                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.boxObject.screenY) + "px"; \
+                    ib.style.top = (this.mTabs[newIndex].boxObject.screenY - this.mTabs[0].boxObject.screenY) + "px"; \
                 ib.style.display = null;',
                 // See _onDragOver replacement above
                 'ib.collapsed = !aDragSession.canDrop;',
@@ -5304,6 +5305,158 @@ var tabkit = new function _tabkit() { // Primarily just a 'namespace' to hide ou
         if (_tabContainer.hasAttribute("multirow")) {
             event.preventDefault();
             event.stopPropagation();
+        }
+    };
+
+    //}##########################
+    //{>>> Search bar
+    //|#########################
+
+   // Old bug that went away as of 3.6.10 (or earlier): Sometimes tabs remembered that the search bar was focused, and would confusingly focus it when you switch to them (in the same way as they used to remember whether the address bar was focused on a per-tab basis). Tabs no longer seem to remember this (nor for the address bar).
+
+    /// Initialisation:
+    this.initSearchBar = function initSearchBar(event) {
+        var strings = document.getElementById("bundle_tabkit");
+        
+        var vbox = document.createElementNS(XUL_NS, "vbox");
+        vbox.setAttribute("id", "tabkit-filtertabs-box");
+        gBrowser.mStrip.insertBefore(vbox, gBrowser.mStrip.firstChild);
+        
+        var textbox = document.createElementNS(XUL_NS, "textbox");
+        textbox.setAttribute("id", "tabkit-filtertabs-query");
+        textbox.setAttribute("type", "search");
+        textbox.setAttribute("emptytext", strings.getString("search_tabs"));
+        textbox.setAttribute("tooltiptext", strings.getString("search_tabs"));
+        textbox.setAttribute("clickSelectsAll", "true");
+        textbox.setAttribute("newlines", "replacewithspaces");
+        textbox.setAttribute("oncommand", "tabkit.filterTabs(this.value)");
+        textbox.setAttribute("oninput", "document.getElementById('tabkit-filtertabs-includetext').collapsed = !this.value;");
+        textbox.setAttribute("onblur", "document.getElementById('tabkit-filtertabs-includetext').collapsed = !this.value;"); // Clearing the query doesn't always trigger an input event, so additionally check when it gets blurred
+        vbox.appendChild(textbox);
+        
+        var checkbox = document.createElementNS(XUL_NS, "checkbox");
+        checkbox.setAttribute("id", "tabkit-filtertabs-includetext");
+        checkbox.setAttribute("label", strings.getString("include_page_text"));
+        checkbox.setAttribute("oncommand", "tabkit.filterTabs(document.getElementById('tabkit-filtertabs-query').value)");
+        checkbox.setAttribute("collapsed", "true");
+        vbox.appendChild(checkbox);
+    };
+    this.initListeners.push(this.initSearchBar);
+    
+    this.filterTabs = function filterTabs(query) {
+        // Expand collapsed groups during search
+        if (query && typeof tk._groupsToReExpandAfterSearch === "undefined") {
+            tk._groupsToReExpandAfterSearch = [];
+            
+            for each (var g in tk.getAllGroups()) {
+                if (g[0].hasAttribute("groupcollapsed")) {
+                    tk.toggleGroupCollapsed(g[0]);
+                    tk._groupsToReExpandAfterSearch.push(g[0].getAttribute("groupid"));
+                }
+            }
+        }
+        
+        var terms = query.split(/\s+/g);
+        var includePageText = document.getElementById("tabkit-filtertabs-includetext").checked;
+        
+        // Filter tabs
+        for (let t = 0; t < _tabs.length; t++) {
+            let tab = _tabs[t];
+            
+            let foundTerms = {};
+            
+            // Try to match title/uri
+            let uri = null;
+            //if (tab.getAttribute("tk_frozen") == "true") {
+            //    let entry = tk.getActiveTabDataEntry(tab);
+            //    if (entry)
+            //        uri = entry.url;
+            // }
+            if (uri == null) {
+                uri = tab.linkedBrowser.currentURI.spec;
+                try {
+                    uri = decodeURI(uri);
+                } catch (ex) {}
+            }
+            let title = tab.label;
+            let details = (title + " " + uri).toLowerCase();
+            for (let i = 0; i < terms.length; i++) {
+                if (details.indexOf(terms[i]) > -1) {
+                    foundTerms[i] = true;
+                }
+            }
+            
+            let match = true;
+            for (let i = 0; i < terms.length; i++) {
+                if (!(i in foundTerms)) {
+                    match = false;
+                    break;
+                }
+            }
+            
+            // Try to match text
+            if (!match && includePageText) {
+                // Get frames
+                let frames = [];
+                let frameQueue = [ tab.linkedBrowser.contentWindow ];
+                while (frameQueue.length > 0) {
+                    let f = frameQueue.pop();
+                    for (let i = 0; i < f.frames.length; i++)
+                        frameQueue.push(f.frames[i]);
+                    frames.push(f);
+                }
+                
+                // Search each frame
+                for (let i = 0; i < frames.length; i++) {
+                    if (!frames[i].document || !frames[i].document.body)
+                        continue;
+                    let body = frames[i].document.body;
+                    let count = body.childNodes.length;
+                    let range = document.createRange();
+                    range.setStart(body, 0);
+                    range.setEnd(body, count);
+                    let start = document.createRange();
+                    start.setStart(body, 0);
+                    start.setEnd(body, 0);
+                    let end = document.createRange();
+                    end.setStart(body, count);
+                    end.setEnd(body, count);
+                    let finder = Cc["@mozilla.org/embedcomp/rangefind;1"]
+                                .createInstance()
+                                .QueryInterface(Components.interfaces.nsIFind);
+                    finder.caseSensitive = false;
+                    
+                    for (let j = 0; j < terms.length; j++) {
+                        if (!(j in foundTerms)) {
+                            if (finder.Find(terms[j], range, start, end) != null)
+                                foundTerms[j] = true;
+                        }
+                    }
+                }
+                
+                match = true;
+                for (let i = 0; i < terms.length; i++) {
+                    if (!(i in foundTerms)) {
+                        match = false;
+                        break;
+                    }
+                }
+            } // end if (!match && includePageText)
+            
+            // Show only matching tabs
+            tab.hidden = !match;
+        } // end for (let t = 0; t < gBrowser.mTabs.length; t++)
+        
+        // Recollapse expanded groups after search
+        if (!query && typeof tk._groupsToReExpandAfterSearch === "object") {
+            for each (var gid in tk._groupsToReExpandAfterSearch) {
+                var g = tk.getGroupById(gid);
+                if (!g[0].hasAttribute("groupcollapsed")) {
+                    tk.toggleGroupCollapsed(g[0]);
+                }
+            }
+            
+            delete tk._groupsToReExpandAfterSearch;
         }
     };
 
